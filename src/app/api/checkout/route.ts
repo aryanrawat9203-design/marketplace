@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       amount: Math.round(item.price * 100),
       currency: item.currency || "INR",
       receipt: `${item.kind}_${item.key}`.slice(0, 40),
-      notes: { kind: item.kind, key: item.key },
+      notes: { kind: item.kind, key: item.key, name: item.name },
     }),
   });
 
