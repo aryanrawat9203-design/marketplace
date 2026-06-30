@@ -14,16 +14,16 @@ export default function Footer() {
             </span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-zinc-500">
-            The fastest way to discover n8n automation workflows — search 10,000+ templates by
-            industry, tool, and use case.
+            Original, ready-to-import n8n workflow templates &mdash; buy a single template or a whole
+            category bundle and download instantly.
           </p>
         </div>
         <div>
-          <h4 className="text-sm font-semibold text-zinc-200">Explore</h4>
+          <h4 className="text-sm font-semibold text-zinc-200">Shop</h4>
           <ul className="mt-3 space-y-2 text-sm text-zinc-400">
-            <li><Link href="/workflows" className="hover:text-zinc-100">All workflows</Link></li>
-            <li><Link href="/#industries" className="hover:text-zinc-100">Industries</Link></li>
-            <li><Link href="/#categories" className="hover:text-zinc-100">Categories</Link></li>
+            <li><Link href="/workflows" className="hover:text-zinc-100">All templates</Link></li>
+            <li><Link href="/bundles" className="hover:text-zinc-100">Bundles &amp; pricing</Link></li>
+            <li><Link href="/workflows?sort=demand" className="hover:text-zinc-100">Most popular</Link></li>
           </ul>
         </div>
         <div>
@@ -38,15 +38,15 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="text-sm font-semibold text-zinc-200">Note</h4>
+          <h4 className="text-sm font-semibold text-zinc-200">License</h4>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-            FlowDex is an independent directory. Workflows are created by their respective authors
-            and hosted for free on n8n.io. FlowDex is not affiliated with or endorsed by n8n.
+            All templates are original works created and owned by FlowDex. Purchase grants a license
+            to use and adapt them in your own projects. Built for n8n.
           </p>
         </div>
       </div>
       <div className="border-t border-zinc-800/70 py-6 text-center text-xs text-zinc-600">
-        © {new Date().getFullYear()} FlowDex. All rights reserved.
+        &copy; {new Date().getFullYear()} FlowDex. All rights reserved.
       </div>
     </footer>
   );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProduct } from "@/lib/products";
+import { getPurchasable, type Kind } from "@/lib/commerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,9 +12,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
 
-  const { slug } = await req.json().catch(() => ({ slug: undefined }));
-  const product = getProduct(slug);
-  if (!product || product.free) {
+  const { kind, key } = await req
+    .json()
+    .catch(() => ({}) as { kind?: Kind; key?: string });
+  if (!kind || !key) {
+    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  }
+
+  const item = getPurchasable(kind, key);
+  if (!item || item.free || item.price <= 0) {
     return NextResponse.json({ error: "invalid_product" }, { status: 400 });
   }
 
@@ -23,10 +29,10 @@ export async function POST(req: NextRequest) {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      amount: Math.round(product.price * 100), // paise
-      currency: product.currency || "INR",
-      receipt: product.id,
-      notes: { slug: product.slug },
+      amount: Math.round(item.price * 100),
+      currency: item.currency || "INR",
+      receipt: `${item.kind}_${item.key}`.slice(0, 40),
+      notes: { kind: item.kind, key: item.key },
     }),
   });
 
@@ -40,6 +46,6 @@ export async function POST(req: NextRequest) {
     amount: order.amount,
     currency: order.currency,
     keyId,
-    name: product.name,
+    name: item.name,
   });
 }

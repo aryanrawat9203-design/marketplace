@@ -6,7 +6,7 @@ import WorkflowCard from "@/components/WorkflowCard";
 import { FilterBar } from "@/components/Controls";
 import { buildQuery } from "@/lib/url";
 
-export const metadata: Metadata = { title: "Browse workflows" };
+export const metadata: Metadata = { title: "Browse templates" };
 
 type SP = { [k: string]: string | string[] | undefined };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -21,6 +21,7 @@ export default async function WorkflowsPage({
     q: str(sp.q),
     industry: str(sp.industry),
     category: str(sp.category),
+    subcategory: str(sp.subcategory),
     difficulty: str(sp.difficulty),
     tier: str(sp.tier),
     sort: str(sp.sort),
@@ -33,19 +34,20 @@ export default async function WorkflowsPage({
     q: filters.q ?? "",
     industry: filters.industry ?? "",
     category: filters.category ?? "",
+    subcategory: filters.subcategory ?? "",
     difficulty: filters.difficulty ?? "",
     tier: filters.tier ?? "",
     sort: filters.sort ?? "",
   };
 
   const heading = filters.q
-    ? `Results for “${filters.q}”`
-    : filters.industry ?? filters.category ?? "All workflows";
+    ? `Results for "${filters.q}"`
+    : filters.subcategory ?? filters.industry ?? filters.category ?? "All templates";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <h1 className="text-2xl font-semibold text-zinc-100">{heading}</h1>
-      <p className="mt-1 text-sm text-zinc-500">{total.toLocaleString()} workflows</p>
+      <p className="mt-1 text-sm text-zinc-500">{total.toLocaleString("en-IN")} templates</p>
 
       <div className="mt-6">
         <Suspense fallback={<div className="h-10" />}>
@@ -55,7 +57,7 @@ export default async function WorkflowsPage({
 
       {items.length === 0 ? (
         <div className="mt-16 text-center text-zinc-400">
-          No workflows match these filters.{" "}
+          No templates match these filters.{" "}
           <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
             Clear filters
           </Link>
@@ -75,18 +77,18 @@ export default async function WorkflowsPage({
               href={`/workflows${buildQuery(current, { page: page - 1 })}`}
               className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800"
             >
-              ← Prev
+              Prev
             </Link>
           )}
           <span className="text-zinc-500">
-            Page {page} of {pages.toLocaleString()}
+            Page {page} of {pages.toLocaleString("en-IN")}
           </span>
           {page < pages && (
             <Link
               href={`/workflows${buildQuery(current, { page: page + 1 })}`}
               className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800"
             >
-              Next →
+              Next
             </Link>
           )}
         </div>

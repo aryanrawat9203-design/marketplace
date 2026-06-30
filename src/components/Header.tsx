@@ -4,8 +4,8 @@ import { SearchBar } from "./Controls";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
-  { href: "/#industries", label: "Industries" },
-  { href: "/#categories", label: "Categories" },
+  { href: "/bundles", label: "Bundles" },
+  { href: "/bundles#pricing", label: "Pricing" },
 ];
 
 export default function Header() {
@@ -30,12 +30,6 @@ export default function Header() {
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/shop"
-            className="rounded-lg px-3 py-2 font-medium text-violet-300 hover:bg-zinc-800/60 hover:text-violet-200"
-          >
-            Shop
-          </Link>
         </nav>
         <div className="ml-auto hidden w-full max-w-xs sm:block">
           <Suspense fallback={<div className="h-10" />}>

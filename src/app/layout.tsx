@@ -11,14 +11,15 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl()),
   title: {
-    default: "FlowDex — Discover 10,000+ n8n automation workflows",
-    template: "%s · FlowDex",
+    default: "FlowDex - Original n8n workflow templates to buy & download",
+    template: "%s - FlowDex",
   },
   description:
-    "Search and explore 10,000+ free n8n workflow templates by industry, tool, and use case. The fastest way to find the automation you need.",
+    "Buy original, ready-to-import n8n workflow templates across 25 categories. Single templates, category bundles, or the full library - instant download after payment.",
   openGraph: {
-    title: "FlowDex — Discover 10,000+ n8n automation workflows",
-    description: "Search 10,000+ free n8n workflow templates by industry, tool, and use case.",
+    title: "FlowDex - Original n8n workflow templates to buy & download",
+    description:
+      "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
     type: "website",
   },
 };
@@ -27,10 +28,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <Header />
         <main className="flex-1">{children}</main>

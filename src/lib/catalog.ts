@@ -7,6 +7,7 @@ export type IndexItem = {
   title: string;
   subtitle: string | null;
   category: string | null;
+  subcategory: string | null;
   industry: string | null;
   difficulty: string | null;
   tier: string | null;
@@ -17,6 +18,10 @@ export type IndexItem = {
   value: number | null;
   estValue: string | null;
   short: string | null;
+  price: number;
+  mrp: number;
+  off: number;
+  free: boolean;
 };
 
 export type DetailItem = {
@@ -37,24 +42,38 @@ export type DetailItem = {
   trigger: string | null;
   demand: number | null;
   value: number | null;
-  sourceUrl: string | null;
+  sourceUrl?: string | null;
   shortDescription: string | null;
   description: string | null;
   longDescription: string | null;
   benefits: string[];
   useCases: string[];
   keywords: string[];
+  price: number;
+  mrp: number;
+  off: number;
+  free: boolean;
+  workflowFile: string;
+  owned?: boolean;
 };
 
 export type Taxo = { name: string; count: number };
 export type Taxonomy = {
   industries: Taxo[];
   categories: Taxo[];
+  subcategories: Taxo[];
   difficulties: Taxo[];
   tiers: Taxo[];
+  triggers: Taxo[];
   total: number;
   platformsTop: Taxo[];
+  subcategoriesByCategory: Record<string, Taxo[]>;
+  categoryGradient: Record<string, string>;
 };
+
+export function gradientFor(category: string | null | undefined, taxo: Taxonomy): string {
+  return (category && taxo.categoryGradient?.[category]) || "from-violet-500 to-fuchsia-500";
+}
 
 const dataDir = path.join(process.cwd(), "src", "data");
 function readJson<T>(file: string): T {
@@ -90,6 +109,7 @@ export type Filters = {
   q?: string;
   industry?: string;
   category?: string;
+  subcategory?: string;
   difficulty?: string;
   tier?: string;
   trigger?: string;
@@ -114,6 +134,7 @@ export function queryCatalog(f: Filters) {
   }
   if (f.industry) items = items.filter((w) => w.industry === f.industry);
   if (f.category) items = items.filter((w) => w.category === f.category);
+  if (f.subcategory) items = items.filter((w) => w.subcategory === f.subcategory);
   if (f.difficulty) items = items.filter((w) => w.difficulty === f.difficulty);
   if (f.tier) items = items.filter((w) => w.tier === f.tier);
   if (f.trigger) items = items.filter((w) => w.trigger === f.trigger);
@@ -123,6 +144,8 @@ export function queryCatalog(f: Filters) {
   items = [...items].sort((a, b) => {
     if (sort === "title") return a.title.localeCompare(b.title);
     if (sort === "value") return (b.value ?? 0) - (a.value ?? 0);
+    if (sort === "price_asc") return (a.price ?? 0) - (b.price ?? 0);
+    if (sort === "price_desc") return (b.price ?? 0) - (a.price ?? 0);
     return (b.demand ?? 0) - (a.demand ?? 0);
   });
 

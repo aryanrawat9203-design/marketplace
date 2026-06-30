@@ -5,24 +5,36 @@ export const metadata: Metadata = { title: "FAQ" };
 
 const faqs: [string, string][] = [
   [
-    "Is FlowDex free to use?",
-    "Yes. Browsing and searching the entire directory is completely free. Each workflow links to its free page on n8n.io.",
+    "What exactly am I buying?",
+    "Original, ready-to-import n8n workflow templates that we build in-house. Each purchase delivers the workflow's JSON file (a bundle delivers a ZIP of all its templates), which you import directly into your own n8n account.",
   ],
   [
-    "How do I use a workflow I find here?",
-    "Open the workflow's page, click 'Open this workflow free on n8n.io', then import it into your own n8n account.",
+    "Is browsing free?",
+    "Yes - searching and browsing the whole catalog is free, and a set of starter templates are free to download. You only pay when you buy a paid template or bundle.",
   ],
   [
-    "Do you host or sell the directory workflows?",
-    "No. The directory workflows are created by other authors and hosted free on n8n.io — we simply help you find them. The paid items in our Shop are our own original workflows.",
+    "How do I use a template after buying?",
+    "In n8n, open Workflows, then the menu, then Import from File, and choose the downloaded JSON. Add your own credentials on the app nodes and you are ready to run.",
   ],
   [
-    "What do I get when I buy from the Shop?",
-    "An instant download of the workflow's JSON file, which you import directly into n8n. No account or external link needed.",
+    "Single template or bundle - which should I pick?",
+    "Buy a single template if you need one specific automation. If you need several in the same area, a category or subcategory bundle costs far less per template, and the Full Library is the best value of all.",
   ],
   [
-    "Are you affiliated with n8n?",
-    "No. FlowDex is an independent directory and is not affiliated with or endorsed by n8n.",
+    "How is pricing decided?",
+    "Each template is priced by its tier and complexity. All prices are discounted launch pricing and will rise over time, so buying now locks in the lowest price.",
+  ],
+  [
+    "What payment methods do you accept?",
+    "Payments are handled securely by Razorpay - UPI (including PhonePe, Google Pay), cards, netbanking, and wallets.",
+  ],
+  [
+    "Can I get a refund?",
+    "Digital downloads are generally final, but if a file is faulty, will not import, or is not as described, contact us within 7 days and we will fix it or refund you. See our Refund Policy.",
+  ],
+  [
+    "Can I resell the templates?",
+    "You receive a license to use and adapt templates in your own projects. Reselling or redistributing the template files themselves is not permitted.",
   ],
 ];
 

@@ -19,7 +19,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
         suppressHydrationWarning
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search 10,000+ workflows..."
+        placeholder="Search 10,500+ templates..."
         className={`w-full rounded-xl border border-zinc-700/70 bg-zinc-900/70 pl-10 pr-3 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500/70 ${
           compact ? "h-10 text-sm" : "h-12"
         }`}
@@ -103,7 +103,9 @@ export function FilterBar({
         options={[
           { name: "demand", label: "Most popular" },
           { name: "value", label: "Highest value" },
-          { name: "title", label: "A–Z" },
+          { name: "price_asc", label: "Price: low to high" },
+          { name: "price_desc", label: "Price: high to low" },
+          { name: "title", label: "A-Z" },
         ]}
       />
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Script from "next/script";
+import { inr } from "@/lib/pricing";
 
 declare global {
   interface Window {
@@ -24,17 +25,24 @@ type RazorpayOptions = {
   theme?: { color?: string };
 };
 
-type P = { slug: string; name: string; price: number; currency: string; free: boolean };
+export type BuyItem = {
+  kind: "workflow" | "bundle";
+  key: string;
+  name: string;
+  price: number;
+  free: boolean;
+};
 
-export default function BuyButton({ product }: { product: P }) {
+export default function BuyButton({ item, block = false }: { item: BuyItem; block?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const w = block ? "w-full" : "";
 
-  if (product.free) {
+  if (item.free) {
     return (
       <a
-        href={`/api/download?slug=${product.slug}`}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-medium text-white hover:opacity-95"
+        href={`/api/download?kind=workflow&key=${encodeURIComponent(item.key)}`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-medium text-white hover:opacity-95 ${w}`}
       >
         Download free
       </a>
@@ -48,10 +56,10 @@ export default function BuyButton({ product }: { product: P }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: product.slug }),
+        body: JSON.stringify({ kind: item.kind, key: item.key }),
       });
       if (res.status === 503) {
-        setMsg("Payments aren't switched on yet — we'll enable this once your Razorpay account is connected.");
+        setMsg("Payments aren't switched on yet - this turns on the moment your Razorpay keys are added.");
         return;
       }
       const data = await res.json();
@@ -68,7 +76,7 @@ export default function BuyButton({ product }: { product: P }) {
         amount: data.amount,
         currency: data.currency,
         name: "FlowDex",
-        description: product.name,
+        description: item.name,
         order_id: data.orderId,
         theme: { color: "#7c5cff" },
         handler: async (r) => {
@@ -79,7 +87,8 @@ export default function BuyButton({ product }: { product: P }) {
               orderId: data.orderId,
               paymentId: r.razorpay_payment_id,
               signature: r.razorpay_signature,
-              slug: product.slug,
+              kind: item.kind,
+              key: item.key,
             }),
           });
           const vd = await v.json();
@@ -101,9 +110,9 @@ export default function BuyButton({ product }: { product: P }) {
       <button
         onClick={buy}
         disabled={loading}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
+        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
       >
-        {loading ? "Please wait…" : `Buy ₹${product.price}`}
+        {loading ? "Please wait..." : `Buy ${inr(item.price)}`}
       </button>
       {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
     </>

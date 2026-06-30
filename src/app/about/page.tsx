@@ -7,31 +7,32 @@ export default function AboutPage() {
   return (
     <PageShell title="About FlowDex">
       <p>
-        FlowDex is an independent directory that helps people discover the right n8n automation
-        workflow fast. We index thousands of publicly shared workflows and organise them by
-        industry, tool, and use case, so you can find what you need in seconds instead of hours.
+        FlowDex is a marketplace for original, ready-to-import n8n automation workflows. Every
+        template in our catalog is built in-house and organised by category, subcategory, and
+        difficulty so you can find exactly the automation you need and put it to work in minutes.
       </p>
       <h2>What we do</h2>
       <p>
-        Searching through thousands of automations is slow. FlowDex makes it quick: browse by
-        industry, filter by the tools you already use, and read a clear summary of what each
-        workflow does before you open it on n8n.io — where it is free to import.
+        Building automations from scratch is slow. We have done the hard part: thousands of
+        production-style workflows across AI agents, email, lead generation, content, CRM,
+        e-commerce, and many more areas. Browse the catalog for free, read a clear summary of what
+        each workflow does, then buy and download the JSON instantly.
       </p>
-      <h2>Our own workflows</h2>
+      <h2>Single templates or bundles</h2>
       <p>
-        Alongside the directory, we build and sell our own original, ready-to-use workflows in the{" "}
-        <a href="/shop">Shop</a>. These are created by us and come with everything you need to get
-        started right away.
+        Buy one template at a time, grab a whole <a href="/bundles">category bundle</a>, or get the
+        full library in a single purchase. Bundles are always the best value per template.
       </p>
-      <h2>Independent &amp; not affiliated</h2>
+      <h2>Original &amp; owned</h2>
       <p>
-        FlowDex is an independent project. The workflows in our directory are created by their
-        respective authors and hosted for free on n8n.io. FlowDex is not affiliated with, endorsed
-        by, or sponsored by n8n.
+        All templates are original works created and owned by FlowDex. When you buy, you receive a
+        license to use and adapt them in your own personal or business projects. Built for the n8n
+        automation platform.
       </p>
       <h2>Get in touch</h2>
       <p>
-        Questions or feedback? Head to our <a href="/contact">Contact</a> page — we read everything.
+        Questions or workflow requests? Head to our <a href="/contact">Contact</a> page - we read
+        everything.
       </p>
     </PageShell>
   );
