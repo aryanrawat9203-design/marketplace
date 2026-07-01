@@ -32,6 +32,7 @@ export default function Footer() {
             <li><Link href="/about" className="hover:text-zinc-100">About</Link></li>
             <li><Link href="/contact" className="hover:text-zinc-100">Contact</Link></li>
             <li><Link href="/faq" className="hover:text-zinc-100">FAQ</Link></li>
+            <li><Link href="/orders/lookup" className="hover:text-zinc-100">Re-download an order</Link></li>
             <li><Link href="/privacy" className="hover:text-zinc-100">Privacy</Link></li>
             <li><Link href="/terms" className="hover:text-zinc-100">Terms</Link></li>
             <li><Link href="/refund" className="hover:text-zinc-100">Refund Policy</Link></li>

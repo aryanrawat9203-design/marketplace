@@ -40,6 +40,7 @@ export type OrderLookupResult = {
   kind: Kind;
   ref: string;
   itemTitle: string;
+  amountPaise: number;
 };
 
 // Finds a paid order by email + Razorpay order id (both must match).
@@ -52,7 +53,7 @@ export async function findOrder(
 
   const { data, error } = await admin
     .from("orders")
-    .select("item_kind, item_ref, item_title")
+    .select("item_kind, item_ref, item_title, amount_paise")
     .eq("email", email)
     .eq("razorpay_order_id", razorpayOrderId)
     .eq("status", "paid")
@@ -60,5 +61,10 @@ export async function findOrder(
     .maybeSingle();
 
   if (error || !data) return null;
-  return { kind: data.item_kind as Kind, ref: data.item_ref as string, itemTitle: data.item_title as string };
+  return {
+    kind: data.item_kind as Kind,
+    ref: data.item_ref as string,
+    itemTitle: data.item_title as string,
+    amountPaise: (data.amount_paise as number) ?? 0,
+  };
 }
