@@ -87,6 +87,7 @@ export function FilterBar({
     categories: Option[];
     difficulties: Option[];
     tiers: Option[];
+    platformsTop: Option[];
   };
   current: Record<string, string>;
 }) {
@@ -96,6 +97,12 @@ export function FilterBar({
       <Select name="category" value={current.category ?? ""} options={taxonomy.categories} all="All categories" />
       <Select name="difficulty" value={current.difficulty ?? ""} options={taxonomy.difficulties} all="Any level" />
       <Select name="tier" value={current.tier ?? ""} options={taxonomy.tiers} all="Any tier" />
+      <Select
+        name="platform"
+        value={current.platform ?? ""}
+        options={taxonomy.platformsTop}
+        all="All integrations"
+      />
       <Select
         name="sort"
         value={current.sort ?? ""}
@@ -109,5 +116,49 @@ export function FilterBar({
         ]}
       />
     </div>
+  );
+}
+
+export function PageJump({
+  basePath,
+  page,
+  pages,
+}: {
+  basePath: string;
+  page: number;
+  pages: number;
+}) {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const [val, setVal] = useState(String(page));
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const n = Math.min(Math.max(1, Math.round(Number(val)) || 1), pages);
+        const params = new URLSearchParams(Array.from(sp.entries()));
+        params.set("page", String(n));
+        router.push(`${basePath}?${params.toString()}`);
+      }}
+      className="flex items-center gap-2 text-zinc-500"
+    >
+      <label htmlFor="page-jump">Go to page</label>
+      <input
+        id="page-jump"
+        type="number"
+        min={1}
+        max={pages}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        className="h-9 w-20 rounded-lg border border-zinc-700/70 bg-zinc-900/70 px-2 text-center text-zinc-100 outline-none focus:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      />
+      <button
+        type="submit"
+        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      >
+        Go
+      </button>
+    </form>
   );
 }

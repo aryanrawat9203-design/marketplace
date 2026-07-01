@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { queryCatalog, getTaxonomy } from "@/lib/catalog";
 import WorkflowCard from "@/components/WorkflowCard";
-import { FilterBar } from "@/components/Controls";
+import { FilterBar, PageJump } from "@/components/Controls";
 import { buildQuery } from "@/lib/url";
 
 export const metadata: Metadata = { title: "Browse templates" };
@@ -24,6 +24,7 @@ export default async function WorkflowsPage({
     subcategory: str(sp.subcategory),
     difficulty: str(sp.difficulty),
     tier: str(sp.tier),
+    platform: str(sp.platform),
     sort: str(sp.sort),
     page: Number(str(sp.page) ?? "1") || 1,
   };
@@ -37,6 +38,7 @@ export default async function WorkflowsPage({
     subcategory: filters.subcategory ?? "",
     difficulty: filters.difficulty ?? "",
     tier: filters.tier ?? "",
+    platform: filters.platform ?? "",
     sort: filters.sort ?? "",
   };
 
@@ -71,26 +73,31 @@ export default async function WorkflowsPage({
       )}
 
       {pages > 1 && (
-        <div className="mt-10 flex items-center justify-center gap-3 text-sm">
-          {page > 1 && (
-            <Link
-              href={`/workflows${buildQuery(current, { page: page - 1 })}`}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800"
-            >
-              Prev
-            </Link>
-          )}
-          <span className="text-zinc-500">
-            Page {page} of {pages.toLocaleString("en-IN")}
-          </span>
-          {page < pages && (
-            <Link
-              href={`/workflows${buildQuery(current, { page: page + 1 })}`}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800"
-            >
-              Next
-            </Link>
-          )}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-sm">
+          <div className="flex items-center gap-3">
+            {page > 1 && (
+              <Link
+                href={`/workflows${buildQuery(current, { page: page - 1 })}`}
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+              >
+                Prev
+              </Link>
+            )}
+            <span className="text-zinc-500">
+              Page {page} of {pages.toLocaleString("en-IN")}
+            </span>
+            {page < pages && (
+              <Link
+                href={`/workflows${buildQuery(current, { page: page + 1 })}`}
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+          <Suspense fallback={<div className="h-9 w-40" />}>
+            <PageJump basePath="/workflows" page={page} pages={pages} />
+          </Suspense>
         </div>
       )}
     </div>
