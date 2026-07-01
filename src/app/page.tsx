@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getTaxonomy, topByDemand } from "@/lib/catalog";
+import { getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
 import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import WorkflowCard from "@/components/WorkflowCard";
 import { SearchBar } from "@/components/Controls";
@@ -10,6 +10,7 @@ import { inr } from "@/lib/pricing";
 export default function Home() {
   const taxo = getTaxonomy();
   const trending = topByDemand(8);
+  const samples = freeSamples(3);
   const full = fullLibrary();
   const life = lifetime();
   const topCats = categoryBundles().slice(0, 6);
@@ -57,6 +58,25 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {samples.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-zinc-100">Try it free</h2>
+              <p className="mt-1 text-sm text-zinc-500">Genuinely free templates &mdash; no card, no signup.</p>
+            </div>
+            <Link href="/workflows?tier=Free" className="text-sm text-violet-400 hover:text-violet-300">
+              All free templates &rarr;
+            </Link>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {samples.map((w) => (
+              <WorkflowCard key={w.id} w={w} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {full && life && (
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

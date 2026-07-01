@@ -9,6 +9,7 @@ import BuyButton from "@/components/BuyButton";
 import PriceTag from "@/components/PriceTag";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
+import { previewWorkflow } from "@/lib/commerce";
 
 export async function generateMetadata({
   params,
@@ -47,6 +48,7 @@ export default async function WorkflowDetail({
   const subBundle = w.category && w.subcategory ? bundleForSubcategory(w.category, w.subcategory) : undefined;
   const catBundle = w.category ? bundleForCategory(w.category) : undefined;
   const upsell = subBundle ?? catBundle;
+  const preview = previewWorkflow(w.route);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -65,10 +67,12 @@ export default async function WorkflowDetail({
       </nav>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        {w.free && <Badge tone="emerald">Free sample</Badge>}
         {w.difficulty && <Badge tone={difficultyTone(w.difficulty)}>{w.difficulty}</Badge>}
-        {w.tier && <Badge tone={tierTone(w.tier)}>{w.tier}</Badge>}
+        {w.tier && !w.free && <Badge tone={tierTone(w.tier)}>{w.tier}</Badge>}
         {w.category && <Badge tone="violet">{w.category}</Badge>}
         {w.trigger && <Badge>{w.trigger} trigger</Badge>}
+        {preview && <Badge tone="sky">{preview.nodeCount} nodes</Badge>}
       </div>
 
       <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-50">{w.title}</h1>
@@ -117,6 +121,23 @@ export default async function WorkflowDetail({
                 ))}
                 {w.aiProviders.map((p) => (
                   <span key={p} className="rounded-md bg-violet-500/10 px-2 py-1 text-xs text-violet-300">{p}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {preview && preview.nodeTypes.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold text-zinc-100">
+                What&apos;s inside <span className="text-sm font-normal text-zinc-500">({preview.nodeCount} nodes)</span>
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                A look at the node types this workflow uses. No purchase required &mdash; full parameters and
+                credentials are yours after you buy.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {preview.nodeTypes.map((t) => (
+                  <span key={t} className="rounded-md bg-zinc-800/70 px-2 py-1 text-xs text-zinc-300">{t}</span>
                 ))}
               </div>
             </div>

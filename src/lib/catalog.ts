@@ -161,6 +161,13 @@ export function topByDemand(n: number): IndexItem[] {
   return [...getIndex()].sort((a, b) => (b.demand ?? 0) - (a.demand ?? 0)).slice(0, n);
 }
 
+export function freeSamples(n: number): IndexItem[] {
+  return getIndex()
+    .filter((w) => w.free)
+    .sort((a, b) => (b.demand ?? 0) - (a.demand ?? 0))
+    .slice(0, n);
+}
+
 export function related(item: DetailItem, n: number): IndexItem[] {
   return getIndex()
     .filter((w) => w.id !== item.id && (w.category === item.category || w.industry === item.industry))

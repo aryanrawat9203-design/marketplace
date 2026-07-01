@@ -37,6 +37,37 @@ export function workflowDownload(route: string): { filename: string; body: Buffe
   return { filename: path.basename(w.workflowFile), body: fs.readFileSync(fp) };
 }
 
+function friendlyNodeType(type: string): string {
+  const short = type.replace(/^n8n-nodes-base\./, "").replace(/^@n8n\/n8n-nodes-langchain\./, "");
+  return short
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+export type WorkflowPreview = { nodeCount: number; nodeTypes: string[] };
+
+// Reads only node `type`/`name` fields from the shipped workflow JSON - never
+// `parameters`, so this is safe to show before purchase.
+export function previewWorkflow(route: string): WorkflowPreview | null {
+  const w = getByRoute(route);
+  if (!w?.workflowFile) return null;
+  const fp = path.join(PRODUCT_ROOT, w.workflowFile);
+  if (!fs.existsSync(fp)) return null;
+
+  try {
+    const raw = JSON.parse(fs.readFileSync(fp, "utf-8")) as { nodes?: Array<{ type?: string }> };
+    const nodes = raw.nodes ?? [];
+    const types = new Set<string>();
+    for (const n of nodes) {
+      if (n.type) types.add(friendlyNodeType(n.type));
+    }
+    return { nodeCount: nodes.length, nodeTypes: [...types].sort() };
+  } catch {
+    return null;
+  }
+}
+
 export function bundleDownload(slug: string): { filename: string; body: Buffer } | null {
   const b = getBundle(slug);
   if (!b) return null;

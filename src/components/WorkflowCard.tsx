@@ -10,8 +10,9 @@ export default function WorkflowCard({ w }: { w: IndexItem }) {
       className="group flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 card-hover hover:border-violet-500/50 hover:bg-zinc-900/70"
     >
       <div className="flex flex-wrap items-center gap-2">
+        {w.free && <Badge tone="emerald">Free sample</Badge>}
         {w.difficulty && <Badge tone={difficultyTone(w.difficulty)}>{w.difficulty}</Badge>}
-        {w.tier && <Badge tone={tierTone(w.tier)}>{w.tier}</Badge>}
+        {w.tier && !w.free && <Badge tone={tierTone(w.tier)}>{w.tier}</Badge>}
       </div>
       <h3 className="mt-3 line-clamp-2 text-base font-semibold text-zinc-100 group-hover:text-white">
         {w.title}
