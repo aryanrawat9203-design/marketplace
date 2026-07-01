@@ -11,7 +11,7 @@ export default function AuthStatus() {
     return (
       <button
         onClick={() => openLogin()}
-        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800"
+        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       >
         Log in
       </button>
@@ -23,7 +23,7 @@ export default function AuthStatus() {
       <span className="hidden max-w-[10rem] truncate sm:inline">{user.email}</span>
       <button
         onClick={() => signOut()}
-        className="rounded-lg border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800"
+        className="rounded-lg border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       >
         Sign out
       </button>

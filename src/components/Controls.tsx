@@ -17,14 +17,16 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
     >
       <input
         suppressHydrationWarning
+        aria-label="Search templates"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search 10,500+ templates..."
-        className={`w-full rounded-xl border border-zinc-700/70 bg-zinc-900/70 pl-10 pr-3 text-zinc-100 placeholder-zinc-500 outline-none focus:border-violet-500/70 ${
+        className={`w-full rounded-xl border border-zinc-700/70 bg-zinc-900/70 pl-10 pr-3 text-zinc-100 placeholder-zinc-500 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
           compact ? "h-10 text-sm" : "h-12"
         }`}
       />
       <svg
+        aria-hidden="true"
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
         width="18"
         height="18"
@@ -58,6 +60,7 @@ function Select({
   const sp = useSearchParams();
   return (
     <select
+      aria-label={all}
       value={value}
       onChange={(e) => {
         const params = new URLSearchParams(Array.from(sp.entries()));
@@ -66,7 +69,7 @@ function Select({
         params.delete("page");
         router.push(`/workflows?${params.toString()}`);
       }}
-      className="h-10 rounded-lg border border-zinc-700/70 bg-zinc-900/70 px-3 text-sm text-zinc-200 outline-none focus:border-violet-500/70"
+      className="h-10 rounded-lg border border-zinc-700/70 bg-zinc-900/70 px-3 text-sm text-zinc-200 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
     >
       <option value="">{all}</option>
       {options.map((o) => (

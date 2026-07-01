@@ -14,8 +14,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800/70 bg-[#07070b]/80 backdrop-blur-md">
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        >
+          <span
+            aria-hidden="true"
+            className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white"
+          >
             F
           </span>
           <span className="text-zinc-100">
@@ -27,7 +33,7 @@ export default function Header() {
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-lg px-3 py-2 hover:bg-zinc-800/60 hover:text-zinc-100"
+              className="rounded-lg px-3 py-2 hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
             >
               {l.label}
             </Link>
