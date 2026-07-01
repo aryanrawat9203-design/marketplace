@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBar } from "./Controls";
 import AuthStatus from "./AuthStatus";
+import MobileMenu from "./MobileMenu";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
@@ -12,7 +13,7 @@ const navLinks = [
 export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800/70 bg-[#07070b]/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white">
             F
@@ -32,10 +33,13 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto hidden w-full max-w-xs sm:block">
+        <div className="ml-auto hidden w-full max-w-xs md:block">
           <Suspense fallback={<div className="h-10" />}>
             <SearchBar compact />
           </Suspense>
+        </div>
+        <div className="ml-auto md:ml-0">
+          <MobileMenu links={navLinks} />
         </div>
         <AuthStatus />
       </div>
