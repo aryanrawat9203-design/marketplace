@@ -48,21 +48,26 @@ export async function POST(req: Request) {
   }
 
   if (event.event === "payment.captured") {
-    const p = event.payload?.payment?.entity || {};
-    const notes = p.notes || {};
-    const kind = notes.kind as Kind | undefined;
-    const key = notes.key;
-    const email = p.email;
-    if (kind && key && email) {
-      const token = signDownload(kind, key, THIRTY_DAYS);
-      const downloadUrl = baseUrl() + "/api/download?token=" + encodeURIComponent(token);
-      await sendOrderConfirmation({
-        to: email,
-        orderId: p.order_id || p.id || "",
-        itemTitle: notes.name || "Your FlowDex templates",
-        amountInPaise: Number(p.amount) || 0,
-        downloadUrl,
-      });
+    try {
+      const p = event.payload?.payment?.entity || {};
+      const notes = p.notes || {};
+      const kind = notes.kind as Kind | undefined;
+      const key = notes.key;
+      const email = p.email;
+      if (kind && key && email) {
+        const token = signDownload(kind, key, THIRTY_DAYS);
+        const downloadUrl = baseUrl() + "/api/download?token=" + encodeURIComponent(token);
+        await sendOrderConfirmation({
+          to: email,
+          orderId: p.order_id || p.id || "",
+          itemTitle: notes.name || "Your FlowDex templates",
+          amountInPaise: Number(p.amount) || 0,
+          downloadUrl,
+        });
+      }
+    } catch (err) {
+      // Never let a downstream failure cause Razorpay to retry-storm this webhook.
+      console.error("razorpay webhook: payment.captured handling failed", err);
     }
   }
 
