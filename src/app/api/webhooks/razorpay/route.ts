@@ -3,6 +3,7 @@ import { signDownload, type Kind } from "@/lib/commerce";
 import { baseUrl } from "@/lib/site";
 import { sendOrderConfirmation } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { recordOrder } from "@/lib/orders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,13 +65,25 @@ export async function POST(req: Request) {
       if (kind && key && email) {
         const token = signDownload(kind, key, THIRTY_DAYS);
         const downloadUrl = baseUrl() + "/api/download?token=" + encodeURIComponent(token);
+        const itemTitle = notes.name || "Your FlowDex templates";
         await sendOrderConfirmation({
           to: email,
           orderId: p.order_id || p.id || "",
-          itemTitle: notes.name || "Your FlowDex templates",
+          itemTitle,
           amountInPaise: Number(p.amount) || 0,
           downloadUrl,
         });
+        if (p.id) {
+          await recordOrder({
+            razorpayOrderId: p.order_id,
+            razorpayPaymentId: p.id,
+            email,
+            itemKind: kind,
+            itemRef: key,
+            itemTitle,
+            amountPaise: Number(p.amount) || 0,
+          });
+        }
       }
     } catch (err) {
       // Never let a downstream failure cause Razorpay to retry-storm this webhook.
