@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPurchasable, type Kind } from "@/lib/commerce";
+import { getUserFromRequest } from "@/lib/auth-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Creates a Razorpay order via the REST API (no SDK dependency needed).
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
+
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) {

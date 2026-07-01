@@ -1,5 +1,4 @@
-// Sends transactional email via the Resend HTTP API (no SDK dependency).
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
+import { Resend } from "resend";
 
 export type OrderEmail = {
   to: string;
@@ -13,10 +12,14 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Sends the post-purchase receipt + download link via Resend.
+// Never throws - callers should not need try/catch, but wrap anyway since
+// a failed email must never block the checkout/webhook response.
 export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return false;
-  const from = process.env.ORDERS_FROM_EMAIL || "FlowDex <onboarding@resend.dev>";
+  const from = process.env.ORDERS_FROM_EMAIL;
+  if (!apiKey || !from) return false;
+
   const rupee = String.fromCharCode(0x20b9);
   const amount = (o.amountInPaise / 100).toLocaleString("en-IN");
 
@@ -39,21 +42,24 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
     '<p style="color:#666;font-size:13px">Need help? Just reply to this email.</p>' +
     "</div>";
 
+  const text =
+    "Thanks for your purchase!\n\n" +
+    "Order ID: " + o.orderId + "\n" +
+    "Item: " + o.itemTitle + "\n" +
+    "Amount: " + rupee + amount + "\n\n" +
+    "Download your files: " + o.downloadUrl + "\n\n" +
+    "Need help? Just reply to this email.";
+
   try {
-    const res = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: o.to,
-        subject: "Your FlowDex order " + o.orderId,
-        html,
-      }),
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to: o.to,
+      subject: "Your FlowDex order " + o.orderId,
+      html,
+      text,
     });
-    return res.ok;
+    return !error;
   } catch {
     return false;
   }

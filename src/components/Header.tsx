@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBar } from "./Controls";
+import AuthStatus from "./AuthStatus";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
@@ -36,6 +37,7 @@ export default function Header() {
             <SearchBar compact />
           </Suspense>
         </div>
+        <AuthStatus />
       </div>
     </header>
   );

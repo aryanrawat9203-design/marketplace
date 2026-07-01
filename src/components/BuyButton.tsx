@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Script from "next/script";
 import { inr } from "@/lib/pricing";
+import { useAuth } from "./AuthProvider";
 
 declare global {
   interface Window {
@@ -34,6 +35,7 @@ export type BuyItem = {
 };
 
 export default function BuyButton({ item, block = false }: { item: BuyItem; block?: boolean }) {
+  const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const w = block ? "w-full" : "";
@@ -50,14 +52,23 @@ export default function BuyButton({ item, block = false }: { item: BuyItem; bloc
   }
 
   async function buy() {
+    if (!session) {
+      openLogin({ force: true });
+      return;
+    }
     setLoading(true);
     setMsg(null);
     try {
+      const authHeaders = { Authorization: `Bearer ${session.access_token}` };
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ kind: item.kind, key: item.key }),
       });
+      if (res.status === 401) {
+        openLogin({ force: true });
+        return;
+      }
       if (res.status === 503) {
         setMsg("Payments aren't switched on yet - this turns on the moment your Razorpay keys are added.");
         return;
@@ -82,7 +93,7 @@ export default function BuyButton({ item, block = false }: { item: BuyItem; bloc
         handler: async (r) => {
           const v = await fetch("/api/verify", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeaders },
             body: JSON.stringify({
               orderId: data.orderId,
               paymentId: r.razorpay_payment_id,
