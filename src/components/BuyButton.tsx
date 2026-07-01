@@ -61,7 +61,9 @@ export default function BuyButton({
     setLoading(true);
     setMsg(null);
     try {
-      const authHeaders = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+      const authHeaders: Record<string, string> = session
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 // Handles both OAuth (Google) and email magic-link callbacks.
 export async function GET(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (cookiesToSet) =>
+        setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) =>
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           ),
