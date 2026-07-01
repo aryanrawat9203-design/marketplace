@@ -57,8 +57,8 @@ export function bundleMemberCount(b: Bundle): number {
 
 const SECRET = process.env.DOWNLOAD_SECRET || "dev-insecure-secret-change-me";
 
-export function signDownload(kind: Kind, key: string, ttlMs = 30 * 60 * 1000): string {
-  const exp = Date.now() + ttlMs;
+export function signDownload(kind: Kind, key: string, expiresIn = 30 * 60 * 1000): string {
+  const exp = Date.now() + expiresIn;
   const data = kind + ":" + key + "." + exp;
   const sig = crypto.createHmac("sha256", SECRET).update(data).digest("base64url");
   return Buffer.from(data).toString("base64url") + "." + sig;
