@@ -5,6 +5,7 @@ import { getBundle, getBundles, bundlePreview } from "@/lib/bundles";
 import WorkflowCard from "@/components/WorkflowCard";
 import BuyButton from "@/components/BuyButton";
 import PriceTag from "@/components/PriceTag";
+import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
 
@@ -99,6 +100,7 @@ export default async function BundleDetail({
                 block
                 requireLogin={requireLoginToBuy()}
               />
+              <TrustStrip />
             </div>
             <div className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm font-medium text-emerald-300">
               About {inr(Math.max(1, Math.round(b.price / b.count)))} per template

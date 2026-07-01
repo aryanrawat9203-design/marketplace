@@ -7,6 +7,7 @@ import { Badge, difficultyTone, tierTone } from "@/components/Badge";
 import WorkflowCard from "@/components/WorkflowCard";
 import BuyButton from "@/components/BuyButton";
 import PriceTag from "@/components/PriceTag";
+import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
 import { previewWorkflow } from "@/lib/commerce";
@@ -153,6 +154,7 @@ export default async function WorkflowDetail({
                 block
                 requireLogin={requireLoginToBuy()}
               />
+              {!w.free && <TrustStrip />}
             </div>
             <ul className="mt-5 space-y-2 text-sm text-zinc-400">
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Instant download after payment</li>
