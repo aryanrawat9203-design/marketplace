@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPurchasable, type Kind } from "@/lib/commerce";
 import { getUserFromRequest } from "@/lib/auth-server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Creates a Razorpay order via the REST API (no SDK dependency needed).
 export async function POST(req: NextRequest) {
+  if (!rateLimit("checkout:" + clientIp(req), 10, 5 * 60 * 1000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const user = await getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
 

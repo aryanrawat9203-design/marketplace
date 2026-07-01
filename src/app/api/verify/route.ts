@@ -4,6 +4,7 @@ import { getPurchasable, signDownload, type Kind } from "@/lib/commerce";
 import { getUserFromRequest } from "@/lib/auth-server";
 import { sendOrderConfirmation } from "@/lib/email";
 import { baseUrl } from "@/lib/site";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,10 @@ const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
 // Verifies Razorpay payment signature, then issues a secure, time-limited link.
 export async function POST(req: NextRequest) {
+  if (!rateLimit("verify:" + clientIp(req), 20, 5 * 60 * 1000)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const user = await getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
 

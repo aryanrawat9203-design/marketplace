@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { signDownload, type Kind } from "@/lib/commerce";
 import { baseUrl } from "@/lib/site";
 import { sendOrderConfirmation } from "@/lib/email";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,12 @@ type WebhookEvent = {
 // closes the tab. We verify the signature, then email the receipt + a
 // long-lived download link.
 export async function POST(req: Request) {
+  // Generous limit - legitimate traffic is Razorpay's own servers, this just
+  // blunts abuse of a public endpoint. Signature check below rejects forgeries.
+  if (!rateLimit("webhook:" + clientIp(req), 60, 60 * 1000)) {
+    return new Response("rate_limited", { status: 429 });
+  }
+
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!secret) return new Response("not_configured", { status: 503 });
 
