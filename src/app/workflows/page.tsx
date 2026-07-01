@@ -5,6 +5,8 @@ import { queryCatalog, getTaxonomy } from "@/lib/catalog";
 import WorkflowCard from "@/components/WorkflowCard";
 import { FilterBar, PageJump } from "@/components/Controls";
 import { buildQuery } from "@/lib/url";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = { title: "Browse templates" };
 
@@ -46,8 +48,17 @@ export default async function WorkflowsPage({
     ? `Results for "${filters.q}"`
     : filters.subcategory ?? filters.industry ?? filters.category ?? "All templates";
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Templates", path: "/workflows" },
+    ...(filters.category
+      ? [{ name: filters.category, path: `/workflows?category=${encodeURIComponent(filters.category)}` }]
+      : []),
+  ]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <JsonLd data={breadcrumb} />
       <h1 className="text-2xl font-semibold text-zinc-100">{heading}</h1>
       <p className="mt-1 text-sm text-zinc-500">
         {total.toLocaleString("en-IN")} templates &middot;{" "}

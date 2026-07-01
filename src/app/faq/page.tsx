@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PageShell from "@/components/PageShell";
+import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = { title: "FAQ" };
 
@@ -39,8 +40,19 @@ const faqs: [string, string][] = [
 ];
 
 export default function FaqPage() {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(([q, a]) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  };
+
   return (
     <PageShell title="Frequently asked questions">
+      <JsonLd data={faqJsonLd} />
       {faqs.map(([q, a], i) => (
         <div key={i}>
           <h2>{q}</h2>

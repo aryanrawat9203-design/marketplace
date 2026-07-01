@@ -11,6 +11,9 @@ import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
 import { previewWorkflow } from "@/lib/commerce";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
+import { baseUrl } from "@/lib/site";
 
 export async function generateMetadata({
   params,
@@ -51,8 +54,34 @@ export default async function WorkflowDetail({
   const upsell = subBundle ?? catBundle;
   const preview = previewWorkflow(w.route);
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Templates", path: "/workflows" },
+    ...(w.category
+      ? [{ name: w.category, path: `/workflows?category=${encodeURIComponent(w.category)}` }]
+      : []),
+    { name: w.title, path: `/workflows/${w.route}` },
+  ]);
+
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: w.title,
+    description: w.shortDescription ?? w.description ?? undefined,
+    category: w.category ?? undefined,
+    offers: {
+      "@type": "Offer",
+      price: w.price,
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url: `${baseUrl()}/workflows/${w.route}`,
+    },
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <JsonLd data={breadcrumb} />
+      <JsonLd data={productJsonLd} />
       <nav className="text-xs text-zinc-500">
         <Link href="/" className="hover:text-zinc-300">Home</Link>
         <span className="mx-1">/</span>

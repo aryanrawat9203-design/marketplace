@@ -8,6 +8,9 @@ import PriceTag from "@/components/PriceTag";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
+import { baseUrl } from "@/lib/site";
 
 export function generateStaticParams() {
   return getBundles().map((b) => ({ slug: b.slug }));
@@ -42,8 +45,30 @@ export default async function BundleDetail({
         ? `/workflows?category=${encodeURIComponent(b.category!)}&subcategory=${encodeURIComponent(b.subcategory!)}`
         : "/workflows";
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Bundles", path: "/bundles" },
+    { name: b.name, path: `/bundles/${b.slug}` },
+  ]);
+
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: b.name,
+    description: b.tagline,
+    offers: {
+      "@type": "Offer",
+      price: b.price,
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url: `${baseUrl()}/bundles/${b.slug}`,
+    },
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <JsonLd data={breadcrumb} />
+      <JsonLd data={productJsonLd} />
       <nav className="text-xs text-zinc-500">
         <Link href="/" className="hover:text-zinc-300">Home</Link>
         <span className="mx-1">/</span>
