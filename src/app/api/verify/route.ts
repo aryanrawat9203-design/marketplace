@@ -5,6 +5,7 @@ import { getUserFromRequest } from "@/lib/auth-server";
 import { sendOrderConfirmation } from "@/lib/email";
 import { baseUrl } from "@/lib/site";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { requireLoginToBuy } from "@/lib/require-login";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await getUserFromRequest(req);
-  if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
+  if (requireLoginToBuy() && !user) {
+    return NextResponse.json({ error: "auth_required" }, { status: 401 });
+  }
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) return NextResponse.json({ error: "not_configured" }, { status: 503 });
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   const token = signDownload(item.kind, item.key);
 
-  if (user.email) {
+  if (user?.email) {
     try {
       const emailToken = signDownload(item.kind, item.key, THIRTY_DAYS);
       const emailDownloadUrl = `${baseUrl()}/api/download?token=${encodeURIComponent(emailToken)}`;

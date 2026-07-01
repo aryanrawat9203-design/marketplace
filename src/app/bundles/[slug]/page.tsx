@@ -6,6 +6,7 @@ import WorkflowCard from "@/components/WorkflowCard";
 import BuyButton from "@/components/BuyButton";
 import PriceTag from "@/components/PriceTag";
 import { inr } from "@/lib/pricing";
+import { requireLoginToBuy } from "@/lib/require-login";
 
 export function generateStaticParams() {
   return getBundles().map((b) => ({ slug: b.slug }));
@@ -93,7 +94,11 @@ export default async function BundleDetail({
               {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
             </p>
             <div className="mt-4">
-              <BuyButton item={{ kind: "bundle", key: b.slug, name: b.name, price: b.price, free: false }} block />
+              <BuyButton
+                item={{ kind: "bundle", key: b.slug, name: b.name, price: b.price, free: false }}
+                block
+                requireLogin={requireLoginToBuy()}
+              />
             </div>
             <div className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm font-medium text-emerald-300">
               About {inr(Math.max(1, Math.round(b.price / b.count)))} per template

@@ -8,6 +8,7 @@ import WorkflowCard from "@/components/WorkflowCard";
 import BuyButton from "@/components/BuyButton";
 import PriceTag from "@/components/PriceTag";
 import { inr } from "@/lib/pricing";
+import { requireLoginToBuy } from "@/lib/require-login";
 
 export async function generateMetadata({
   params,
@@ -126,7 +127,11 @@ export default async function WorkflowDetail({
           <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5">
             <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
             <div className="mt-4">
-              <BuyButton item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }} block />
+              <BuyButton
+                item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
+                block
+                requireLogin={requireLoginToBuy()}
+              />
             </div>
             <ul className="mt-5 space-y-2 text-sm text-zinc-400">
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Instant download after payment</li>

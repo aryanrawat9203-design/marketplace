@@ -34,7 +34,15 @@ export type BuyItem = {
   free: boolean;
 };
 
-export default function BuyButton({ item, block = false }: { item: BuyItem; block?: boolean }) {
+export default function BuyButton({
+  item,
+  block = false,
+  requireLogin = true,
+}: {
+  item: BuyItem;
+  block?: boolean;
+  requireLogin?: boolean;
+}) {
   const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -52,14 +60,14 @@ export default function BuyButton({ item, block = false }: { item: BuyItem; bloc
   }
 
   async function buy() {
-    if (!session) {
+    if (requireLogin && !session) {
       openLogin({ force: true });
       return;
     }
     setLoading(true);
     setMsg(null);
     try {
-      const authHeaders = { Authorization: `Bearer ${session.access_token}` };
+      const authHeaders = session ? { Authorization: `Bearer ${session.access_token}` } : {};
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
