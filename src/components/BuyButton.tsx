@@ -4,6 +4,7 @@ import { useState } from "react";
 import Script from "next/script";
 import { inr } from "@/lib/pricing";
 import { useAuth } from "./AuthProvider";
+import FreeDownloadButton from "./FreeDownloadButton";
 
 declare global {
   interface Window {
@@ -49,14 +50,7 @@ export default function BuyButton({
   const w = block ? "w-full" : "";
 
   if (item.free) {
-    return (
-      <a
-        href={`/api/download?kind=workflow&key=${encodeURIComponent(item.key)}`}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-medium text-white hover:opacity-95 ${w}`}
-      >
-        Download free
-      </a>
-    );
+    return <FreeDownloadButton workflowKey={item.key} block={block} />;
   }
 
   async function buy() {
