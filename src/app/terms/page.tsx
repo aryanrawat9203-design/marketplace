@@ -63,7 +63,7 @@ export default function TermsPage() {
       <p>We may update these terms from time to time. The date above shows the latest revision.</p>
 
       <h2>Contact</h2>
-      <p>Questions? Email hello@flowdex.example.</p>
+      <p>Questions? Email {process.env.SUPPORT_EMAIL}.</p>
     </PageShell>
   );
 }

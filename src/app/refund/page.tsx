@@ -25,8 +25,10 @@ export default function RefundPage() {
 
       <h2>How to request</h2>
       <p>
-        Email <a href="mailto:hello@flowdex.example">hello@flowdex.example</a> with your order
-        details and a short description of the problem. We respond within 1–2 business days.
+        Email{" "}
+        <a href={`mailto:${process.env.SUPPORT_EMAIL}`}>{process.env.SUPPORT_EMAIL}</a> with your
+        order details and a short description of the problem. We respond within 1&ndash;2 business
+        days.
       </p>
 
       <h2>Free items</h2>

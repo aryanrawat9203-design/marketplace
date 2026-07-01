@@ -14,15 +14,15 @@ export default function PrivacyPage() {
       <h2>Information we collect</h2>
       <ul>
         <li>
-          <strong>Usage data</strong> — basic, mostly anonymous information about how you use the
-          site (pages visited, device and browser type), collected through analytics.
+          <strong>Usage data</strong> &mdash; basic, mostly anonymous information about how you use
+          the site (pages visited, device and browser type), collected through analytics.
         </li>
         <li>
-          <strong>Information you provide</strong> — for example, your email address if you contact
-          us.
+          <strong>Information you provide</strong> &mdash; for example, your email address if you
+          contact us.
         </li>
         <li>
-          <strong>Purchase information</strong> — when you buy a product, your payment is processed
+          <strong>Purchase information</strong> &mdash; when you buy a product, your payment is processed
           securely by our payment provider (Razorpay). We do not see or store your card details.
         </li>
       </ul>
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy? Email us at{" "}
-        <a href="mailto:hello@flowdex.example">hello@flowdex.example</a>.
+        <a href={`mailto:${process.env.SUPPORT_EMAIL}`}>{process.env.SUPPORT_EMAIL}</a>.
       </p>
     </PageShell>
   );

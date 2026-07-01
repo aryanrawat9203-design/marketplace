@@ -64,3 +64,46 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
     return false;
   }
 }
+
+export type ContactMessage = {
+  name: string;
+  email: string;
+  message: string;
+};
+
+// Forwards a contact-form submission to SUPPORT_EMAIL, with replyTo set to
+// the sender so a reply from the inbox goes straight back to them.
+export async function sendContactMessage(m: ContactMessage): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ORDERS_FROM_EMAIL;
+  const to = process.env.SUPPORT_EMAIL;
+  if (!apiKey || !from || !to) return false;
+
+  const name = esc(m.name || "(no name)");
+  const email = esc(m.email);
+  const message = esc(m.message);
+
+  const html =
+    '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">' +
+    "<h2>New contact form message</h2>" +
+    '<p style="color:#666;font-size:13px">From: ' + name + " &lt;" + email + "&gt;</p>" +
+    '<p style="white-space:pre-wrap">' + message + "</p>" +
+    "</div>";
+
+  const text = "From: " + m.name + " <" + m.email + ">\n\n" + m.message;
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      replyTo: m.email,
+      subject: "FlowDex contact form: " + (m.name || m.email),
+      html,
+      text,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
