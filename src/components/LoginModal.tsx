@@ -21,6 +21,10 @@ export default function LoginModal({
 
   async function withGoogle() {
     const supabase = createClient();
+    if (!supabase) {
+      setErr("Sign-in isn't configured yet.");
+      return;
+    }
     const next = window.location.pathname + window.location.search;
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -33,8 +37,12 @@ export default function LoginModal({
   async function withEmail(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    setLoading(true);
     const supabase = createClient();
+    if (!supabase) {
+      setErr("Sign-in isn't configured yet.");
+      return;
+    }
+    setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },

@@ -5,7 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
+  useMemo,
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
@@ -33,13 +33,14 @@ const FIRST_PROMPT_DELAY_MS = 4000;
 const NAG_INTERVAL_MS = 4 * 60 * 1000;
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useRef(createClient()).current;
+  const supabase = useMemo(() => createClient(), []);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!supabase);
   const [modalOpen, setModalOpen] = useState(false);
   const [force, setForce] = useState(false);
 
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
@@ -83,7 +84,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await supabase?.auth.signOut();
   }, [supabase]);
 
   return (
