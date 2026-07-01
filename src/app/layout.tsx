@@ -22,6 +22,13 @@ export const metadata: Metadata = {
     description:
       "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
     type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FlowDex - Original n8n workflow templates to buy & download",
+    description:
+      "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
   },
 };
 
