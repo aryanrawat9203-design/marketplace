@@ -5,9 +5,9 @@ export const metadata: Metadata = { title: "About" };
 
 export default function AboutPage() {
   return (
-    <PageShell title="About FlowDex">
+    <PageShell title="About WorkflowCrate">
       <p>
-        FlowDex is a marketplace for original, ready-to-import n8n automation workflows. Every
+        WorkflowCrate is a marketplace for original, ready-to-import n8n automation workflows. Every
         template in our catalog is built in-house and organised by category, subcategory, and
         difficulty so you can find exactly the automation you need and put it to work in minutes.
       </p>
@@ -25,7 +25,7 @@ export default function AboutPage() {
       </p>
       <h2>Original &amp; owned</h2>
       <p>
-        All templates are original works created and owned by FlowDex. When you buy, you receive a
+        All templates are original works created and owned by WorkflowCrate. When you buy, you receive a
         license to use and adapt them in your own personal or business projects. Built for the n8n
         automation platform.
       </p>

@@ -6,4 +6,4 @@ export function baseUrl(): string {
   return "http://localhost:3000";
 }
 
-export const SITE_NAME = "FlowDex";
+export const SITE_NAME = "WorkflowCrate";

@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl()),
   title: {
-    default: "FlowDex - Original n8n workflow templates to buy & download",
-    template: "%s - FlowDex",
+    default: "WorkflowCrate - Original n8n workflow templates to buy & download",
+    template: "%s - WorkflowCrate",
   },
   description:
     "Buy original, ready-to-import n8n workflow templates across 25 categories. Single templates, category bundles, or the full library - instant download after payment.",
   openGraph: {
-    title: "FlowDex - Original n8n workflow templates to buy & download",
+    title: "WorkflowCrate - Original n8n workflow templates to buy & download",
     description:
       "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
     type: "website",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FlowDex - Original n8n workflow templates to buy & download",
+    title: "WorkflowCrate - Original n8n workflow templates to buy & download",
     description:
       "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
   },

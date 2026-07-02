@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   return (
     <PageShell title="Privacy Policy" updated="27 June 2026">
       <p>
-        FlowDex (&quot;we&quot;, &quot;us&quot;) respects your privacy. This policy explains what
+        WorkflowCrate (&quot;we&quot;, &quot;us&quot;) respects your privacy. This policy explains what
         information we collect, how we use it, and the choices you have.
       </p>
 
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
 
       <h2>Third-party services</h2>
       <p>
-        We rely on trusted providers to run FlowDex, including hosting (Vercel), payments
+        We rely on trusted providers to run WorkflowCrate, including hosting (Vercel), payments
         (Razorpay), email, and analytics. These providers process data on our behalf under their own
         privacy policies.
       </p>
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
       <p>You may request access to, correction of, or deletion of your personal information by contacting us.</p>
 
       <h2>Children</h2>
-      <p>FlowDex is not directed to children under 16, and we do not knowingly collect their personal information.</p>
+      <p>WorkflowCrate is not directed to children under 16, and we do not knowingly collect their personal information.</p>
 
       <h2>Changes</h2>
       <p>We may update this policy from time to time. The date above shows the latest revision.</p>

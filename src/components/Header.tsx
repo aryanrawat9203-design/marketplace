@@ -16,16 +16,16 @@ export default function Header() {
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="flex items-center gap-2 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
         >
           <span
             aria-hidden="true"
-            className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white"
+            className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white"
           >
-            F
+            W
           </span>
           <span className="text-zinc-100">
-            Flow<span className="text-violet-400">Dex</span>
+            Workflow<span className="text-indigo-400">Crate</span>
           </span>
         </Link>
         <nav className="ml-2 hidden items-center gap-1 text-sm text-zinc-400 md:flex">

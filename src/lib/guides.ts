@@ -15,7 +15,7 @@ export const guides: Guide[] = [
     description:
       "A step-by-step guide to importing a downloaded n8n workflow JSON file into your own n8n instance.",
     intro: [
-      "Every FlowDex template is delivered as a single n8n workflow JSON file (a bundle is a ZIP of several). Importing one takes under a minute.",
+      "Every WorkflowCrate template is delivered as a single n8n workflow JSON file (a bundle is a ZIP of several). Importing one takes under a minute.",
       "In your n8n instance, open Workflows, then use the menu in the top right and choose Import from File. Select the JSON file you downloaded and n8n will load the full workflow, including all nodes and their connections.",
       "Before running it, open each node that talks to an external service (for example HubSpot, Google Sheets, or Slack) and attach your own credentials - templates never ship with live credentials baked in. Once every node is connected, activate the workflow and it is ready to run.",
     ],

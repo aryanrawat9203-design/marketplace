@@ -43,7 +43,7 @@ export default function Home() {
             </Suspense>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/workflows" className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-medium text-white hover:opacity-95">
+            <Link href="/workflows" className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-3 font-medium text-white hover:opacity-95">
               Browse all templates
             </Link>
             <Link href="/bundles" className="rounded-xl border border-zinc-700 px-5 py-3 font-medium text-zinc-200 hover:bg-zinc-800/60">

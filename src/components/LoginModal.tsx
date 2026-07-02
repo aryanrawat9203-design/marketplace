@@ -56,7 +56,7 @@ export default function LoginModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-[#0c0c12] p-6 shadow-xl">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold text-zinc-100">Sign in to FlowDex</h2>
+          <h2 className="text-lg font-semibold text-zinc-100">Sign in to WorkflowCrate</h2>
           {!force && (
             <button
               onClick={onClose}
@@ -101,7 +101,7 @@ export default function LoginModal({
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 font-medium text-white hover:opacity-95 disabled:opacity-60"
+              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-2.5 font-medium text-white hover:opacity-95 disabled:opacity-60"
             >
               {loading ? "Sending..." : "Email me a sign-in link"}
             </button>

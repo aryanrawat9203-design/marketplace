@@ -233,7 +233,7 @@ export default async function WorkflowDetail({
       )}
 
       <div className="mt-12 rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-4 text-xs text-zinc-500">
-        Original n8n workflow template created and owned by FlowDex. After purchase you receive the
+        Original n8n workflow template created and owned by WorkflowCrate. After purchase you receive the
         ready-to-import JSON file and a license to use and adapt it in your own projects.
       </div>
     </div>

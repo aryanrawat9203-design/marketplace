@@ -6,11 +6,11 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white">
-              F
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+              W
             </span>
             <span className="text-zinc-100">
-              Flow<span className="text-violet-400">Dex</span>
+              Workflow<span className="text-indigo-400">Crate</span>
             </span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-zinc-500">
@@ -42,13 +42,13 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-semibold text-zinc-200">License</h4>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-            All templates are original works created and owned by FlowDex. Purchase grants a license
+            All templates are original works created and owned by WorkflowCrate. Purchase grants a license
             to use and adapt them in your own projects. Built for n8n.
           </p>
         </div>
       </div>
       <div className="border-t border-zinc-800/70 py-6 text-center text-xs text-zinc-600">
-        &copy; {new Date().getFullYear()} FlowDex. All rights reserved.
+        &copy; {new Date().getFullYear()} WorkflowCrate. All rights reserved.
       </div>
     </footer>
   );

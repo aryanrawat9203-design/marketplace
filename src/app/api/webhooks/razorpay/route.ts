@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       if (kind && key && email) {
         const token = signDownload(kind, key, THIRTY_DAYS);
         const downloadUrl = baseUrl() + "/api/download?token=" + encodeURIComponent(token);
-        const itemTitle = notes.name || "Your FlowDex templates";
+        const itemTitle = notes.name || "Your WorkflowCrate templates";
         await sendOrderConfirmation({
           to: email,
           orderId: p.order_id || p.id || "",

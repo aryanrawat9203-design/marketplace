@@ -13,7 +13,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #8b5cf6, #d946ef)",
+          background: "#4f46e5",
           borderRadius: 40,
           color: "#ffffff",
           fontSize: 108,
@@ -21,7 +21,7 @@ export default function Icon() {
           fontFamily: "sans-serif",
         }}
       >
-        F
+        W
       </div>
     ),
     { ...size }

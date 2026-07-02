@@ -1,5 +1,5 @@
 export const ogImageSize = { width: 1200, height: 630 };
-export const ogImageAlt = "FlowDex - Original n8n workflow templates to buy and download";
+export const ogImageAlt = "WorkflowCrate - Original n8n workflow templates to buy and download";
 
 export function OgImageContent() {
   return (
@@ -24,17 +24,17 @@ export function OgImageContent() {
             width: 96,
             height: 96,
             borderRadius: 24,
-            background: "linear-gradient(135deg, #8b5cf6, #d946ef)",
+            background: "#4f46e5",
             color: "#ffffff",
             fontSize: 56,
             fontWeight: 700,
           }}
         >
-          F
+          W
         </div>
         <div style={{ display: "flex", fontSize: 72, fontWeight: 700, color: "#f4f4f5" }}>
-          Flow
-          <span style={{ color: "#c084fc" }}>Dex</span>
+          Workflow
+          <span style={{ color: "#818cf8" }}>Crate</span>
         </div>
       </div>
       <div style={{ display: "flex", marginTop: 28, fontSize: 32, color: "#a1a1aa" }}>

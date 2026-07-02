@@ -26,7 +26,7 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
   const html =
     '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">' +
     "<h2>Thanks for your purchase</h2>" +
-    "<p>Your FlowDex order is confirmed. Your files are ready to download.</p>" +
+    "<p>Your WorkflowCrate order is confirmed. Your files are ready to download.</p>" +
     '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
     '<tr><td style="padding:6px 0;color:#666">Order ID</td><td style="text-align:right">' +
     esc(o.orderId) + "</td></tr>" +
@@ -55,7 +55,7 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
     const { error } = await resend.emails.send({
       from,
       to: o.to,
-      subject: "Your FlowDex order " + o.orderId,
+      subject: "Your WorkflowCrate order " + o.orderId,
       html,
       text,
     });
@@ -98,7 +98,7 @@ export async function sendContactMessage(m: ContactMessage): Promise<boolean> {
       from,
       to,
       replyTo: m.email,
-      subject: "FlowDex contact form: " + (m.name || m.email),
+      subject: "WorkflowCrate contact form: " + (m.name || m.email),
       html,
       text,
     });

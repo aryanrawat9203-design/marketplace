@@ -6,11 +6,11 @@ export const metadata: Metadata = { title: "Terms & Conditions" };
 export default function TermsPage() {
   return (
     <PageShell title="Terms & Conditions" updated="29 June 2026">
-      <p>By using FlowDex (the site), you agree to these terms. Please read them carefully.</p>
+      <p>By using WorkflowCrate (the site), you agree to these terms. Please read them carefully.</p>
 
       <h2>The service</h2>
       <p>
-        FlowDex is a marketplace that sells original n8n workflow templates created and owned by us,
+        WorkflowCrate is a marketplace that sells original n8n workflow templates created and owned by us,
         available as single templates, category and subcategory bundles, and a full-library bundle.
       </p>
 
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
       <h2>Intellectual property</h2>
       <p>
-        The FlowDex name, design, catalog, and template files belong to us. Products you purchase
+        The WorkflowCrate name, design, catalog, and template files belong to us. Products you purchase
         are licensed to you, not sold for redistribution.
       </p>
 
@@ -47,12 +47,12 @@ export default function TermsPage() {
         The site and its content are provided as is, without warranties of any kind. We do not
         guarantee that any workflow will be error-free or suitable for your specific needs.
         Templates require your own credentials and configuration to run. Built for the n8n platform;
-        FlowDex is independent and not affiliated with n8n.
+        WorkflowCrate is independent and not affiliated with n8n.
       </p>
 
       <h2>Limitation of liability</h2>
       <p>
-        To the extent permitted by law, FlowDex is not liable for any indirect or consequential loss
+        To the extent permitted by law, WorkflowCrate is not liable for any indirect or consequential loss
         arising from your use of the site or its products.
       </p>
 

@@ -90,7 +90,7 @@ export default function BuyButton({
         key: data.keyId,
         amount: data.amount,
         currency: data.currency,
-        name: "FlowDex",
+        name: "WorkflowCrate",
         description: item.name,
         order_id: data.orderId,
         theme: { color: "#7c5cff" },
@@ -125,7 +125,7 @@ export default function BuyButton({
       <button
         onClick={buy}
         disabled={loading}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
       >
         {loading ? "Please wait..." : `Buy ${inr(item.price)}`}
       </button>
