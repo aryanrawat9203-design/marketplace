@@ -7,6 +7,7 @@ import MobileMenu from "./MobileMenu";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
+  { href: "/collections", label: "Collections" },
   { href: "/integrations", label: "Integrations" },
   { href: "/bundles", label: "Bundles" },
   { href: "/bundles#pricing", label: "Pricing" },

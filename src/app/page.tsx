@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
 import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
+import { getCollections, collectionStats } from "@/lib/collections";
 import WorkflowCard from "@/components/WorkflowCard";
 import { SearchBar } from "@/components/Controls";
 import PriceTag from "@/components/PriceTag";
@@ -111,6 +112,42 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-zinc-100">Curated collections</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Themed starter packs - add a whole collection to your cart in one click.
+            </p>
+          </div>
+          <Link href="/collections" className="text-sm text-violet-400 hover:text-violet-300">
+            All collections &rarr;
+          </Link>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {getCollections().slice(0, 4).map((c) => {
+            const stats = collectionStats(c);
+            return (
+              <Link
+                key={c.slug}
+                href={`/collections/${c.slug}`}
+                className="group flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900/40 card-hover hover:border-violet-500/50"
+              >
+                <div className={`h-16 rounded-t-2xl bg-gradient-to-br ${c.gradient}`} />
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="font-semibold text-zinc-100 group-hover:text-white">{c.name}</h3>
+                  <p className="mt-1 flex-1 text-xs text-zinc-500">{c.tagline}</p>
+                  <div className="mt-3 text-sm">
+                    <b className="text-zinc-100">{inr(stats.price)}</b>{" "}
+                    <span className="text-xs text-zinc-500">&middot; {stats.count} templates</span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       <section id="categories" className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="flex items-end justify-between">

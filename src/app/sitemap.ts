@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getIndex } from "@/lib/catalog";
 import { getBundles } from "@/lib/bundles";
 import { getIntegrations } from "@/lib/integrations";
+import { getCollections } from "@/lib/collections";
 import { guides } from "@/lib/guides";
 import { baseUrl } from "@/lib/site";
 
@@ -13,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/workflows",
     "/bundles",
+    "/collections",
     "/integrations",
     "/guides",
     "/about",
@@ -45,6 +47,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     }));
 
+  const collections: MetadataRoute.Sitemap = getCollections().map((c) => ({
+    url: `${base}/collections/${c.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
   const guidePages: MetadataRoute.Sitemap = guides.map((g) => ({
     url: `${base}/guides/${g.slug}`,
     lastModified: now,
@@ -59,5 +68,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  return [...staticPages, ...bundles, ...integrations, ...guidePages, ...workflows];
+  return [...staticPages, ...bundles, ...collections, ...integrations, ...guidePages, ...workflows];
 }

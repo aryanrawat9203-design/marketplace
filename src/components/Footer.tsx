@@ -32,6 +32,7 @@ export default function Footer() {
           <h4 className="text-sm font-semibold text-zinc-200">Shop</h4>
           <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             <li><Link href="/workflows" className="hover:text-zinc-100">All templates</Link></li>
+            <li><Link href="/collections" className="hover:text-zinc-100">Curated collections</Link></li>
             <li><Link href="/integrations" className="hover:text-zinc-100">By integration</Link></li>
             <li><Link href="/bundles" className="hover:text-zinc-100">Bundles &amp; pricing</Link></li>
             <li><Link href="/workflows?sort=demand" className="hover:text-zinc-100">Most popular</Link></li>
