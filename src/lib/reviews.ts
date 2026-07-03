@@ -102,6 +102,63 @@ export type ReviewSummary = {
   reviews: ApprovedReview[];
 };
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export type ModerationRow = {
+  id: string;
+  email: string;
+  authorName: string | null;
+  itemKind: Kind;
+  itemRef: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  status: ReviewStatus;
+  createdAt: string | null;
+};
+
+/** Admin-only: reviews in a given moderation state, newest first. */
+export async function listReviews(status: ReviewStatus, limit = 100): Promise<ModerationRow[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+
+  try {
+    const { data, error } = await admin
+      .from("reviews")
+      .select("id, email, author_name, item_kind, item_ref, rating, title, body, status, created_at")
+      .eq("status", status)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return data.map((r) => ({
+      id: r.id as string,
+      email: r.email as string,
+      authorName: (r.author_name as string) ?? null,
+      itemKind: r.item_kind as Kind,
+      itemRef: r.item_ref as string,
+      rating: (r.rating as number) ?? 0,
+      title: (r.title as string) ?? null,
+      body: (r.body as string) ?? "",
+      status: r.status as ReviewStatus,
+      createdAt: (r.created_at as string) ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Admin-only: approve or reject a pending review by id. */
+export async function moderateReview(id: string, status: "approved" | "rejected"): Promise<boolean> {
+  const admin = createAdminClient();
+  if (!admin) return false;
+  try {
+    const { error } = await admin.from("reviews").update({ status }).eq("id", id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 /** Approved reviews + honest aggregate stats for one item. Empty when none. */
 export async function reviewSummary(ref: string, limit = 10): Promise<ReviewSummary> {
   const empty: ReviewSummary = { count: 0, average: 0, reviews: [] };
