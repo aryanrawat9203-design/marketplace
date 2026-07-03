@@ -71,6 +71,58 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
   }
 }
 
+export type ReviewFollowupItem = { title: string; reviewUrl: string };
+
+// One-time, ~7-days-post-purchase nudge asking for a review. Never sent more
+// than once per order (the caller marks the order processed regardless of
+// outcome) and only for items the buyer hasn't already reviewed.
+export async function sendReviewFollowup(to: string, items: ReviewFollowupItem[]): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ORDERS_FROM_EMAIL;
+  if (!apiKey || !from || items.length === 0) return false;
+
+  const single = items.length === 1;
+  const subject = single
+    ? `How did "${items[0].title}" work out?`
+    : `How did your ${items.length} WorkflowCrate templates work out?`;
+
+  const rows = items
+    .map(
+      (i) =>
+        '<li style="margin:10px 0"><a href="' + i.reviewUrl + '">' + esc(i.title) + "</a></li>",
+    )
+    .join("");
+
+  const html =
+    '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">' +
+    "<h2>How's it going?</h2>" +
+    "<p>You picked up " +
+    (single ? "this template" : `these ${items.length} templates`) +
+    " from WorkflowCrate about a week ago. If you've had a chance to run " +
+    (single ? "it" : "them") +
+    ", a quick review helps other builders decide - and takes under a minute.</p>" +
+    '<ul style="padding-left:20px">' + rows + "</ul>" +
+    '<p style="color:#666;font-size:13px">Only buyers get these links, and this is the only email you\'ll ' +
+    "get about this order. Need help instead? Just reply here.</p>" +
+    "</div>";
+
+  const text =
+    "How's it going?\n\n" +
+    "You picked up " +
+    (single ? "this template" : `these ${items.length} templates`) +
+    " from WorkflowCrate about a week ago. A quick review helps other builders decide:\n\n" +
+    items.map((i) => `${i.title}: ${i.reviewUrl}`).join("\n") +
+    "\n\nNeed help instead? Just reply to this email.";
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({ from, to, subject, html, text });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export type CustomRequest = {
   name: string;
   email: string;

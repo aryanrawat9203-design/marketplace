@@ -102,6 +102,22 @@ export type ReviewSummary = {
   reviews: ApprovedReview[];
 };
 
+/** Every "kind:ref" this email has already left a review for, any status. */
+export async function reviewedKeysForEmail(email: string): Promise<Set<string>> {
+  const admin = createAdminClient();
+  if (!admin) return new Set();
+  try {
+    const { data, error } = await admin
+      .from("reviews")
+      .select("item_kind, item_ref")
+      .eq("email", email);
+    if (error || !data) return new Set();
+    return new Set(data.map((r) => `${r.item_kind}:${r.item_ref}`));
+  } catch {
+    return new Set();
+  }
+}
+
 export type ReviewStatus = "pending" | "approved" | "rejected";
 
 export type ModerationRow = {
