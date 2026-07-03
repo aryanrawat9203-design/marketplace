@@ -2,10 +2,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBar } from "./Controls";
 import AuthStatus from "./AuthStatus";
+import CartButton from "./CartButton";
 import MobileMenu from "./MobileMenu";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
+  { href: "/integrations", label: "Integrations" },
   { href: "/bundles", label: "Bundles" },
   { href: "/bundles#pricing", label: "Pricing" },
 ];
@@ -47,6 +49,7 @@ export default function Header() {
         <div className="ml-auto md:ml-0">
           <MobileMenu links={navLinks} />
         </div>
+        <CartButton />
         <AuthStatus />
       </div>
     </header>

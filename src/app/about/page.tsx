@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import PageShell from "@/components/PageShell";
 
 export const metadata: Metadata = { title: "About" };
@@ -20,7 +21,7 @@ export default function AboutPage() {
       </p>
       <h2>Single templates or bundles</h2>
       <p>
-        Buy one template at a time, grab a whole <a href="/bundles">category bundle</a>, or get the
+        Buy one template at a time, grab a whole <Link href="/bundles">category bundle</Link>, or get the
         full library in a single purchase. Bundles are always the best value per template.
       </p>
       <h2>Original &amp; owned</h2>

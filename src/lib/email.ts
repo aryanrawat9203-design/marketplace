@@ -6,6 +6,7 @@ export type OrderEmail = {
   itemTitle: string;
   amountInPaise: number;
   downloadUrl: string;
+  reviewUrl?: string;
 };
 
 function esc(s: string): string {
@@ -39,6 +40,10 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
     '" style="background:#111;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none">Download your files</a></p>' +
     '<p style="color:#666;font-size:13px">If the button does not work, paste this link into your browser:<br>' +
     o.downloadUrl + "</p>" +
+    (o.reviewUrl
+      ? '<p style="color:#666;font-size:13px">Once it&#39;s running, we&#39;d love to hear how it went: ' +
+        '<a href="' + o.reviewUrl + '">leave a quick review</a>. Only buyers get this link.</p>'
+      : "") +
     '<p style="color:#666;font-size:13px">Need help? Just reply to this email.</p>' +
     "</div>";
 
@@ -48,6 +53,7 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
     "Item: " + o.itemTitle + "\n" +
     "Amount: " + rupee + amount + "\n\n" +
     "Download your files: " + o.downloadUrl + "\n\n" +
+    (o.reviewUrl ? "Loved it? Leave a quick review: " + o.reviewUrl + "\n\n" : "") +
     "Need help? Just reply to this email.";
 
   try {

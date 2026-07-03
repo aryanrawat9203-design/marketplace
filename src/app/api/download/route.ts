@@ -4,8 +4,10 @@ import {
   verifyDownload,
   workflowDownload,
   bundleDownload,
-  type Kind,
+  cartZip,
+  type DownloadKind,
 } from "@/lib/commerce";
+import { getCartRecord } from "@/lib/cart-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +17,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const token = sp.get("token");
 
-  let kind: Kind | null = null;
+  let kind: DownloadKind | null = null;
   let key: string | null = null;
 
   if (token) {
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest) {
     kind = ref.kind;
     key = ref.key;
   } else {
-    kind = (sp.get("kind") as Kind) || "workflow";
+    kind = (sp.get("kind") as DownloadKind) || "workflow";
     key = sp.get("key");
     if (kind !== "workflow" || !key) {
       return NextResponse.json({ error: "Missing download reference." }, { status: 400 });
@@ -37,6 +39,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (!key) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  if (kind === "cart") {
+    const cart = await getCartRecord(key);
+    if (!cart) return NextResponse.json({ error: "Order files missing." }, { status: 404 });
+    const out = cartZip(cart.items);
+    if (!out) return NextResponse.json({ error: "Order files missing." }, { status: 404 });
+    return new NextResponse(new Uint8Array(out.body), {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${out.filename}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   if (kind === "bundle") {
     const out = bundleDownload(key);

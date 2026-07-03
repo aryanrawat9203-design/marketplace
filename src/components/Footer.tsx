@@ -1,8 +1,18 @@
 import Link from "next/link";
+import NewsletterSignup from "./NewsletterSignup";
 
 export default function Footer() {
   return (
     <footer className="mt-20 border-t border-zinc-800/70 bg-[#08080c]">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 pt-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="font-semibold text-zinc-100">Free templates in your inbox</h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            New free workflows and bundle deals, straight from the makers. No spam, unsubscribe anytime.
+          </p>
+        </div>
+        <NewsletterSignup />
+      </div>
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 font-semibold">
@@ -22,6 +32,7 @@ export default function Footer() {
           <h4 className="text-sm font-semibold text-zinc-200">Shop</h4>
           <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             <li><Link href="/workflows" className="hover:text-zinc-100">All templates</Link></li>
+            <li><Link href="/integrations" className="hover:text-zinc-100">By integration</Link></li>
             <li><Link href="/bundles" className="hover:text-zinc-100">Bundles &amp; pricing</Link></li>
             <li><Link href="/workflows?sort=demand" className="hover:text-zinc-100">Most popular</Link></li>
             <li><Link href="/guides" className="hover:text-zinc-100">Guides</Link></li>
@@ -33,6 +44,7 @@ export default function Footer() {
             <li><Link href="/about" className="hover:text-zinc-100">About</Link></li>
             <li><Link href="/contact" className="hover:text-zinc-100">Contact</Link></li>
             <li><Link href="/faq" className="hover:text-zinc-100">FAQ</Link></li>
+            <li><Link href="/account" className="hover:text-zinc-100">My library</Link></li>
             <li><Link href="/orders/lookup" className="hover:text-zinc-100">Re-download an order</Link></li>
             <li><Link href="/privacy" className="hover:text-zinc-100">Privacy</Link></li>
             <li><Link href="/terms" className="hover:text-zinc-100">Terms</Link></li>

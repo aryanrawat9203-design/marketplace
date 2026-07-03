@@ -3,29 +3,9 @@
 import { useState } from "react";
 import Script from "next/script";
 import { inr } from "@/lib/pricing";
+import "@/lib/razorpay";
 import { useAuth } from "./AuthProvider";
 import FreeDownloadButton from "./FreeDownloadButton";
-
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => { open: () => void };
-  }
-}
-type RazorpayResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-};
-type RazorpayOptions = {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description?: string;
-  order_id: string;
-  handler: (r: RazorpayResponse) => void;
-  theme?: { color?: string };
-};
 
 export type BuyItem = {
   kind: "workflow" | "bundle";
@@ -98,12 +78,12 @@ export default function BuyButton({
           const v = await fetch("/api/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...authHeaders },
+            // What was bought is read server-side from the order's notes;
+            // the client only proves the payment happened.
             body: JSON.stringify({
               orderId: data.orderId,
               paymentId: r.razorpay_payment_id,
               signature: r.razorpay_signature,
-              kind: item.kind,
-              key: item.key,
             }),
           });
           const vd = await v.json();

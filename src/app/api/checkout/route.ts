@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPurchasable, type Kind } from "@/lib/commerce";
+import { createCartRecord, type CartItem } from "@/lib/cart-store";
 import { getUserFromRequest } from "@/lib/auth-server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { requireLoginToBuy } from "@/lib/require-login";
@@ -7,7 +8,34 @@ import { requireLoginToBuy } from "@/lib/require-login";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_CART_ITEMS = 100;
+
+type CheckoutBody = { kind?: Kind; key?: string; items?: Array<{ kind?: string; key?: string }> };
+
+async function createRazorpayOrder(
+  keyId: string,
+  keySecret: string,
+  amountPaise: number,
+  receipt: string,
+  notes: Record<string, string>
+) {
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const res = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: amountPaise,
+      currency: "INR",
+      receipt: receipt.slice(0, 40),
+      notes,
+    }),
+  });
+  const order = await res.json();
+  return { ok: res.ok, order };
+}
+
 // Creates a Razorpay order via the REST API (no SDK dependency needed).
+// Accepts either a single {kind, key} or a multi-item cart {items: [...]}.
 export async function POST(req: NextRequest) {
   if (!rateLimit("checkout:" + clientIp(req), 10, 5 * 60 * 1000)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -24,9 +52,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
 
-  const { kind, key } = await req
-    .json()
-    .catch(() => ({}) as { kind?: Kind; key?: string });
+  const body = await req.json().catch(() => ({}) as CheckoutBody);
+
+  // Multi-item cart checkout: price every item server-side, persist the cart,
+  // and reference it from the order notes.
+  if (Array.isArray(body.items)) {
+    const seen = new Set<string>();
+    const items: CartItem[] = [];
+    for (const raw of body.items.slice(0, MAX_CART_ITEMS)) {
+      if (raw?.kind !== "workflow" && raw?.kind !== "bundle") continue;
+      if (!raw.key || typeof raw.key !== "string") continue;
+      const id = `${raw.kind}:${raw.key}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      items.push({ kind: raw.kind, key: raw.key });
+    }
+    if (items.length === 0) {
+      return NextResponse.json({ error: "empty_cart" }, { status: 400 });
+    }
+
+    let totalPaise = 0;
+    for (const it of items) {
+      const p = getPurchasable(it.kind, it.key);
+      if (!p || p.free || p.price <= 0) {
+        return NextResponse.json({ error: "invalid_product", detail: it.key }, { status: 400 });
+      }
+      totalPaise += Math.round(p.price * 100);
+    }
+
+    const cartId = await createCartRecord(items, totalPaise);
+    if (!cartId) {
+      return NextResponse.json({ error: "cart_unavailable" }, { status: 503 });
+    }
+
+    const name = `${items.length} template${items.length > 1 ? "s" : ""} (cart)`;
+    const { ok, order } = await createRazorpayOrder(keyId, keySecret, totalPaise, `cart_${cartId}`, {
+      kind: "cart",
+      key: cartId,
+      name,
+      // Recorded orders use the account email, not whatever the buyer types
+      // into the Razorpay modal, so purchases reliably appear in My library.
+      ...(user?.email ? { buyer_email: user.email } : {}),
+    });
+    if (!ok) {
+      return NextResponse.json({ error: "order_failed", detail: order }, { status: 500 });
+    }
+    return NextResponse.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId,
+      name,
+      cartId,
+    });
+  }
+
+  const { kind, key } = body;
   if (!kind || !key) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
@@ -36,20 +117,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_product" }, { status: 400 });
   }
 
-  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-  const res = await fetch("https://api.razorpay.com/v1/orders", {
-    method: "POST",
-    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount: Math.round(item.price * 100),
-      currency: item.currency || "INR",
-      receipt: `${item.kind}_${item.key}`.slice(0, 40),
-      notes: { kind: item.kind, key: item.key, name: item.name },
-    }),
-  });
-
-  const order = await res.json();
-  if (!res.ok) {
+  const { ok, order } = await createRazorpayOrder(
+    keyId,
+    keySecret,
+    Math.round(item.price * 100),
+    `${item.kind}_${item.key}`,
+    {
+      kind: item.kind,
+      key: item.key,
+      name: item.name,
+      ...(user?.email ? { buyer_email: user.email } : {}),
+    }
+  );
+  if (!ok) {
     return NextResponse.json({ error: "order_failed", detail: order }, { status: 500 });
   }
 

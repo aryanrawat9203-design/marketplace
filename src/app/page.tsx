@@ -5,7 +5,9 @@ import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import WorkflowCard from "@/components/WorkflowCard";
 import { SearchBar } from "@/components/Controls";
 import PriceTag from "@/components/PriceTag";
+import { RecentlyViewedStrip } from "@/components/RecentlyViewed";
 import { inr } from "@/lib/pricing";
+import { integrationSlug } from "@/lib/slug";
 
 export default function Home() {
   const taxo = getTaxonomy();
@@ -131,6 +133,27 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="flex items-end justify-between">
+          <h2 className="text-2xl font-semibold text-zinc-100">Browse by integration</h2>
+          <Link href="/integrations" className="text-sm text-violet-400 hover:text-violet-300">
+            All integrations &rarr;
+          </Link>
+        </div>
+        <p className="mt-1 text-sm text-zinc-500">Start from the apps you already use.</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {taxo.platformsTop.slice(0, 18).map((p) => (
+            <Link
+              key={p.name}
+              href={`/integrations/${integrationSlug(p.name)}`}
+              className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-sm text-zinc-300 hover:border-violet-500/50 hover:text-white"
+            >
+              {p.name} <span className="text-zinc-500">({fmt(p.count)})</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="flex items-end justify-between">
           <h2 className="text-2xl font-semibold text-zinc-100">Most popular templates</h2>
           <Link href="/workflows?sort=demand" className="text-sm text-violet-400 hover:text-violet-300">More &rarr;</Link>
         </div>
@@ -162,6 +185,27 @@ export default function Home() {
                 </div>
               </div>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      <RecentlyViewedStrip />
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <h2 className="text-2xl font-semibold text-zinc-100">Why WorkflowCrate</h2>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(
+            [
+              ["Original, not scraped", "Every template is built and owned in-house - you get a license to use and adapt it, with no grey areas."],
+              ["See before you buy", "Every product page shows the real node graph and node list of the workflow - no mystery ZIPs."],
+              ["Instant delivery", "The ready-to-import JSON is downloading seconds after payment, with an email receipt and re-download link."],
+              ["7-day guarantee", "If a template won't import or isn't as described, we fix it or refund you. No forms, no fuss."],
+            ] as const
+          ).map(([t, d]) => (
+            <div key={t} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+              <h3 className="font-medium text-zinc-100">{t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{d}</p>
+            </div>
           ))}
         </div>
       </section>

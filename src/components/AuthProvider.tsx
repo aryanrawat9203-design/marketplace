@@ -30,7 +30,8 @@ export function useAuth() {
 }
 
 const FIRST_PROMPT_DELAY_MS = 4000;
-const NAG_INTERVAL_MS = 4 * 60 * 1000;
+const PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMPT_SEEN_KEY = "wc:login-prompt-at";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
@@ -55,22 +56,28 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => sub.subscription.unsubscribe();
   }, [supabase]);
 
-  // Soft nag: prompt shortly after load, then every few minutes, until signed in.
-  // Dismissible and never blocks page content (keeps browsing/SEO working).
+  // Soft prompt: shown once shortly after load, then not again for a week.
+  // Repeat-nagging visitors mid-browse measurably hurts conversion, so the
+  // modal otherwise only opens on explicit user action (login / buy click).
   useEffect(() => {
     if (loading || session) return;
+    let seenAt = 0;
+    try {
+      seenAt = Number(localStorage.getItem(PROMPT_SEEN_KEY)) || 0;
+    } catch {
+      /* storage unavailable - treat as never seen */
+    }
+    if (Date.now() - seenAt < PROMPT_COOLDOWN_MS) return;
     const first = setTimeout(() => {
+      try {
+        localStorage.setItem(PROMPT_SEEN_KEY, String(Date.now()));
+      } catch {
+        /* best effort */
+      }
       setForce(false);
       setModalOpen(true);
     }, FIRST_PROMPT_DELAY_MS);
-    const interval = setInterval(() => {
-      setForce(false);
-      setModalOpen(true);
-    }, NAG_INTERVAL_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(interval);
-    };
+    return () => clearTimeout(first);
   }, [loading, session]);
 
   const openLogin = useCallback((opts?: { force?: boolean }) => {

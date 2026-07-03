@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getTaxonomy } from "@/lib/catalog";
 import { fullLibrary, lifetime, categoryBundles, subcategoryBundlesFor } from "@/lib/bundles";
 import { inr } from "@/lib/pricing";
 
@@ -20,7 +19,6 @@ const tiers: { name: string; lo: number; hi?: number; desc: string }[] = [
 const fmt = (n: number) => n.toLocaleString("en-IN");
 
 export default function BundlesPage() {
-  const taxo = getTaxonomy();
   const full = fullLibrary();
   const life = lifetime();
   const cats = categoryBundles();
