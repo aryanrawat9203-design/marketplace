@@ -202,10 +202,21 @@ limiting; the account page can no longer flash one user's orders to the next; th
 form distinguishes server errors from validation errors; a stale cart line is auto-removed
 instead of dead-ending checkout; the graph parser rejects non-finite node coordinates.
 
-## 8. Next iterations (recommended order)
+## 8. Implemented in wave 3: curated collections
 
-1. Thematic collections ("Agency starter kit", "AI agent pack") — Notion-style curation.
-2. USD display toggle for international traffic.
-3. Custom-workflow request funnel (haveworkflow's third revenue stream) via contact form preset.
-4. Review-collection follow-up cadence (a second email ~7 days post-purchase).
-5. Admin moderation page for reviews (replace dashboard SQL with a small UI).
+Notion-style themed packs, shipped as `/collections` + 8 statically-generated
+`/collections/[slug]` pages (AI Agency Starter Kit, Lead Gen Machine, Inbox Zero, Content
+Engine, E-commerce Ops Pack, Knowledge Base & RAG, Support Command Center, Beginner
+Essentials). Members are chosen live from the catalog by rules (categories/platforms/
+difficulty, demand-sorted) with a diversity picker (per-subcategory caps + near-duplicate
+title rejection), so lists never go stale and never look copy-pasted. Purchase is the
+cart: one add-all button, one payment, one ZIP — no new SKUs or payment-path changes.
+Single-category packs upsell their full category bundle. Homepage row, header/footer nav,
+sitemap, ItemList JSON-LD.
+
+## 9. Next iterations (recommended order)
+
+1. Custom-workflow request funnel (haveworkflow's third revenue stream) via contact form preset.
+2. USD display toggle for international traffic (check analytics geo split first).
+3. Review-collection follow-up cadence (a second email ~7 days post-purchase).
+4. Admin moderation page for reviews (replace dashboard SQL with a small UI).
