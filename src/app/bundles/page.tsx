@@ -10,7 +10,8 @@ export const metadata: Metadata = {
 };
 
 const tiers: { name: string; lo: number; hi?: number; desc: string }[] = [
-  { name: "Free", lo: 0, desc: "Starter templates - download free, no payment." },
+  { name: "Free", lo: 0, desc: "A handful of genuine samples, kept free permanently - no payment." },
+  { name: "Starter", lo: 49, hi: 129, desc: "Simple, everyday micro-automations. Less than a coffee." },
   { name: "Professional", lo: 149, hi: 299, desc: "Solid everyday automations. Impulse-buy pricing." },
   { name: "Premium", lo: 299, hi: 599, desc: "Higher-complexity, higher-value workflows." },
   { name: "Enterprise", lo: 549, hi: 999, desc: "Advanced, multi-step, high-commercial-value builds." },
@@ -71,7 +72,7 @@ export default function BundlesPage() {
           Every template is priced by its tier and complexity, so you only pay more for genuinely
           more valuable automations. Prefer to buy in bulk? A bundle is always cheaper per template.
         </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {tiers.map((t) => (
             <div key={t.name} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
               <div className="text-sm font-semibold text-zinc-200">{t.name}</div>

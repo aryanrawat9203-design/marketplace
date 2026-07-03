@@ -46,6 +46,8 @@ export function tierTone(t?: string | null) {
   switch (t) {
     case "Free":
       return "zinc";
+    case "Starter":
+      return "emerald";
     case "Professional":
       return "sky";
     case "Premium":
