@@ -71,6 +71,65 @@ export async function sendOrderConfirmation(o: OrderEmail): Promise<boolean> {
   }
 }
 
+export type CustomRequest = {
+  name: string;
+  email: string;
+  description: string;
+  apps: string;
+  budget: string;
+  timeline: string;
+};
+
+// Forwards a custom-workflow request to SUPPORT_EMAIL as a structured brief,
+// with replyTo set to the requester for a one-click quote reply.
+export async function sendCustomRequest(r: CustomRequest): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ORDERS_FROM_EMAIL;
+  const to = process.env.SUPPORT_EMAIL;
+  if (!apiKey || !from || !to) return false;
+
+  const row = (k: string, v: string) =>
+    '<tr><td style="padding:6px 12px 6px 0;color:#666;vertical-align:top;white-space:nowrap">' +
+    esc(k) + '</td><td style="padding:6px 0">' + esc(v || "-") + "</td></tr>";
+
+  const html =
+    '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">' +
+    "<h2>New custom workflow request</h2>" +
+    '<table style="border-collapse:collapse;font-size:14px">' +
+    row("From", `${r.name || "(no name)"} <${r.email}>`) +
+    row("Apps / tools", r.apps) +
+    row("Budget", r.budget) +
+    row("Timeline", r.timeline) +
+    "</table>" +
+    '<p style="color:#666;font-size:13px;margin-top:16px">What they want to automate:</p>' +
+    '<p style="white-space:pre-wrap;border-left:3px solid #ddd;padding-left:12px">' +
+    esc(r.description) + "</p>" +
+    "</div>";
+
+  const text =
+    "New custom workflow request\n\n" +
+    `From: ${r.name || "(no name)"} <${r.email}>\n` +
+    `Apps / tools: ${r.apps || "-"}\n` +
+    `Budget: ${r.budget || "-"}\n` +
+    `Timeline: ${r.timeline || "-"}\n\n` +
+    "What they want to automate:\n" + r.description;
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      replyTo: r.email,
+      subject: "Custom workflow request: " + (r.name || r.email),
+      html,
+      text,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export type ContactMessage = {
   name: string;
   email: string;

@@ -74,11 +74,26 @@ export default async function WorkflowsPage({
       </div>
 
       {items.length === 0 ? (
-        <div className="mt-16 text-center text-zinc-400">
-          No templates match these filters.{" "}
-          <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
-            Clear filters
-          </Link>
+        <div className="mx-auto mt-16 max-w-md text-center">
+          <p className="text-zinc-400">
+            No templates match these filters.{" "}
+            <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
+              Clear filters
+            </Link>
+          </p>
+          <div className="mt-6 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-6">
+            <h2 className="font-semibold text-zinc-100">Can&apos;t find it? We&apos;ll build it.</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              Describe the automation you need and get a fixed quote - built by the same team
+              behind every template in this store.
+            </p>
+            <Link
+              href="/custom"
+              className="mt-4 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 text-sm font-medium text-white hover:opacity-95"
+            >
+              Request a custom workflow
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

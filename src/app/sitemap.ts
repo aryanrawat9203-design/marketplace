@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/bundles",
     "/collections",
     "/integrations",
+    "/custom",
     "/guides",
     "/about",
     "/contact",

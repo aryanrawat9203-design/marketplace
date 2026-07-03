@@ -380,6 +380,19 @@ export default async function WorkflowDetail({
             </Link>
           )}
 
+          <Link
+            href="/custom"
+            className="block rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 hover:border-violet-500/50"
+          >
+            <h3 className="text-sm font-semibold text-zinc-200">Need a variation of this?</h3>
+            <p className="mt-1 text-sm text-zinc-400">
+              Different apps, extra steps, your exact process - we build custom workflows to order.
+            </p>
+            <span className="mt-2 inline-block text-sm font-medium text-violet-400">
+              Get a fixed quote &rarr;
+            </span>
+          </Link>
+
           <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
             <h3 className="text-sm font-semibold text-zinc-200">At a glance</h3>
             <dl className="mt-3 space-y-2 text-sm">

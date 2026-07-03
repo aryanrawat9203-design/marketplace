@@ -111,6 +111,23 @@ export default async function IntegrationPage({
           ))}
         </div>
       </div>
+
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-6">
+        <div>
+          <h2 className="font-semibold text-zinc-100">
+            Need a {integration.name} workflow that isn&apos;t here?
+          </h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Describe it and get a fixed quote - custom-built, ready to import.
+          </p>
+        </div>
+        <Link
+          href="/custom"
+          className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 text-sm font-medium text-white hover:opacity-95"
+        >
+          Request a custom build
+        </Link>
+      </div>
     </div>
   );
 }

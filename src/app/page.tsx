@@ -248,6 +248,23 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-6 sm:p-8">
+          <div>
+            <h2 className="text-xl font-semibold text-zinc-100">Can&apos;t find the exact workflow?</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              We build custom n8n workflows to order - describe it, get a fixed quote, pay only if you go ahead.
+            </p>
+          </div>
+          <Link
+            href="/custom"
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-3 font-medium text-white hover:opacity-95"
+          >
+            Request a custom build
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900/60 to-zinc-900/20 p-8">
           <h2 className="text-2xl font-semibold text-zinc-100">How it works</h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-3">
