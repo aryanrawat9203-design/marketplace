@@ -214,9 +214,21 @@ cart: one add-all button, one payment, one ZIP — no new SKUs or payment-path c
 Single-category packs upsell their full category bundle. Homepage row, header/footer nav,
 sitemap, ItemList JSON-LD.
 
-## 9. Next iterations (recommended order)
+## 9. Implemented in wave 4: custom-workflow request funnel
 
-1. Custom-workflow request funnel (haveworkflow's third revenue stream) via contact form preset.
-2. USD display toggle for international traffic (check analytics geo split first).
-3. Review-collection follow-up cadence (a second email ~7 days post-purchase).
-4. Admin moderation page for reviews (replace dashboard SQL with a small UI).
+`/custom` landing page (3-step how-it-works, structured quote-request form with use case /
+apps / budget band / timeline, FAQ + FAQPage JSON-LD) backed by `/api/custom-request`:
+validated + rate-limited, emails a structured brief to SUPPORT_EMAIL via Resend with
+replyTo set to the requester, and records a backup `leads` row (source=custom-request) so
+a mail failure never loses the contact. CTAs sit exactly where catalog discovery fails:
+empty search results, the product-page aside ("Need a variation of this?"), integration
+landing pages, a homepage band, and the footer. This monetizes the visitors the catalog
+can't serve - the model haveworkflow and n8nmarkets validate with their custom-build and
+hire-an-expert offerings.
+
+## 10. Next iterations (recommended order)
+
+1. USD display toggle for international traffic (check analytics geo split first;
+   requires international card acceptance enabled on the Razorpay account).
+2. Review-collection follow-up cadence (a second email ~7 days post-purchase).
+3. Admin moderation page for reviews (replace dashboard SQL with a small UI).
