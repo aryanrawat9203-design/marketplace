@@ -226,9 +226,22 @@ landing pages, a homepage band, and the footer. This monetizes the visitors the 
 can't serve - the model haveworkflow and n8nmarkets validate with their custom-build and
 hire-an-expert offerings.
 
-## 10. Next iterations (recommended order)
+## 10. Implemented in wave 5: admin review-moderation UI
+
+`/admin/reviews` — password-gated (single `ADMIN_PASSWORD` env var, timing-safe compare,
+signed httpOnly + SameSite=Strict session cookie in `src/lib/admin-auth.ts`) page listing
+Pending / Approved / Rejected buyer reviews with one-click Approve/Reject, replacing the
+Supabase-dashboard-SQL workflow from wave 2. Every admin API route (`/api/admin/login`,
+`/api/admin/logout`, `/api/admin/reviews`) re-verifies the cookie signature server-side.
+`robots.ts` disallows `/admin` from crawling. Verified end-to-end against production
+Supabase: wrong password and missing cookie both 401, correct password sets a verified
+httpOnly cookie, an approved test review appeared live on the product page with
+aggregateRating JSON-LD, a rejected one never appeared anywhere, and sign-out was
+confirmed to invalidate the session server-side (not just the UI) - all test data cleaned
+up afterward.
+
+## 11. Next iterations (recommended order)
 
 1. USD display toggle for international traffic (check analytics geo split first;
    requires international card acceptance enabled on the Razorpay account).
 2. Review-collection follow-up cadence (a second email ~7 days post-purchase).
-3. Admin moderation page for reviews (replace dashboard SQL with a small UI).
