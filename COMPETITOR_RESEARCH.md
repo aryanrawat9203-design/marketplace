@@ -240,8 +240,27 @@ aggregateRating JSON-LD, a rejected one never appeared anywhere, and sign-out wa
 confirmed to invalidate the session server-side (not just the UI) - all test data cleaned
 up afterward.
 
-## 11. Next iterations (recommended order)
+## 11. Implemented in wave 6: review-followup email cadence
+
+A daily Vercel Cron (`vercel.json`, `0 3 * * *` UTC ≈ 8:30am IST) hits
+`GET /api/cron/review-followup`, authenticated via `CRON_SECRET` (Vercel auto-injects it
+as the Authorization header once the env var is set - no other wiring needed). It scans
+paid orders 7–45 days old that haven't been processed yet (`orders.review_followup_sent_at`,
+added by `SUPABASE_SETUP_REVIEW_FOLLOWUP.sql`), resolves the purchased item(s) - a single
+workflow/bundle, or every item inside a cart order - filters out anything the buyer has
+already reviewed, and emails a one-time nudge with review links for the rest (capped at 5
+items). Every scanned order is marked processed exactly once regardless of outcome, so a
+transient failure can never cause a repeat send.
+
+Verified against production Supabase with 3 seeded synthetic orders covering every branch:
+an unreviewed single item (emailed), an already-reviewed single item (skipped but marked
+processed), and a 2-item cart order (both emailed). Result matched exactly
+(`processed: 3, emailed: 2`); a second run against the same orders processed zero,
+proving no order can ever be double-emailed. Confirmed zero real customer orders were in
+the qualifying window before and after testing, so no real customers were touched; all
+synthetic data was deleted afterward.
+
+## 12. Next iterations (recommended order)
 
 1. USD display toggle for international traffic (check analytics geo split first;
    requires international card acceptance enabled on the Razorpay account).
-2. Review-collection follow-up cadence (a second email ~7 days post-purchase).
