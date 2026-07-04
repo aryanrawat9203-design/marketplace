@@ -12,6 +12,35 @@ type UsageState = { subscriptionActive: boolean; freeRemaining: number; bonusRem
 
 const STORAGE_KEY = "wc:chat-history";
 const MAX_STORED_MESSAGES = 40;
+const TOGGLE_POSITION_KEY = "wc:chat-toggle-pos";
+const TOGGLE_SIZE = 56;
+const VIEWPORT_MARGIN = 8;
+const DRAG_THRESHOLD = 5;
+
+type ToggleCoords = { x: number; y: number };
+
+function clampToggleCoords(pos: ToggleCoords): ToggleCoords {
+  const maxX = Math.max(window.innerWidth - TOGGLE_SIZE - VIEWPORT_MARGIN, VIEWPORT_MARGIN);
+  const maxY = Math.max(window.innerHeight - TOGGLE_SIZE - VIEWPORT_MARGIN, VIEWPORT_MARGIN);
+  return {
+    x: Math.min(Math.max(pos.x, VIEWPORT_MARGIN), maxX),
+    y: Math.min(Math.max(pos.y, VIEWPORT_MARGIN), maxY),
+  };
+}
+
+function loadTogglePosition(): ToggleCoords | null {
+  try {
+    const raw = localStorage.getItem(TOGGLE_POSITION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+      return clampToggleCoords(parsed);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 type Persisted = { messages: Message[]; token: string | null };
 
@@ -71,7 +100,11 @@ export default function ChatWidget() {
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageState | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [togglePos, setTogglePos] = useState<ToggleCoords | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const dragStateRef = useRef<{ startX: number; startY: number; posX: number; posY: number } | null>(null);
+  const draggedRef = useRef(false);
 
   useEffect(() => {
     // Deferred a tick so this reads as "react to mount", not a synchronous
@@ -90,6 +123,19 @@ export default function ChatWidget() {
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open, sending]);
+
+  useEffect(() => {
+    const saved = loadTogglePosition();
+    if (saved) setTogglePos(saved);
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      setTogglePos((prev) => (prev ? clampToggleCoords(prev) : prev));
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Refreshes the usage banner whenever the widget opens (and once the user
   // signs in), so it's accurate even if the user subscribed/topped up
@@ -242,16 +288,69 @@ export default function ChatWidget() {
     send(input);
   }
 
+  function handleTogglePointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (e.button !== undefined && e.button !== 0) return;
+    const rect = toggleRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    draggedRef.current = false;
+    dragStateRef.current = { startX: e.clientX, startY: e.clientY, posX: rect.left, posY: rect.top };
+    toggleRef.current?.setPointerCapture(e.pointerId);
+  }
+
+  function handleTogglePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const drag = dragStateRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (!draggedRef.current && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    draggedRef.current = true;
+    setTogglePos(clampToggleCoords({ x: drag.posX + dx, y: drag.posY + dy }));
+  }
+
+  function handleTogglePointerUp(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!dragStateRef.current) return;
+    dragStateRef.current = null;
+    if (draggedRef.current) {
+      setTogglePos((prev) => {
+        if (prev) {
+          try {
+            localStorage.setItem(TOGGLE_POSITION_KEY, JSON.stringify(prev));
+          } catch {
+            /* storage unavailable - non-fatal, position just won't persist */
+          }
+        }
+        return prev;
+      });
+    }
+    toggleRef.current?.releasePointerCapture(e.pointerId);
+  }
+
+  function handleToggleClick() {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
+    open ? setOpen(false) : openWidget();
+  }
+
   const showLowBalanceBanner =
     !!user && !!usage && !usage.subscriptionActive && usage.freeRemaining <= CHATBOT_CONFIG.limits.lowBalanceThreshold;
 
   return (
     <>
       <button
-        onClick={() => (open ? setOpen(false) : openWidget())}
+        ref={toggleRef}
+        onClick={handleToggleClick}
+        onPointerDown={handleTogglePointerDown}
+        onPointerMove={handleTogglePointerMove}
+        onPointerUp={handleTogglePointerUp}
+        onPointerCancel={handleTogglePointerUp}
         aria-label={open ? "Close chat" : "Open chat"}
         aria-expanded={open}
-        className="fixed bottom-5 right-5 z-[90] grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-violet-900/30 transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 sm:bottom-6 sm:right-6"
+        style={{ touchAction: "none", ...(togglePos ? { left: togglePos.x, top: togglePos.y } : {}) }}
+        className={`fixed z-[90] grid h-14 w-14 cursor-grab place-items-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-violet-900/30 transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 active:cursor-grabbing ${
+          togglePos ? "" : "bottom-5 right-5 sm:bottom-6 sm:right-6"
+        }`}
       >
         {open ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
