@@ -38,6 +38,7 @@ export default function Footer() {
             <li><Link href="/workflows?sort=demand" className="hover:text-zinc-100">Most popular</Link></li>
             <li><Link href="/custom" className="hover:text-zinc-100">Custom workflows</Link></li>
             <li><Link href="/guides" className="hover:text-zinc-100">Guides</Link></li>
+            <li><Link href="/blog" className="hover:text-zinc-100">Blog</Link></li>
           </ul>
         </div>
         <div>
