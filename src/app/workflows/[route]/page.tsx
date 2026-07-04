@@ -31,7 +31,7 @@ export async function generateMetadata({
   return {
     title: w.title,
     description: w.shortDescription ?? w.description ?? undefined,
-    openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article" },
+    openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article", images: ["/opengraph-image"] },
   };
 }
 
