@@ -5,22 +5,24 @@ export const metadata: Metadata = { title: "Refund Policy" };
 
 export default function RefundPage() {
   return (
-    <PageShell title="Refund Policy" updated="27 June 2026">
+    <PageShell title="Refund Policy" updated="4 July 2026">
       <p>
         We want you to be happy with your purchase. This policy explains how refunds work for our
         digital products.
       </p>
 
-      <h2>Digital downloads</h2>
+      <h2>No refund for change of mind</h2>
       <p>
-        Because our workflows are delivered instantly as digital downloads, all sales are generally
-        final once the file has been downloaded.
+        Our workflows are delivered instantly as digital downloads, so <strong>all sales are
+        final</strong> once a file has been downloaded. We do not offer refunds because you changed
+        your mind, found a similar template elsewhere, or no longer need the workflow.
       </p>
 
       <h2>When we will help</h2>
       <p>
-        If a file is faulty, will not import, or is not as described, contact us within{" "}
-        <strong>7 days</strong> of purchase and we will fix the issue or provide a refund.
+        The one exception: if a file is faulty, will not import, is not as described, or you were
+        charged more than once for the same order, contact us within <strong>7 days</strong> of
+        purchase and we will fix the issue or provide a refund.
       </p>
 
       <h2>How to request</h2>

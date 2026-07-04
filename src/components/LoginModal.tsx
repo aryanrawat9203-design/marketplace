@@ -30,6 +30,10 @@ export default function LoginModal({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        // Without this, Google silently reuses whichever account is already
+        // active in the browser instead of offering a chooser - makes it
+        // look like sign-out doesn't let you switch accounts.
+        queryParams: { prompt: "select_account" },
       },
     });
   }

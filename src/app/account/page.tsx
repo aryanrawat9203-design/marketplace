@@ -16,7 +16,7 @@ type MyOrder = {
 };
 
 export default function AccountPage() {
-  const { session, user, loading, openLogin } = useAuth();
+  const { session, user, loading, openLogin, signOut } = useAuth();
   // Orders are keyed to the email they were fetched for, so one account's
   // list can never flash on screen after a different account signs in.
   const [fetched, setFetched] = useState<{ email: string; orders: MyOrder[] } | null>(null);
@@ -45,10 +45,22 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-semibold text-zinc-100">My library</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        Every template and bundle you&apos;ve bought, ready to re-download anytime.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-100">My library</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Every template and bundle you&apos;ve bought, ready to re-download anytime.
+          </p>
+        </div>
+        {!loading && user && (
+          <button
+            onClick={() => signOut()}
+            className="shrink-0 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          >
+            Sign out
+          </button>
+        )}
+      </div>
 
       {loading && <div className="mt-10 text-sm text-zinc-500">Loading&hellip;</div>}
 
