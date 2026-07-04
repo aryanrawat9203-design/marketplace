@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import AuthProvider from "@/components/AuthProvider";
 import CartProvider from "@/components/CartProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import ChatWidget from "@/components/Chatbot/ChatWidget";
 import { baseUrl } from "@/lib/site";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -50,6 +51,7 @@ export default function RootLayout({
         </AuthProvider>
         <Analytics />
         <GoogleAnalytics />
+        <ChatWidget />
       </body>
     </html>
   );
