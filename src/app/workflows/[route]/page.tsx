@@ -29,7 +29,7 @@ export async function generateMetadata({
   const w = getByRoute(route);
   if (!w) return { title: "Template not found" };
   const preview = previewWorkflow(w.route);
-  const ogImg = `/api/og?title=${encodeURIComponent(w.title)}&category=${encodeURIComponent(w.category ?? "")}&nodes=${preview.nodeCount}`;
+  const ogImg = `/api/og?title=${encodeURIComponent(w.title)}&category=${encodeURIComponent(w.category ?? "")}&nodes=${preview?.nodeCount ?? 0}`;
   return {
     title: w.title,
     description: w.shortDescription ?? w.description ?? undefined,
