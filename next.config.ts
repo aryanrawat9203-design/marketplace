@@ -5,13 +5,17 @@ import type { NextConfig } from "next";
 // payload/hydration data in inline <script> tags; a nonce-based CSP would
 // close that gap but forces every page into dynamic rendering.
 const isDev = process.env.NODE_ENV === "development";
+// Supabase Auth calls (signOut, signInWithOtp, token refresh) go through
+// fetch() from the browser client - without its origin in connect-src, the
+// CSP silently blocks them and e.g. signOut() never clears the session.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const cspHeader = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.razorpay.com",
   "font-src 'self'",
-  "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com",
+  `connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com${supabaseUrl ? ` ${supabaseUrl}` : ""}`,
   "frame-src https://api.razorpay.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
