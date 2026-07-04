@@ -4,6 +4,7 @@ import { getBundles } from "@/lib/bundles";
 import { getIntegrations } from "@/lib/integrations";
 import { getCollections } from "@/lib/collections";
 import { guides } from "@/lib/guides";
+import { posts } from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -18,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/integrations",
     "/custom",
     "/guides",
+    "/blog",
     "/about",
     "/contact",
     "/faq",
@@ -62,6 +64,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
+    const blogPages: MetadataRoute.Sitemap = posts.map((bp) => ({
+          url: `${base}/blog/${bp.slug}`,
+          lastModified: now,
+          changeFrequency: "monthly",
+          priority: 0.6,
+    }));
+
   const workflows: MetadataRoute.Sitemap = getIndex().map((w) => ({
     url: `${base}/workflows/${w.route}`,
     lastModified: now,
@@ -69,5 +78,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  return [...staticPages, ...bundles, ...collections, ...integrations, ...guidePages, ...workflows];
+  return [...staticPages, ...bundles, ...collections, ...integrations, ...guidePages, ...blogPages, ...workflows];
 }
