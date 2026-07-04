@@ -5,11 +5,16 @@ import { baseUrl } from "@/lib/site";
 import { sendOrderConfirmation } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { recordOrder } from "@/lib/orders";
+import { setChatSubscription } from "@/lib/chatbot/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+// Grace window added past the paid cycle's end so a webhook that arrives a
+// little late (or a renewal charge that's a few hours delayed) doesn't
+// briefly kick a paying subscriber back to the free tier.
+const SUBSCRIPTION_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 
 type WebhookEvent = {
   event?: string;
@@ -20,6 +25,14 @@ type WebhookEvent = {
         order_id?: string;
         amount?: number;
         email?: string;
+        notes?: Record<string, string>;
+      };
+    };
+    subscription?: {
+      entity?: {
+        id?: string;
+        status?: string;
+        current_end?: number; // unix seconds
         notes?: Record<string, string>;
       };
     };
@@ -98,6 +111,27 @@ export async function POST(req: Request) {
     } catch (err) {
       // Never let a downstream failure cause Razorpay to retry-storm this webhook.
       console.error("razorpay webhook: payment.captured handling failed", err);
+    }
+  }
+
+  // AI-chat subscription lifecycle - activated/charged mark the subscriber
+  // active and push subscription_expires_at out to the next paid cycle (plus
+  // a grace window); cancelled/completed/halted revert to the free tier
+  // immediately rather than waiting for expires_at to lapse naturally.
+  if (event.event?.startsWith("subscription.")) {
+    try {
+      const sub = event.payload?.subscription?.entity;
+      const userId = sub?.notes?.user_id;
+      if (sub?.id && userId) {
+        const isActive = sub.status === "active";
+        const expiresAt =
+          isActive && sub.current_end
+            ? new Date(sub.current_end * 1000 + SUBSCRIPTION_GRACE_MS)
+            : null;
+        await setChatSubscription(userId, isActive, expiresAt, sub.id);
+      }
+    } catch (err) {
+      console.error("razorpay webhook: subscription event handling failed", err);
     }
   }
 

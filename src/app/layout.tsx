@@ -48,10 +48,10 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <Footer />
           </CartProvider>
+          <ChatWidget />
         </AuthProvider>
         <Analytics />
         <GoogleAnalytics />
-        <ChatWidget />
       </body>
     </html>
   );

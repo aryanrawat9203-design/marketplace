@@ -3,17 +3,22 @@
 
 export type RazorpayResponse = {
   razorpay_payment_id: string;
-  razorpay_order_id: string;
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
   razorpay_signature: string;
 };
 
 export type RazorpayOptions = {
   key: string;
-  amount: number;
-  currency: string;
+  amount?: number;
+  currency?: string;
   name: string;
   description?: string;
-  order_id: string;
+  // One-time purchases pass order_id; recurring AI-chat subscriptions pass
+  // subscription_id instead - Razorpay Checkout reads amount/currency off
+  // the subscription itself in that case.
+  order_id?: string;
+  subscription_id?: string;
   handler: (r: RazorpayResponse) => void;
   theme?: { color?: string };
 };

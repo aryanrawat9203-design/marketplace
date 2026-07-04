@@ -3,30 +3,44 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CHATBOT_CONFIG } from "@/lib/chatbot/config";
+import { useAuth } from "@/components/AuthProvider";
+import UpgradeModal from "./UpgradeModal";
 
 type Role = "user" | "assistant";
 type Message = { role: Role; content: string; at: number };
+type UsageState = { subscriptionActive: boolean; freeRemaining: number; bonusRemaining: number };
 
 const STORAGE_KEY = "wc:chat-history";
 const MAX_STORED_MESSAGES = 40;
 
-function loadHistory(): Message[] {
-  if (!CHATBOT_CONFIG.features.persistHistory) return [];
+type Persisted = { messages: Message[]; token: string | null };
+
+function loadPersisted(): Persisted {
+  if (!CHATBOT_CONFIG.features.persistHistory) return { messages: [], token: null };
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return { messages: [], token: null };
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    if (Array.isArray(parsed)) return { messages: parsed, token: null }; // legacy format
+    if (parsed && typeof parsed === "object") {
+      return {
+        messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+        token: typeof parsed.token === "string" ? parsed.token : null,
+      };
+    }
+    return { messages: [], token: null };
   } catch {
-    return [];
+    return { messages: [], token: null };
   }
 }
 
-function saveHistory(messages: Message[]) {
+function savePersisted(messages: Message[], token: string | null) {
   if (!CHATBOT_CONFIG.features.persistHistory) return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)));
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ messages: messages.slice(-MAX_STORED_MESSAGES), token }),
+    );
   } catch {
     /* storage unavailable - non-fatal, history just won't persist */
   }
@@ -45,28 +59,59 @@ function makeMessage(role: Role, content: string): Message {
 
 export default function ChatWidget() {
   const pathname = usePathname();
+  const { user, session, openLogin } = useAuth();
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationToken, setConversationToken] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageState | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Deferred a tick so this reads as "react to mount", not a synchronous
     // setState-in-effect - sessionStorage isn't available during SSR anyway.
-    Promise.resolve().then(() => setMessages(loadHistory()));
+    Promise.resolve().then(() => {
+      const { messages, token } = loadPersisted();
+      setMessages(messages);
+      setConversationToken(token);
+    });
   }, []);
 
   useEffect(() => {
-    if (messages.length) saveHistory(messages);
-  }, [messages]);
+    if (messages.length) savePersisted(messages, conversationToken);
+  }, [messages, conversationToken]);
 
   useEffect(() => {
     if (open) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open, sending]);
+
+  // Refreshes the usage banner whenever the widget opens (and once the user
+  // signs in), so it's accurate even if the user subscribed/topped up
+  // elsewhere or in another tab.
+  useEffect(() => {
+    if (!user || !session || !open) return;
+    let cancelled = false;
+    fetch("/api/chatbot/usage", { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setUsage({
+          subscriptionActive: !!data.subscriptionActive,
+          freeRemaining: Number(data.freeRemaining) || 0,
+          bonusRemaining: Number(data.bonusRemaining) || 0,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, session, open]);
 
   if (!CHATBOT_CONFIG.enabled) return null;
 
@@ -75,14 +120,57 @@ export default function ChatWidget() {
     setEverOpened(true);
   }
 
+  function newChat() {
+    setMessages([]);
+    setConversationToken(null);
+    setLimitNotice(null);
+    setError(false);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* storage unavailable - non-fatal */
+    }
+  }
+
+  function refreshUsage() {
+    if (!session) return;
+    fetch("/api/chatbot/usage", { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setUsage({
+          subscriptionActive: !!data.subscriptionActive,
+          freeRemaining: Number(data.freeRemaining) || 0,
+          bonusRemaining: Number(data.bonusRemaining) || 0,
+        });
+      })
+      .catch(() => {});
+  }
+
   async function send(text: string) {
     const trimmed = text.trim().slice(0, CHATBOT_CONFIG.limits.maxMessageLength);
     if (!trimmed || sending) return;
 
+    if (!user || !session) {
+      openLogin({ force: true });
+      return;
+    }
+
+    // Client-side pre-check purely for UX (skip a doomed round-trip) - the
+    // server enforces this independently and is the only thing that matters
+    // for correctness.
+    const isNewConversation = messages.length === 0;
+    if (isNewConversation && usage && !usage.subscriptionActive && usage.freeRemaining + usage.bonusRemaining <= 0) {
+      setShowUpgrade(true);
+      return;
+    }
+
     setError(false);
+    setLimitNotice(null);
     setLastFailedMessage(null);
+    const preSendMessages = messages;
     const userMsg = makeMessage("user", trimmed);
-    const history = [...messages, userMsg];
+    const history = [...preSendMessages, userMsg];
     setMessages(history);
     setInput("");
     setSending(true);
@@ -90,21 +178,53 @@ export default function ChatWidget() {
     try {
       const res = await fetch("/api/chatbot", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({
           message: trimmed,
           page: pathname,
           history: history
             .slice(-CHATBOT_CONFIG.limits.maxHistoryTurns * 2)
             .map((m) => ({ role: m.role, content: m.content })),
+          conversationToken,
         }),
       });
+
+      if (res.status === 401) {
+        setMessages(preSendMessages);
+        openLogin({ force: true });
+        return;
+      }
+      if (res.status === 402) {
+        setMessages(preSendMessages);
+        setShowUpgrade(true);
+        const data = await res.json().catch(() => null);
+        if (data?.usage) {
+          setUsage({
+            subscriptionActive: !!data.usage.subscriptionActive,
+            freeRemaining: Number(data.usage.freeRemaining) || 0,
+            bonusRemaining: Number(data.usage.bonusRemaining) || 0,
+          });
+        }
+        return;
+      }
+      if (res.status === 409) {
+        setLimitNotice("This conversation has reached its message limit - start a new chat to continue.");
+        return;
+      }
 
       if (!res.ok && res.status !== 200) throw new Error("bad_status");
       const data = await res.json();
       if (!data.reply) throw new Error("empty_reply");
 
       setMessages((prev) => [...prev, makeMessage("assistant", data.reply)]);
+      if (typeof data.conversationToken === "string") setConversationToken(data.conversationToken);
+      if (data.usage) {
+        setUsage({
+          subscriptionActive: !!data.usage.subscriptionActive,
+          freeRemaining: Number(data.usage.freeRemaining) || 0,
+          bonusRemaining: Number(data.usage.bonusRemaining) || 0,
+        });
+      }
     } catch {
       setError(true);
       setLastFailedMessage(trimmed);
@@ -121,6 +241,9 @@ export default function ChatWidget() {
     e.preventDefault();
     send(input);
   }
+
+  const showLowBalanceBanner =
+    !!user && !!usage && !usage.subscriptionActive && usage.freeRemaining <= CHATBOT_CONFIG.limits.lowBalanceThreshold;
 
   return (
     <>
@@ -157,14 +280,31 @@ export default function ChatWidget() {
             <p className="text-sm font-semibold text-zinc-100">WorkflowCrate Assistant</p>
             <p className="text-xs text-zinc-500">Usually replies instantly</p>
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            aria-label="Minimize chat"
-            className="ml-auto rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
-          >
-            &#8722;
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            {!!user && messages.length > 0 && (
+              <button
+                onClick={newChat}
+                className="rounded-lg px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+              >
+                New chat
+              </button>
+            )}
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Minimize chat"
+              className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
+            >
+              &#8722;
+            </button>
+          </div>
         </div>
+
+        {showLowBalanceBanner && (
+          <div className="border-b border-zinc-800 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+            {usage!.freeRemaining} free conversation{usage!.freeRemaining === 1 ? "" : "s"} left this month
+            {usage!.bonusRemaining > 0 ? ` (+${usage!.bonusRemaining} top-up)` : ""}
+          </div>
+        )}
 
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {everOpened && messages.length === 0 && (
@@ -211,6 +351,20 @@ export default function ChatWidget() {
             </div>
           )}
 
+          {limitNotice && (
+            <div className="flex flex-col items-start gap-1.5">
+              <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+                {limitNotice}
+              </div>
+              <button
+                onClick={newChat}
+                className="rounded-full border border-amber-500/40 px-3 py-1 text-xs text-amber-300 hover:bg-amber-500/10"
+              >
+                New chat
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="flex flex-col items-start gap-1.5">
               <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -226,27 +380,48 @@ export default function ChatWidget() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-zinc-800 p-3">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question..."
-            maxLength={CHATBOT_CONFIG.limits.maxMessageLength}
-            aria-label="Message"
-            className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
-          />
-          <button
-            type="submit"
-            disabled={sending || !input.trim()}
-            aria-label="Send message"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white disabled:opacity-40"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
-            </svg>
-          </button>
-        </form>
+        {user ? (
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-zinc-800 p-3">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question..."
+              maxLength={CHATBOT_CONFIG.limits.maxMessageLength}
+              aria-label="Message"
+              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
+            />
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              aria-label="Send message"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white disabled:opacity-40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
+              </svg>
+            </button>
+          </form>
+        ) : (
+          <div className="border-t border-zinc-800 p-4 text-center">
+            <p className="text-sm text-zinc-400">Sign in to chat with the assistant.</p>
+            <button
+              onClick={() => openLogin({ force: true })}
+              className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
+            >
+              Sign in
+            </button>
+          </div>
+        )}
       </div>
+
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        onUnlocked={() => {
+          setShowUpgrade(false);
+          refreshUsage();
+        }}
+      />
     </>
   );
 }

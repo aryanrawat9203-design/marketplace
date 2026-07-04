@@ -48,6 +48,20 @@ export const CHATBOT_CONFIG = {
     maxHistoryTurns: 8,
     rateLimitPerWindow: 20,
     rateLimitWindowMs: 10 * 60 * 1000,
+
+    // Freemium AI-chat paywall (see src/lib/chatbot/usage.ts). Non-AI content
+    // (FAQ, search, nav) is never gated - only /api/chatbot itself.
+    freeConversationsPerPeriod: 5,
+    periodDays: 30,
+    maxMessagesPerConversation: 15,
+    // Blunts throwaway-account gaming: caps how many NEW conversations a
+    // single IP can start per day, on top of the per-user quota.
+    newConversationsPerIpPerDay: 15,
+    lowBalanceThreshold: 2,
+
+    topupBonusConversations: 10,
+    topupPricePaise: 2900, // Rs 29
+    subscriptionPricePaise: 4900, // Rs 49/month
   },
 } as const;
 
