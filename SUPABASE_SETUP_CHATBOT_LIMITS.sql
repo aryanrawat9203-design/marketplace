@@ -118,25 +118,31 @@ begin
   v_row := public.chat_usage_ensure_period(p_user_id, p_period_days);
   v_sub_active := v_row.subscription_active and (v_row.subscription_expires_at is null or v_row.subscription_expires_at > now());
 
+  -- Table alias + qualified column references below are required, not
+  -- style: this function's RETURNS TABLE(..., conversation_count int, ...)
+  -- makes "conversation_count" an OUT-parameter variable in scope for the
+  -- whole function body, so an unqualified "conversation_count + 1" in an
+  -- UPDATE is ambiguous between that variable and the table column
+  -- (Postgres error 42702) - cu.conversation_count disambiguates it.
   if v_sub_active then
-    update public.chat_usage set conversation_count = conversation_count + 1, updated_at = now()
-      where user_id = p_user_id returning * into v_row;
+    update public.chat_usage cu set conversation_count = cu.conversation_count + 1, updated_at = now()
+      where cu.user_id = p_user_id returning * into v_row;
     return query select true, 'subscription'::text, v_row.conversation_count, v_row.bonus_conversations,
       greatest(p_free_quota - v_row.conversation_count, 0), v_sub_active, v_row.subscription_expires_at;
     return;
   end if;
 
   if v_row.conversation_count < p_free_quota then
-    update public.chat_usage set conversation_count = conversation_count + 1, updated_at = now()
-      where user_id = p_user_id returning * into v_row;
+    update public.chat_usage cu set conversation_count = cu.conversation_count + 1, updated_at = now()
+      where cu.user_id = p_user_id returning * into v_row;
     return query select true, 'free'::text, v_row.conversation_count, v_row.bonus_conversations,
       greatest(p_free_quota - v_row.conversation_count, 0), v_sub_active, v_row.subscription_expires_at;
     return;
   end if;
 
   if v_row.bonus_conversations > 0 then
-    update public.chat_usage set conversation_count = conversation_count + 1, bonus_conversations = bonus_conversations - 1, updated_at = now()
-      where user_id = p_user_id returning * into v_row;
+    update public.chat_usage cu set conversation_count = cu.conversation_count + 1, bonus_conversations = cu.bonus_conversations - 1, updated_at = now()
+      where cu.user_id = p_user_id returning * into v_row;
     return query select true, 'bonus'::text, v_row.conversation_count, v_row.bonus_conversations,
       greatest(p_free_quota - v_row.conversation_count, 0), v_sub_active, v_row.subscription_expires_at;
     return;
