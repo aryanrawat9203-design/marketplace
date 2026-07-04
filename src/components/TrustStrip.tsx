@@ -5,7 +5,7 @@ export default function TrustStrip() {
     <p className="mt-3 text-center text-xs text-zinc-500">
       Secure checkout &middot; Payments by Razorpay &middot; Instant download &middot;{" "}
       <Link href="/refund" className="underline underline-offset-2 hover:text-zinc-300">
-            7-day refund policy      </Link>
+           Refund  policy      </Link>
     </p>
   );
 }
