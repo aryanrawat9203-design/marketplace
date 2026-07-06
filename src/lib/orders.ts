@@ -9,6 +9,9 @@ export type OrderRecord = {
   itemRef: string;
   itemTitle: string;
   amountPaise: number;
+  promoCode?: string;
+  discountPercent?: number;
+  originalAmountPaise?: number;
 };
 
 // Upserts on razorpay_payment_id so a Razorpay webhook retry never creates a
@@ -27,6 +30,9 @@ export async function recordOrder(o: OrderRecord): Promise<void> {
         item_ref: o.itemRef,
         item_title: o.itemTitle,
         amount_paise: o.amountPaise,
+        promo_code: o.promoCode ?? null,
+        discount_percent: o.discountPercent ?? null,
+        original_amount_paise: o.originalAmountPaise ?? null,
       },
       { onConflict: "razorpay_payment_id", ignoreDuplicates: true }
     );

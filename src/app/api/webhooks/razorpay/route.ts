@@ -5,6 +5,7 @@ import { baseUrl } from "@/lib/site";
 import { sendOrderConfirmation } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { recordOrder } from "@/lib/orders";
+import { incrementPromoRedemption } from "@/lib/promo";
 import { setChatSubscription } from "@/lib/chatbot/usage";
 
 export const runtime = "nodejs";
@@ -78,6 +79,11 @@ export async function POST(req: Request) {
       // Prefer the signed-in account email captured at checkout; the Razorpay
       // modal's contact email can differ and would orphan the My-library row.
       const email = notes.buyer_email || p.email;
+      const promoCode = notes.promo_code;
+      const discountPercent = notes.discount_percent ? Number(notes.discount_percent) : undefined;
+      const originalAmountPaise = notes.original_amount_paise
+        ? Number(notes.original_amount_paise)
+        : undefined;
       if (kind && key && email) {
         const token = signDownload(kind, key, THIRTY_DAYS);
         const downloadUrl = baseUrl() + "/api/download?token=" + encodeURIComponent(token);
@@ -105,7 +111,13 @@ export async function POST(req: Request) {
             itemRef: key,
             itemTitle,
             amountPaise: Number(p.amount) || 0,
+            promoCode,
+            discountPercent,
+            originalAmountPaise,
           });
+        }
+        if (promoCode) {
+          await incrementPromoRedemption(promoCode);
         }
       }
     } catch (err) {

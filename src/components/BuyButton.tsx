@@ -6,6 +6,7 @@ import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
 import { useAuth } from "./AuthProvider";
 import FreeDownloadButton from "./FreeDownloadButton";
+import PromoCodeField, { type AppliedPromo } from "./PromoCodeField";
 
 export type BuyItem = {
   kind: "workflow" | "bundle";
@@ -27,11 +28,16 @@ export default function BuyButton({
   const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
   const w = block ? "w-full" : "";
 
   if (item.free) {
     return <FreeDownloadButton workflowKey={item.key} block={block} />;
   }
+
+  const discountedPrice = promo
+    ? Math.max(0, Math.round((item.price * (100 - promo.discountPercent)) / 100))
+    : item.price;
 
   async function buy() {
     if (requireLogin && !session) {
@@ -47,7 +53,11 @@ export default function BuyButton({
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ kind: item.kind, key: item.key }),
+        body: JSON.stringify({
+          kind: item.kind,
+          key: item.key,
+          ...(promo ? { promoCode: promo.code } : {}),
+        }),
       });
       if (res.status === 401) {
         openLogin({ force: true });
@@ -58,6 +68,11 @@ export default function BuyButton({
         return;
       }
       const data = await res.json();
+      if (data.error === "invalid_promo") {
+        setPromo(null);
+        setMsg("Your promo code is no longer valid and was removed. Please try again.");
+        return;
+      }
       if (!data.orderId) {
         setMsg("Could not start checkout. Please try again.");
         return;
@@ -102,14 +117,21 @@ export default function BuyButton({
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-      <button
-        onClick={buy}
-        disabled={loading}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
-      >
-        {loading ? "Please wait..." : `Buy ${inr(item.price)}`}
-      </button>
-      {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
+      <div className={block ? "w-full" : "inline-block"}>
+        <button
+          onClick={buy}
+          disabled={loading}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
+        >
+          {loading
+            ? "Please wait..."
+            : `Buy ${inr(discountedPrice)}${promo ? ` (was ${inr(item.price)})` : ""}`}
+        </button>
+        <div className="mt-2">
+          <PromoCodeField onApplied={setPromo} />
+        </div>
+        {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
+      </div>
     </>
   );
 }

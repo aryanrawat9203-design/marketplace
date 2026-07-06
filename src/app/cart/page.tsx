@@ -6,6 +6,7 @@ import Script from "next/script";
 import { useCart } from "@/components/CartProvider";
 import { useAuth } from "@/components/AuthProvider";
 import TrustStrip from "@/components/TrustStrip";
+import PromoCodeField, { type AppliedPromo } from "@/components/PromoCodeField";
 import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
 
@@ -14,6 +15,13 @@ export default function CartPage() {
   const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
+
+  // Display-only estimate; /api/checkout re-validates the code and computes
+  // the actual charge amount from scratch.
+  const discountedTotal = promo
+    ? Math.max(0, Math.round((totalPrice * (100 - promo.discountPercent)) / 100))
+    : totalPrice;
 
   async function checkout() {
     if (!session) {
@@ -27,7 +35,10 @@ export default function CartPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ items: items.map((l) => ({ kind: l.kind, key: l.key })) }),
+        body: JSON.stringify({
+          items: items.map((l) => ({ kind: l.kind, key: l.key })),
+          ...(promo ? { promoCode: promo.code } : {}),
+        }),
       });
       if (res.status === 401) {
         openLogin({ force: true });
@@ -38,6 +49,11 @@ export default function CartPage() {
         return;
       }
       const data = await res.json();
+      if (data.error === "invalid_promo") {
+        setPromo(null);
+        setMsg("Your promo code is no longer valid and was removed. Please try again.");
+        return;
+      }
       if (data.error === "invalid_product" && typeof data.detail === "string") {
         // A line went stale (item renamed/removed) - drop it so the rest of
         // the cart can still check out instead of dead-ending.
@@ -163,17 +179,28 @@ export default function CartPage() {
                     <dd className="text-emerald-400">{inr(totalMrp - totalPrice)}</dd>
                   </div>
                 )}
+                {promo && (
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Promo ({promo.code})</dt>
+                    <dd className="text-emerald-400">-{inr(totalPrice - discountedTotal)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-zinc-800/70 pt-2 text-base">
                   <dt className="font-medium text-zinc-200">Total</dt>
-                  <dd className="font-semibold text-zinc-50">{inr(totalPrice)}</dd>
+                  <dd className="font-semibold text-zinc-50">{inr(discountedTotal)}</dd>
                 </div>
               </dl>
+
+              <div className="mt-4">
+                <PromoCodeField onApplied={setPromo} />
+              </div>
+
               <button
                 onClick={checkout}
                 disabled={loading}
                 className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
               >
-                {loading ? "Please wait..." : `Checkout ${inr(totalPrice)}`}
+                {loading ? "Please wait..." : `Checkout ${inr(discountedTotal)}`}
               </button>
               {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
               <TrustStrip />

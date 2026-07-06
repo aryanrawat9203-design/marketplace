@@ -4,13 +4,19 @@ import { createCartRecord, type CartItem } from "@/lib/cart-store";
 import { getUserFromRequest } from "@/lib/auth-server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { requireLoginToBuy } from "@/lib/require-login";
+import { validatePromoCode, applyDiscount } from "@/lib/promo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_CART_ITEMS = 100;
 
-type CheckoutBody = { kind?: Kind; key?: string; items?: Array<{ kind?: string; key?: string }> };
+type CheckoutBody = {
+  kind?: Kind;
+  key?: string;
+  items?: Array<{ kind?: string; key?: string }>;
+  promoCode?: string;
+};
 
 async function createRazorpayOrder(
   keyId: string,
@@ -36,6 +42,8 @@ async function createRazorpayOrder(
 
 // Creates a Razorpay order via the REST API (no SDK dependency needed).
 // Accepts either a single {kind, key} or a multi-item cart {items: [...]}.
+// An optional promoCode is validated server-side (never trusted from the
+// client) and folded into the charged amount before the order is created.
 export async function POST(req: NextRequest) {
   if (!rateLimit("checkout:" + clientIp(req), 10, 5 * 60 * 1000)) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -54,6 +62,19 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}) as CheckoutBody);
 
+  let promoNotes: Record<string, string> = {};
+  let promoCodeApplied: string | undefined;
+  let discountPercentApplied: number | undefined;
+  if (typeof body.promoCode === "string" && body.promoCode.trim()) {
+    const v = await validatePromoCode(body.promoCode, user?.email);
+    if (!v.ok) {
+      return NextResponse.json({ error: "invalid_promo", reason: v.reason }, { status: 400 });
+    }
+    promoCodeApplied = v.code;
+    discountPercentApplied = v.discountPercent;
+    promoNotes = { promo_code: v.code, discount_percent: String(v.discountPercent) };
+  }
+
   // Multi-item cart checkout: price every item server-side, persist the cart,
   // and reference it from the order notes.
   if (Array.isArray(body.items)) {
@@ -71,16 +92,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "empty_cart" }, { status: 400 });
     }
 
-    let totalPaise = 0;
+    let originalPaise = 0;
     for (const it of items) {
       const p = getPurchasable(it.kind, it.key);
       if (!p || p.free || p.price <= 0) {
         return NextResponse.json({ error: "invalid_product", detail: it.key }, { status: 400 });
       }
-      totalPaise += Math.round(p.price * 100);
+      originalPaise += Math.round(p.price * 100);
     }
+    const totalPaise = discountPercentApplied
+      ? applyDiscount(originalPaise, discountPercentApplied)
+      : originalPaise;
 
-    const cartId = await createCartRecord(items, totalPaise);
+    const cartId = await createCartRecord(
+      items,
+      totalPaise,
+      promoCodeApplied
+        ? {
+            code: promoCodeApplied,
+            discountPercent: discountPercentApplied!,
+            originalAmountPaise: originalPaise,
+          }
+        : undefined
+    );
     if (!cartId) {
       return NextResponse.json({ error: "cart_unavailable" }, { status: 503 });
     }
@@ -93,6 +127,8 @@ export async function POST(req: NextRequest) {
       // Recorded orders use the account email, not whatever the buyer types
       // into the Razorpay modal, so purchases reliably appear in My library.
       ...(user?.email ? { buyer_email: user.email } : {}),
+      ...promoNotes,
+      ...(promoCodeApplied ? { original_amount_paise: String(originalPaise) } : {}),
     });
     if (!ok) {
       return NextResponse.json({ error: "order_failed", detail: order }, { status: 500 });
@@ -117,18 +153,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_product" }, { status: 400 });
   }
 
-  const { ok, order } = await createRazorpayOrder(
-    keyId,
-    keySecret,
-    Math.round(item.price * 100),
-    `${item.kind}_${item.key}`,
-    {
-      kind: item.kind,
-      key: item.key,
-      name: item.name,
-      ...(user?.email ? { buyer_email: user.email } : {}),
-    }
-  );
+  const originalPaise = Math.round(item.price * 100);
+  const amountPaise = discountPercentApplied
+    ? applyDiscount(originalPaise, discountPercentApplied)
+    : originalPaise;
+
+  const { ok, order } = await createRazorpayOrder(keyId, keySecret, amountPaise, `${item.kind}_${item.key}`, {
+    kind: item.kind,
+    key: item.key,
+    name: item.name,
+    ...(user?.email ? { buyer_email: user.email } : {}),
+    ...promoNotes,
+    ...(promoCodeApplied ? { original_amount_paise: String(originalPaise) } : {}),
+  });
   if (!ok) {
     return NextResponse.json({ error: "order_failed", detail: order }, { status: 500 });
   }
