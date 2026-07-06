@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     description:
       "Original, ready-to-import n8n automation templates. Single, bundle, or full-library pricing with instant download.",
   },
+    verification: { google: "sEsWxsYSgOCTmAl2rIPmwySSX7sheLPDQ9Fdjp2d5jQ" },
 };
 
 export default function RootLayout({
