@@ -181,7 +181,7 @@ export default async function WorkflowDetail({
       {w.subtitle && <p className="mt-2 text-lg text-zinc-400">{w.subtitle}</p>}
 
       <div className="mt-10 grid gap-10 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-w-0">
           {w.longDescription && (
             <p className="whitespace-pre-line leading-relaxed text-zinc-300">{w.longDescription}</p>
           )}

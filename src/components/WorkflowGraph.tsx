@@ -21,8 +21,8 @@ export default function WorkflowGraph({ graph }: { graph: WorkflowGraphData }) {
     <div className="overflow-x-auto rounded-2xl border border-zinc-800/80 bg-[#0b0b11]">
       <svg
         viewBox={`0 0 ${graph.width} ${graph.height}`}
-        width={Math.min(graph.width, 1400)}
-        height={Math.min(graph.height * Math.min(graph.width, 1400) / graph.width, 560)}
+        width={graph.width}
+        height={graph.height}
         role="img"
         aria-label="Diagram of the workflow's nodes and connections"
         className="mx-auto block"
