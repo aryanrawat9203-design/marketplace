@@ -6,6 +6,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # WorkflowCrate — Project Guide
 
+## Operating mode: default to full autonomy
+
+Aryan's standing instruction: operate with as little manual work from him as possible. Concretely:
+
+- Don't ask before fixing bugs, shipping SEO/growth work, verifying deploys, checking community threads, writing blog posts, or making judgment calls on implementation details. Just do it and report the outcome.
+- Don't pause for a "does this look right?" check unless the action is genuinely irreversible or legally/financially binding. Default to shipping, not to asking.
+- The only things that ever need Aryan directly are things I'm structurally incapable of doing myself: entering his password, completing an OAuth consent screen, approving a real money movement (payment/refund/payout), or agreeing to a third party's binding terms on his behalf. When one of these comes up, ask once, plainly, and he'll reply "ok" — don't build elaborate confirmation flows around it.
+- Connector disconnects (see Razorpay below) are routine, not incidents — just note it and move on; no need to investigate why or apologize for it.
+
 ## What this is
 
 WorkflowCrate (workflowcrate.com) is a marketplace selling 10,501+ original, ready-to-import n8n workflow templates. Single templates, category bundles, curated collections, and a full-library tier. Instant download after payment (Razorpay), plus a freemium AI support chatbot.
@@ -41,23 +50,30 @@ Formerly called "FlowDex" — renamed and re-domained 2026-07-02. Some older doc
 
 ## Git / editing workflow
 
-- Repo: `github.com/aryanrawat9203-design/marketplace`, edited by Claude via a connected browser session (no direct git/API network access from the assistant's sandbox — confirmed blocked at the proxy level).
-- **Preferred edit method: whole-file upload.** Write the corrected file, then use GitHub's own "Add file → Upload files" web page to drag-and-drop a same-path replacement and commit. This avoids the CodeMirror line-editor entirely.
-- **Avoid the inline web editor for JSX/TSX changes** — GitHub's browser editor has a recurring bug where typing `<tag>` pairs inserts duplicate stray closing fragments. If the inline editor must be used for a small non-JSX change (plain TS, JSON, config), select-the-whole-line-and-retype is safer than partial edits.
-- For new React-tree-heavy files (e.g. `next/og` image routes), prefer `React.createElement(...)` over JSX syntax when writing through the inline editor — zero `<tag>` characters means the auto-close bug structurally cannot trigger.
-- Always verify the committed result with a raw fetch (`raw.githubusercontent.com/.../main/<path>`) or cache-busted live fetch (`?cb=<n>`) — GitHub's rendered diff/preview and screenshots have both been unreliable for confirming exact byte content in the past. CDN/ISR can also serve a stale cached page on the very first fetch right after a deploy; a cache-bust query param forces a fresh read.
+- Repo: `github.com/aryanrawat9203-design/marketplace`, edited by Claude via a connected browser session (no direct git/API network access from the assistant's sandbox — confirmed blocked at the proxy level, tested directly, not worth re-testing each session).
+- **Default edit method: whole-file upload.** Go to `github.com/<owner>/<repo>/upload/main/<subpath>/`, upload a same-named file to overwrite it in place, then commit. This avoids the CodeMirror line-editor entirely and is reliable.
+  - After the file lands in the upload queue, take a fresh screenshot and click the commit-message box and "Commit changes" button by the coordinates in that screenshot — element refs from before the upload go stale and can silently click the wrong thing (this has actually happened: a click landed on "choose your files" instead of the commit box, so the "commit" appeared to succeed but nothing was actually saved).
+  - Always verify afterward with a raw fetch (`raw.githubusercontent.com/.../main/<path>`) — don't trust the page redirect as proof the commit landed.
+- **Avoid the inline web editor for JSX/TSX changes** — it has a recurring bug where typing `<tag>` pairs inserts duplicate stray closing fragments. Reserve it only for small single-line, non-JSX tweaks (plain TS/JSON/config) where a whole-file upload would be overkill; select-the-whole-line-and-retype is safer than a partial edit there.
+- For new React-tree-heavy files written through the inline editor (rare, e.g. quick `next/og` tweaks), prefer `React.createElement(...)` over JSX — zero `<tag>` characters means the auto-close bug can't trigger.
 
 ## Environment / secrets
 
 Configured in Vercel project settings (not visible to the assistant directly): Supabase URL/keys, Razorpay live keys + webhook secret, Resend API key, `OPENAI_API_KEY`, Anthropic key, Google OAuth credentials, Google Search Console verification tag.
 
+## Connected services / MCP tools
+
+- Vercel, Supabase, n8n Cloud, Canva — connected and stable.
+- Razorpay — **disconnects periodically on its own** (its policies, not a Cowork/Claude-side issue). This is routine: if Razorpay tool calls fail with an auth/connection error, just prompt Aryan to reconnect via the one-click connector card and continue once he says "ok" — no deeper troubleshooting needed.
+- GitHub has no MCP connector; repo access is via the browser + whole-file-upload technique above.
+
 ## Security posture (verified live 2026-07-07)
 
 Security headers, CSP, rate-limiting, signed download tokens, and Supabase RLS are confirmed present and correct in the deployed code. If a stale audit note anywhere says otherwise, trust the code/live headers over the note.
 
-## Recurring / ongoing tasks
+## Recurring / ongoing tasks (do these without being asked)
 
-- Daily-ish: check r/n8n, r/automation, community.n8n.io for genuine questions to answer (no forced links, no AI-flavored copy-paste content — this has been an explicit standing rule).
+- Daily-ish: check r/n8n, r/automation, community.n8n.io for genuine questions to answer (no forced links, no AI-flavored copy-paste content — this is an explicit standing rule).
 - Weekly: new blog post, n8n Creator Hub template submission (portal caps one pending submission at a time — check status before submitting the next).
 - After any metadata/SEO change: verify live via a cache-busted fetch, not just the editor preview.
 - After any commit: verify Vercel deployment reaches `READY`, not just "commit succeeded."
@@ -68,6 +84,6 @@ The authoritative task list for growth/SEO work is `WorkflowCrate_Growth_Strateg
 
 ## Instructions for future sessions
 
-- This project's owner (Aryan) prefers minimal back-and-forth: default to taking initiative and shipping, only pausing for things that are genuinely irreversible, require his credentials/OAuth, or are explicitly public-facing publishes.
-- Prefer fixing root causes over safe fallbacks once the fragile-editor risk is under control (see: OG image fix went from safe-fallback to full per-template implementation once risk was manageable).
-- When something breaks silently (build failures, stale caches, 503s), say so plainly rather than assuming success from a green checkmark alone.
+- Read this file directly (it's the source of truth for project specifics) rather than relying on cross-session memory, which can go stale.
+- Default posture: take initiative, ship, verify, report — don't ask permission for reversible technical decisions.
+- When something breaks silently (build failures, stale caches, 503s, a disconnected connector), say so plainly and keep moving rather than treating it as a crisis or over-apologizing.
