@@ -8,6 +8,7 @@ import { buildKnowledgeBaseSummary } from "@/lib/chatbot/knowledge-base";
 import { getAIProvider, type ChatMessage } from "@/lib/chatbot/ai-provider";
 import { getChatUsageStatus, startChatConversation, type ChatUsageStatus } from "@/lib/chatbot/usage";
 import { signConversationToken, verifyConversationToken } from "@/lib/chatbot/conversation-token";
+import { hasFreeAccess } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,12 +105,12 @@ export async function POST(req: NextRequest) {
   let usageStatus: ChatUsageStatus | null;
 
   if (existingToken) {
-    if (existingToken.n >= limits.maxMessagesPerConversation) {
+    if (!hasFreeAccess(user.email) && existingToken.n >= limits.maxMessagesPerConversation) {
       return NextResponse.json({ error: "conversation_message_limit" }, { status: 409 });
     }
     conversationId = existingToken.cid;
     messageCount = existingToken.n + 1;
-    usageStatus = await getChatUsageStatus(user.id);
+    usageStatus = await getChatUsageStatus(user.id, user.email);
   } else {
     // Genuinely new conversation - blunt throwaway-account gaming with a
     // per-IP cap on top of the per-user quota enforced below.
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
 
-    const result = await startChatConversation(user.id);
+    const result = await startChatConversation(user.id, user.email);
     if (!result) {
       return NextResponse.json({ error: "usage_unavailable" }, { status: 503 });
     }

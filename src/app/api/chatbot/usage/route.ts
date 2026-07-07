@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: "auth_required" }, { status: 401 });
 
-  const status = await getChatUsageStatus(user.id);
+  const status = await getChatUsageStatus(user.id, user.email);
   if (!status) return NextResponse.json({ error: "usage_unavailable" }, { status: 503 });
 
   return NextResponse.json({

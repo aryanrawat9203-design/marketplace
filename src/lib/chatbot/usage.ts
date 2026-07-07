@@ -6,6 +6,7 @@
 // session, never from anything the client claims.
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasFreeAccess } from "@/lib/entitlements";
 import { CHATBOT_CONFIG } from "./config";
 
 export type ChatUsageStatus = {
@@ -37,8 +38,23 @@ function toStatus(row: StatusRow): ChatUsageStatus {
   };
 }
 
+// Full-access accounts always read as an active subscriber - never hits the
+// DB, never consumes quota, no expiry.
+const FREE_ACCESS_STATUS: ChatUsageStatus = {
+  subscriptionActive: true,
+  subscriptionExpiresAt: null,
+  conversationCount: 0,
+  bonusConversations: 0,
+  freeRemaining: 0,
+  totalRemaining: 0,
+};
+
 /** Read-only usage snapshot - safe to call as often as the UI wants, never consumes quota. */
-export async function getChatUsageStatus(userId: string): Promise<ChatUsageStatus | null> {
+export async function getChatUsageStatus(
+  userId: string,
+  email?: string | null
+): Promise<ChatUsageStatus | null> {
+  if (hasFreeAccess(email)) return FREE_ACCESS_STATUS;
   const admin = createAdminClient();
   if (!admin) return null;
   const { data, error } = await admin
@@ -62,7 +78,13 @@ export type StartConversationResult =
  * callers decide "new" via a server-verified conversation token, not
  * anything the client can toggle (see conversation-token.ts).
  */
-export async function startChatConversation(userId: string): Promise<StartConversationResult | null> {
+export async function startChatConversation(
+  userId: string,
+  email?: string | null
+): Promise<StartConversationResult | null> {
+  if (hasFreeAccess(email)) {
+    return { allowed: true, reason: "subscription", status: FREE_ACCESS_STATUS };
+  }
   const admin = createAdminClient();
   if (!admin) return null;
   const { data, error } = await admin

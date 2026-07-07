@@ -7,6 +7,7 @@ import "@/lib/razorpay";
 import { useAuth } from "./AuthProvider";
 import FreeDownloadButton from "./FreeDownloadButton";
 import PromoCodeField, { type AppliedPromo } from "./PromoCodeField";
+import { hasFreeAccess } from "@/lib/entitlements";
 
 export type BuyItem = {
   kind: "workflow" | "bundle";
@@ -30,6 +31,7 @@ export default function BuyButton({
   const [msg, setMsg] = useState<string | null>(null);
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
   const w = block ? "w-full" : "";
+  const freeAccess = hasFreeAccess(session?.user?.email);
 
   if (item.free) {
     return <FreeDownloadButton workflowKey={item.key} block={block} />;
@@ -68,6 +70,10 @@ export default function BuyButton({
         return;
       }
       const data = await res.json();
+      if (data.freeAccess && data.downloadUrl) {
+        window.location.href = data.downloadUrl;
+        return;
+      }
       if (data.error === "invalid_promo") {
         setPromo(null);
         setMsg("Your promo code is no longer valid and was removed. Please try again.");
@@ -125,11 +131,15 @@ export default function BuyButton({
         >
           {loading
             ? "Please wait..."
-            : `Buy ${inr(discountedPrice)}${promo ? ` (was ${inr(item.price)})` : ""}`}
+            : freeAccess
+              ? "Download (Full Access)"
+              : `Buy ${inr(discountedPrice)}${promo ? ` (was ${inr(item.price)})` : ""}`}
         </button>
-        <div className="mt-2">
-          <PromoCodeField onApplied={setPromo} />
-        </div>
+        {!freeAccess && (
+          <div className="mt-2">
+            <PromoCodeField onApplied={setPromo} />
+          </div>
+        )}
         {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
       </div>
     </>

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPurchasable, type Kind } from "@/lib/commerce";
+import { getPurchasable, signDownload, type Kind } from "@/lib/commerce";
 import { createCartRecord, type CartItem } from "@/lib/cart-store";
 import { getUserFromRequest } from "@/lib/auth-server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { requireLoginToBuy } from "@/lib/require-login";
 import { validatePromoCode, applyDiscount } from "@/lib/promo";
+import { hasFreeAccess } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,13 +55,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "auth_required" }, { status: 401 });
   }
 
+  const body = await req.json().catch(() => ({}) as CheckoutBody);
+
+  // Full-access accounts never touch Razorpay: mint a download token
+  // straight away, same mechanism a paid purchase ends up with, just
+  // without spending anything or requiring keys to be configured.
+  if (hasFreeAccess(user?.email)) {
+    if (Array.isArray(body.items)) {
+      const seen = new Set<string>();
+      const items: CartItem[] = [];
+      for (const raw of body.items.slice(0, MAX_CART_ITEMS)) {
+        if (raw?.kind !== "workflow" && raw?.kind !== "bundle") continue;
+        if (!raw.key || typeof raw.key !== "string") continue;
+        const id = `${raw.kind}:${raw.key}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        if (!getPurchasable(raw.kind, raw.key)) continue;
+        items.push({ kind: raw.kind, key: raw.key });
+      }
+      if (items.length === 0) {
+        return NextResponse.json({ error: "empty_cart" }, { status: 400 });
+      }
+      const cartId = await createCartRecord(items, 0);
+      if (!cartId) {
+        return NextResponse.json({ error: "cart_unavailable" }, { status: 503 });
+      }
+      const token = signDownload("cart", cartId);
+      return NextResponse.json({
+        freeAccess: true,
+        downloadUrl: `/api/download?token=${encodeURIComponent(token)}`,
+        name: `${items.length} template${items.length > 1 ? "s" : ""} (cart)`,
+      });
+    }
+
+    const { kind, key } = body;
+    if (!kind || !key) {
+      return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+    }
+    const item = getPurchasable(kind, key);
+    if (!item) {
+      return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+    }
+    const token = signDownload(item.kind, item.key);
+    return NextResponse.json({
+      freeAccess: true,
+      downloadUrl: `/api/download?token=${encodeURIComponent(token)}`,
+      name: item.name,
+    });
+  }
+
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) {
     return NextResponse.json({ error: "not_configured" }, { status: 503 });
   }
-
-  const body = await req.json().catch(() => ({}) as CheckoutBody);
 
   let promoNotes: Record<string, string> = {};
   let promoCodeApplied: string | undefined;
