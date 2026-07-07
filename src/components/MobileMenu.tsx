@@ -3,14 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { usePathname } from "next/navigation";
 import { SearchBar } from "./Controls";
+import { isActiveNavLink, navLinkClassName } from "./NavLinks";
 
 export default function MobileMenu({
   links,
 }: {
-  links: { href: string; label: string; highlight?: boolean }[];
+  links: { href: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="md:hidden">
@@ -45,11 +48,8 @@ export default function MobileMenu({
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className={
-                  l.highlight
-                    ? "rounded-lg bg-violet-500/15 px-3 py-2 font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/25 hover:text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-                    : "rounded-lg px-3 py-2 hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-                }
+                aria-current={isActiveNavLink(pathname, l.href) ? "page" : undefined}
+                className={navLinkClassName(pathname, l.href)}
               >
                 {l.label}
               </Link>

@@ -4,13 +4,14 @@ import { SearchBar } from "./Controls";
 import AuthStatus from "./AuthStatus";
 import CartButton from "./CartButton";
 import MobileMenu from "./MobileMenu";
+import NavLinks from "./NavLinks";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
   { href: "/collections", label: "Collections" },
   { href: "/integrations", label: "Integrations" },
   { href: "/bundles", label: "Bundles" },
-  { href: "/practice-bundles", label: "Practice", highlight: true },
+  { href: "/practice-bundles", label: "Practice" },
   { href: "/bundles#pricing", label: "Pricing" },
 ];
 
@@ -33,19 +34,7 @@ export default function Header() {
           </span>
         </Link>
         <nav className="ml-2 hidden items-center gap-1 text-sm text-zinc-400 md:flex">
-          {navLinks.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={
-                l.highlight
-                  ? "rounded-lg bg-violet-500/15 px-3 py-2 font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/25 hover:text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-                  : "rounded-lg px-3 py-2 hover:bg-zinc-800/60 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-              }
-            >
-              {l.label}
-            </Link>
-          ))}
+          <NavLinks links={navLinks} />
         </nav>
         <div className="ml-auto hidden w-full max-w-xs md:block">
           <Suspense fallback={<div className="h-10" />}>
