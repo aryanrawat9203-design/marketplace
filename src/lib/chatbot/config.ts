@@ -12,6 +12,14 @@ export const CHATBOT_CONFIG = {
   welcomeMessage:
     "Hi! I'm the WorkflowCrate assistant. Ask me about templates, pricing, or how to get started - I'm happy to help.",
 
+  // Shown as a soft heads-up shortly before a conversation hits
+  // limits.maxMessagesPerConversation, and as the final message once it
+  // does (paired with a forced "start a new chat" action in the widget).
+  conversationLimitWarningMessage:
+    "Heads up - this conversation is getting long! Starting a fresh chat soon will help me stay quick and accurate for you.",
+  conversationLimitReachedMessage:
+    "We've reached a good stopping point for this conversation, so I can keep replies fast and accurate. Please start a new chat to keep going - I'll be right here and happy to help!",
+
   suggestedQuestions: [
     "How do I import a template into n8n?",
     "What's the difference between a bundle and a single template?",
@@ -54,6 +62,9 @@ export const CHATBOT_CONFIG = {
     freeConversationsPerPeriod: 5,
     periodDays: 30,
     maxMessagesPerConversation: 15,
+    // How many messages before the hard cutoff to start showing the soft
+    // "this is getting long" heads-up.
+    conversationWarningBuffer: 2,
     // Blunts throwaway-account gaming: caps how many NEW conversations a
     // single IP can start per day, on top of the per-user quota.
     newConversationsPerIpPerDay: 15,

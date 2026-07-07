@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CHATBOT_CONFIG } from "@/lib/chatbot/config";
+import { hasFreeAccess } from "@/lib/entitlements";
 import { useAuth } from "@/components/AuthProvider";
 import UpgradeModal from "./UpgradeModal";
 
@@ -77,6 +78,28 @@ function savePersisted(messages: Message[], token: string | null) {
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function base64UrlDecode(str: string): string {
+  const padded = str.replace(/-/g, "+").replace(/_/g, "/").padEnd(str.length + ((4 - (str.length % 4)) % 4), "=");
+  return atob(padded);
+}
+
+// The conversation token is HMAC-signed, not encrypted - its payload
+// (including the running message count) is readable client-side without a
+// secret. Only used here for a cosmetic "conversation is getting long" hint;
+// the server independently re-verifies and enforces the real limit, so a
+// tampered/garbled read here can't bypass anything, just misdraw the hint.
+function decodeConversationMessageCount(token: string | null): number {
+  if (!token) return 0;
+  try {
+    const [data] = token.split(".");
+    if (!data) return 0;
+    const parsed = JSON.parse(base64UrlDecode(data));
+    return typeof parsed?.n === "number" ? parsed.n : 0;
+  } catch {
+    return 0;
+  }
 }
 
 // Kept outside the component so timestamping a message isn't read as an
@@ -161,6 +184,18 @@ export default function ChatWidget() {
 
   if (!CHATBOT_CONFIG.enabled) return null;
 
+  // Free-access accounts (see src/lib/entitlements.ts) skip the
+  // per-conversation cap server-side too, so never show them these hints.
+  const unlimitedConversation = hasFreeAccess(user?.email);
+  const conversationMessageCount = decodeConversationMessageCount(conversationToken);
+  const messagesRemaining = CHATBOT_CONFIG.limits.maxMessagesPerConversation - conversationMessageCount;
+  const conversationAtLimit = !unlimitedConversation && messagesRemaining <= 0 && messages.length > 0;
+  const conversationNearLimit =
+    !unlimitedConversation &&
+    !conversationAtLimit &&
+    messagesRemaining <= CHATBOT_CONFIG.limits.conversationWarningBuffer &&
+    messages.length > 0;
+
   function openWidget() {
     setOpen(true);
     setEverOpened(true);
@@ -199,6 +234,11 @@ export default function ChatWidget() {
 
     if (!user || !session) {
       openLogin({ force: true });
+      return;
+    }
+
+    if (conversationAtLimit) {
+      setLimitNotice(CHATBOT_CONFIG.conversationLimitReachedMessage);
       return;
     }
 
@@ -254,7 +294,8 @@ export default function ChatWidget() {
         return;
       }
       if (res.status === 409) {
-        setLimitNotice("This conversation has reached its message limit - start a new chat to continue.");
+        setMessages(preSendMessages);
+        setLimitNotice(CHATBOT_CONFIG.conversationLimitReachedMessage);
         return;
       }
 
@@ -405,6 +446,12 @@ export default function ChatWidget() {
           </div>
         )}
 
+        {conversationNearLimit && !conversationAtLimit && (
+          <div className="border-b border-zinc-800 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-300">
+            {CHATBOT_CONFIG.conversationLimitWarningMessage}
+          </div>
+        )}
+
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {everOpened && messages.length === 0 && (
             <div className="space-y-3">
@@ -479,7 +526,27 @@ export default function ChatWidget() {
           )}
         </div>
 
-        {user ? (
+        {!user ? (
+          <div className="border-t border-zinc-800 p-4 text-center">
+            <p className="text-sm text-zinc-400">Sign in to chat with the assistant.</p>
+            <button
+              onClick={() => openLogin({ force: true })}
+              className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
+            >
+              Sign in
+            </button>
+          </div>
+        ) : conversationAtLimit ? (
+          <div className="border-t border-zinc-800 p-4 text-center">
+            <p className="text-sm text-zinc-400">{CHATBOT_CONFIG.conversationLimitReachedMessage}</p>
+            <button
+              onClick={newChat}
+              className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
+            >
+              Start new chat
+            </button>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-zinc-800 p-3">
             <input
               value={input}
@@ -500,16 +567,6 @@ export default function ChatWidget() {
               </svg>
             </button>
           </form>
-        ) : (
-          <div className="border-t border-zinc-800 p-4 text-center">
-            <p className="text-sm text-zinc-400">Sign in to chat with the assistant.</p>
-            <button
-              onClick={() => openLogin({ force: true })}
-              className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
-            >
-              Sign in
-            </button>
-          </div>
         )}
       </div>
 
