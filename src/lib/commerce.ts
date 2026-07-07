@@ -2,8 +2,9 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { getByRoute } from "./catalog";
-import { getBundle, bundleMembersDetail, type Bundle } from "./bundles";
+import { getBundle, bundleMembersDetail, bandFor, type Bundle } from "./bundles";
 import { createZip, type ZipEntry } from "./zip";
+import type { DetailItem } from "./catalog";
 
 export type Kind = "workflow" | "bundle";
 
@@ -159,16 +160,33 @@ export function workflowGraphData(route: string): WorkflowGraphData | null {
   }
 }
 
+// Practice bundles are an explicit curriculum (simple -> complex), but the
+// catalog's own file paths nest each workflow under Category/Subcategory/
+// Difficulty folders. File managers list those folders alphabetically on
+// extract, which hides the intended learning order. So for practice bundles
+// we flatten the archive and prefix every filename with its curriculum
+// index + skill band, which keeps extraction order == curriculum order.
+function practiceEntryName(index: number, total: number, w: DetailItem): string {
+  const pad = String(total).length;
+  const num = String(index + 1).padStart(Math.max(pad, 2), "0");
+  const band = bandFor(w);
+  const ext = path.extname(w.workflowFile) || ".json";
+  const safeTitle = w.title.replace(/[\\/:*?"<>|]/g, "-").trim();
+  return `${num} - ${band} - ${safeTitle}${ext}`;
+}
+
 export function bundleDownload(slug: string): { filename: string; body: Buffer } | null {
   const b = getBundle(slug);
   if (!b) return null;
   const members = bundleMembersDetail(b);
   const entries: ZipEntry[] = [];
-  for (const w of members) {
-    if (!w.workflowFile) continue;
+  members.forEach((w, i) => {
+    if (!w.workflowFile) return;
     const fp = path.join(PRODUCT_ROOT, w.workflowFile);
-    if (fs.existsSync(fp)) entries.push({ name: w.workflowFile, data: fs.readFileSync(fp) });
-  }
+    if (!fs.existsSync(fp)) return;
+    const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
+    entries.push({ name, data: fs.readFileSync(fp) });
+  });
   if (entries.length === 0) return null;
   return { filename: b.slug + ".zip", body: createZip(entries) };
 }
@@ -194,13 +212,15 @@ export function cartZip(
     } else {
       const b = getBundle(item.key);
       if (!b) continue;
-      for (const w of bundleMembersDetail(b)) {
-        if (!w.workflowFile || entries.has(w.workflowFile)) continue;
+      const members = bundleMembersDetail(b);
+      members.forEach((w, i) => {
+        if (!w.workflowFile || entries.has(w.workflowFile)) return;
         const fp = path.join(PRODUCT_ROOT, w.workflowFile);
         if (fs.existsSync(fp)) {
-          entries.set(w.workflowFile, { name: w.workflowFile, data: fs.readFileSync(fp) });
+          const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
+          entries.set(w.workflowFile, { name, data: fs.readFileSync(fp) });
         }
-      }
+      });
     }
   }
 
