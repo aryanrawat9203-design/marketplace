@@ -42,6 +42,23 @@ export function difficultyTone(d?: string | null) {
   }
 }
 
+export function bandTone(b?: string | null) {
+  switch (b) {
+    case "Foundation":
+      return "emerald";
+    case "Core":
+      return "sky";
+    case "Advanced":
+      return "amber";
+    case "Production":
+      return "violet";
+    case "Architect":
+      return "rose";
+    default:
+      return "zinc";
+  }
+}
+
 export function tierTone(t?: string | null) {
   switch (t) {
     case "Free":

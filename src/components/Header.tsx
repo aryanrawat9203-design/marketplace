@@ -10,6 +10,7 @@ const navLinks = [
   { href: "/collections", label: "Collections" },
   { href: "/integrations", label: "Integrations" },
   { href: "/bundles", label: "Bundles" },
+  { href: "/practice-bundles", label: "Learn" },
   { href: "/bundles#pricing", label: "Pricing" },
 ];
 

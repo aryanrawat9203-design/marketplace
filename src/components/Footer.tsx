@@ -35,6 +35,7 @@ export default function Footer() {
             <li><Link href="/collections" className="hover:text-zinc-100">Curated collections</Link></li>
             <li><Link href="/integrations" className="hover:text-zinc-100">By integration</Link></li>
             <li><Link href="/bundles" className="hover:text-zinc-100">Bundles &amp; pricing</Link></li>
+            <li><Link href="/practice-bundles" className="hover:text-zinc-100">Practice bundles</Link></li>
             <li><Link href="/workflows?sort=demand" className="hover:text-zinc-100">Most popular</Link></li>
             <li><Link href="/custom" className="hover:text-zinc-100">Custom workflows</Link></li>
             <li><Link href="/guides" className="hover:text-zinc-100">Guides</Link></li>

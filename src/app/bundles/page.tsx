@@ -34,6 +34,23 @@ export default function BundlesPage() {
         </p>
       </div>
 
+      <Link
+        href="/practice-bundles"
+        className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-5 hover:border-violet-500/60 sm:flex-row sm:items-center"
+      >
+        <div>
+          <span className="rounded-md bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-300">
+            Learning n8n?
+          </span>
+          <p className="mt-2 text-sm text-zinc-300">
+            Looking to practice, not deploy? See our structured{" "}
+            <span className="font-medium text-zinc-100">practice bundles</span> &mdash; a real curriculum
+            from your first automation to enterprise-grade architecture.
+          </p>
+        </div>
+        <span className="shrink-0 text-sm font-medium text-violet-300">View practice bundles &rarr;</span>
+      </Link>
+
       {full && life && (
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           {[full, life].map((b) => (

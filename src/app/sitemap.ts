@@ -15,6 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/workflows",
     "/bundles",
+    "/practice-bundles",
     "/collections",
     "/integrations",
     "/custom",
@@ -35,7 +36,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   const bundles: MetadataRoute.Sitemap = getBundles().map((b) => ({
-    url: `${base}/bundles/${b.slug}`,
+    url: `${base}/${b.type === "practice" ? "practice-bundles" : "bundles"}/${b.slug}`,
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.8,

@@ -55,6 +55,7 @@ export type DetailItem = {
   free: boolean;
   workflowFile: string;
   owned?: boolean;
+  totalNodes: number;
 };
 
 export type Taxo = { name: string; count: number };

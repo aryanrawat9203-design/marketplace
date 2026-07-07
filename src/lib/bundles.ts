@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { getIndex, getCatalog, type IndexItem, type DetailItem } from "./catalog";
 
-export type BundleType = "full" | "lifetime" | "category" | "subcategory";
+export type BundleType = "full" | "lifetime" | "category" | "subcategory" | "practice";
 
 export type Bundle = {
   slug: string;
@@ -17,6 +17,13 @@ export type Bundle = {
   gradient: string;
   category?: string;
   subcategory?: string;
+  // "practice" bundles only: explicit curriculum order (simple -> complex),
+  // not derivable from a category/subcategory filter.
+  items?: string[];
+  audience?: string;
+  skillLevel?: string;
+  learningOutcome?: string;
+  sellingPosition?: string;
 };
 
 const g = globalThis as unknown as {
@@ -72,14 +79,36 @@ export function lifetime(): Bundle | undefined {
   return getBundles().find((b) => b.type === "lifetime");
 }
 
+export function practiceBundles(): Bundle[] {
+  return bundlesByType("practice");
+}
+
+export type SkillBand = "Foundation" | "Core" | "Advanced" | "Production" | "Architect";
+
+// Mirrors the real tier/complexity bands from the catalog upgrade, so a
+// bundle's stated progression always matches the actual template architecture.
+export function bandFor(item: { tier: string | null; totalNodes: number }): SkillBand {
+  if (item.tier === "Starter" || item.tier === "Free") return "Foundation";
+  if (item.tier === "Professional") return item.totalNodes <= 14 ? "Core" : "Advanced";
+  if (item.tier === "Premium") return "Production";
+  return "Architect";
+}
+
+function byCurriculumOrder<T extends { id: string }>(items: string[], all: T[]): T[] {
+  const order = new Map(items.map((id, i) => [id, i]));
+  return all.filter((w) => order.has(w.id)).sort((a, z) => order.get(a.id)! - order.get(z.id)!);
+}
+
 export function bundleMembersIndex(b: Bundle): IndexItem[] {
   const idx = getIndex();
+  if (b.type === "practice") return byCurriculumOrder(b.items ?? [], idx);
   if (b.type === "full" || b.type === "lifetime") return idx;
   if (b.type === "category") return idx.filter((w) => w.category === b.category);
   return idx.filter((w) => w.category === b.category && w.subcategory === b.subcategory);
 }
 
 export function bundlePreview(b: Bundle, n: number): IndexItem[] {
+  if (b.type === "practice") return bundleMembersIndex(b).slice(0, n);
   return [...bundleMembersIndex(b)]
     .sort((a, z) => (z.demand ?? 0) - (a.demand ?? 0))
     .slice(0, n);
@@ -87,6 +116,7 @@ export function bundlePreview(b: Bundle, n: number): IndexItem[] {
 
 export function bundleMembersDetail(b: Bundle): DetailItem[] {
   const all = getCatalog();
+  if (b.type === "practice") return byCurriculumOrder(b.items ?? [], all);
   if (b.type === "full" || b.type === "lifetime") return all;
   if (b.type === "category") return all.filter((w) => w.category === b.category);
   return all.filter((w) => w.category === b.category && w.subcategory === b.subcategory);

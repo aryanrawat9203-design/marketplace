@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getBundle, getBundles, bundlePreview } from "@/lib/bundles";
 import WorkflowCard from "@/components/WorkflowCard";
@@ -13,7 +13,9 @@ import { breadcrumbJsonLd } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
 
 export function generateStaticParams() {
-  return getBundles().map((b) => ({ slug: b.slug }));
+  return getBundles()
+    .filter((b) => b.type !== "practice")
+    .map((b) => ({ slug: b.slug }));
 }
 
 export async function generateMetadata({
@@ -36,6 +38,7 @@ export default async function BundleDetail({
   const { slug } = await params;
   const b = getBundle(slug);
   if (!b) notFound();
+  if (b.type === "practice") redirect(`/practice-bundles/${b.slug}`);
   const preview = bundlePreview(b, 8);
 
   const browseHref =
