@@ -16,6 +16,8 @@ export type Screenshots = {
 
 export type ScreenshotSlot = keyof Screenshots;
 
+export const SCREENSHOT_SLOTS: ScreenshotSlot[] = ["overview", "nodeDetail", "capabilities", "cardThumb"];
+
 export const SCREENSHOT_BUCKET = "template-screenshots";
 const CACHE_TAG = "template-screenshots";
 
@@ -105,26 +107,47 @@ export async function upsertScreenshots(
   }
 }
 
-/** Admin-only: upload one image slot to storage and record its public URL. */
-export async function uploadScreenshot(
+function extFor(filename: string): string {
+  return (filename.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+}
+
+/**
+ * Admin-only: mint a signed upload URL so the browser can PUT the image file
+ * straight to Supabase Storage. Deliberately NOT proxied through our own API
+ * route - Vercel serverless functions cap request bodies around ~4.5MB, and a
+ * full-resolution screenshot blows past that as multipart form data. The
+ * signed URL/token pair is itself the authorization, so the client's plain
+ * anon-key storage call can use it without needing an insert RLS policy.
+ */
+export async function createUploadTicket(
   route: string,
   slot: ScreenshotSlot,
-  file: File
+  filename: string
+): Promise<{ signedUrl: string; token: string; path: string; bucket: string } | { error: string }> {
+  const admin = createAdminClient();
+  if (!admin) return { error: "unavailable" };
+  const path = `${route}/${slot}.${extFor(filename)}`;
+  try {
+    const { data, error } = await admin.storage
+      .from(SCREENSHOT_BUCKET)
+      .createSignedUploadUrl(path, { upsert: true });
+    if (error || !data) return { error: error?.message ?? "sign_failed" };
+    return { signedUrl: data.signedUrl, token: data.token, path: data.path, bucket: SCREENSHOT_BUCKET };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "sign_failed" };
+  }
+}
+
+/** Admin-only: after the browser's direct upload succeeds, record its public URL. */
+export async function recordScreenshot(
+  route: string,
+  slot: ScreenshotSlot,
+  path: string
 ): Promise<{ url: string } | { error: string }> {
   const admin = createAdminClient();
   if (!admin) return { error: "unavailable" };
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${route}/${slot}.${ext}`;
-  try {
-    const { error: uploadError } = await admin.storage
-      .from(SCREENSHOT_BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
-    if (uploadError) return { error: uploadError.message };
-    const { data } = admin.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
-    const result = await upsertScreenshots(route, { [slot]: data.publicUrl } as Partial<Screenshots>);
-    if (result === "error") return { error: "db_write_failed" };
-    return { url: data.publicUrl };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "upload_failed" };
-  }
+  const { data } = admin.storage.from(SCREENSHOT_BUCKET).getPublicUrl(path);
+  const result = await upsertScreenshots(route, { [slot]: data.publicUrl } as Partial<Screenshots>);
+  if (result === "error") return { error: "db_write_failed" };
+  return { url: data.publicUrl };
 }

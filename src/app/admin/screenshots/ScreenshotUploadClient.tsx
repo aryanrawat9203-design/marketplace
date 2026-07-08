@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type SearchResult = { route: string; title: string; category: string | null };
 type Screenshots = {
@@ -68,18 +69,46 @@ export default function ScreenshotUploadClient() {
     setBusySlot(slot);
     setError(null);
     try {
-      const form = new FormData();
-      form.set("route", selected.route);
-      form.set("slot", slot);
-      form.set("file", file);
-      const res = await fetch("/api/admin/screenshots", { method: "POST", body: form });
-      if (res.status === 401) {
+      // Signed-URL flow: the file itself never passes through our own API
+      // route (Vercel serverless functions cap request bodies around
+      // ~4.5MB, and a full-resolution screenshot blows past that) - the
+      // browser PUTs straight to Supabase Storage instead.
+      const signRes = await fetch("/api/admin/screenshots/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ route: selected.route, slot, filename: file.name }),
+      });
+      if (signRes.status === 401) {
         router.push("/admin/login?next=/admin/screenshots");
         return;
       }
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        setError(`Upload failed: ${data.error ?? res.status}`);
+      const ticket = await signRes.json();
+      if (!signRes.ok || !ticket.signedUrl) {
+        setError(`Could not start upload: ${ticket.error ?? signRes.status}`);
+        return;
+      }
+
+      const supabase = createClient();
+      if (!supabase) {
+        setError("Supabase isn't configured in this environment.");
+        return;
+      }
+      const { error: uploadError } = await supabase.storage
+        .from(ticket.bucket)
+        .uploadToSignedUrl(ticket.path, ticket.token, file);
+      if (uploadError) {
+        setError(`Upload failed: ${uploadError.message}`);
+        return;
+      }
+
+      const recordRes = await fetch("/api/admin/screenshots/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ route: selected.route, slot, path: ticket.path }),
+      });
+      const data = await recordRes.json();
+      if (!recordRes.ok || !data.url) {
+        setError(`Upload saved but failed to record: ${data.error ?? recordRes.status}`);
         return;
       }
       setScreenshots((prev) => ({ ...prev, [slot]: data.url }));
