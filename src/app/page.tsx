@@ -1,8 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
+import { getByRoute, getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
 import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import { getCollections, collectionStats } from "@/lib/collections";
+import { getShowcaseScreenshots } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
 import { SearchBar } from "@/components/Controls";
 import PriceTag from "@/components/PriceTag";
@@ -10,7 +12,7 @@ import { RecentlyViewedStrip } from "@/components/RecentlyViewed";
 import { inr } from "@/lib/pricing";
 import { integrationSlug } from "@/lib/slug";
 
-export default function Home() {
+export default async function Home() {
   const taxo = getTaxonomy();
   const trending = topByDemand(8);
   const samples = freeSamples(3);
@@ -18,6 +20,33 @@ export default function Home() {
   const life = lifetime();
   const topCats = categoryBundles().slice(0, 6);
   const fmt = (n: number) => n.toLocaleString("en-IN");
+
+  const showcase = await getShowcaseScreenshots();
+  const showcaseItem = showcase ? getByRoute(showcase.route) : undefined;
+  const showcaseCards = showcase
+    ? [
+        {
+          src: showcase.screenshots.overview,
+          title: "Full workflow overview",
+          desc: "Every node laid out and labeled - see the entire automation before you buy, not just a title and a price.",
+        },
+        {
+          src: showcase.screenshots.nodeDetail,
+          title: "Key logic, explained",
+          desc: "Zoom into the node that matters most. Each one documents exactly what it checks and why.",
+        },
+        {
+          src: showcase.screenshots.capabilities,
+          title: "Built in, not bolted on",
+          desc: "Retries, error handling, data-quality checks, and a customization guide ship with every template.",
+        },
+        {
+          src: showcase.screenshots.cardThumb,
+          title: "Plain-English breakdown",
+          desc: "What it does, why it exists, and how to use it - spelled out before you ever open n8n.",
+        },
+      ]
+    : [];
 
   const steps: [string, string, string][] = [
     ["1", "Find the right one", "Search 10,500+ original templates by industry, tool, or use case."],
@@ -61,6 +90,42 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {showcase && showcaseItem && (
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-zinc-100">See exactly what you get</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                A real template page, not a stock photo &mdash; this is &ldquo;{showcaseItem.title}&rdquo;.
+              </p>
+            </div>
+            <Link href={`/workflows/${showcase.route}`} className="text-sm text-violet-400 hover:text-violet-300">
+              View this template &rarr;
+            </Link>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {showcaseCards.map((c) => (
+              <div key={c.title} className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40">
+                <div className="flex h-56 items-center justify-center bg-zinc-950/60 sm:h-64">
+                  <Image
+                    src={c.src}
+                    alt={c.title}
+                    width={640}
+                    height={360}
+                    className="h-full w-full object-contain"
+                    unoptimized
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-medium text-zinc-100">{c.title}</h3>
+                  <p className="mt-1 text-sm text-zinc-400">{c.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {samples.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

@@ -78,6 +78,26 @@ export async function getScreenshotsForRoute(route: string): Promise<Screenshots
   return map[route];
 }
 
+export type CompleteScreenshots = Required<Screenshots>;
+
+/**
+ * For the homepage "see what you get" showcase: the first template (in map
+ * insertion order) that has all four slots filled in. Returns undefined
+ * until at least one template has a full set - the section just doesn't
+ * render rather than showing a partial/broken showcase.
+ */
+export async function getShowcaseScreenshots(): Promise<
+  { route: string; screenshots: CompleteScreenshots } | undefined
+> {
+  const map = await getScreenshotsMap();
+  for (const [route, s] of Object.entries(map)) {
+    if (s.overview && s.nodeDetail && s.capabilities && s.cardThumb) {
+      return { route, screenshots: s as CompleteScreenshots };
+    }
+  }
+  return undefined;
+}
+
 /** Admin-only: attach/replace one or more screenshot URLs for a template. */
 export async function upsertScreenshots(
   route: string,
