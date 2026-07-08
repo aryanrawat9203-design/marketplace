@@ -46,15 +46,15 @@ Formerly called "FlowDex" — renamed and re-domained 2026-07-02. Some older doc
 
 - Push to `main` → Vercel auto-deploys to production. **No preview/staging environment currently.**
 - **Never trust "commit succeeded" as "it shipped."** Always check deployment `state` via the Vercel MCP (`list_deployments` / `get_deployment` / `get_deployment_build_logs`) after any commit. A silent build failure once left the site on a stale build for 5 commits in a row before anyone noticed — this is not hypothetical, it happened.
-- No local build/test environment against this exact repo is available to the AI assistant editing it. The Vercel build log is the real compile-check; read it, don't assume.
+- **Update 2026-07-08: a local build/test environment now works.** `node`, `npm`, and `node_modules/.bin/next` are all present and functional in the assistant's sandbox — `npx tsc --noEmit`, `npx eslint`, and `npm run build` all ran successfully end-to-end (the 10,501-route catalog doesn't statically prerender per-template pages, so `next build` finishes in well under a minute). Run these locally before pushing; still confirm the real Vercel deploy afterward, since that's the actual production compile/runtime target.
 
 ## Git / editing workflow
 
-- Repo: `github.com/aryanrawat9203-design/marketplace`, edited by Claude via a connected browser session (no direct git/API network access from the assistant's sandbox — confirmed blocked at the proxy level, tested directly, not worth re-testing each session).
-- **Default edit method: whole-file upload.** Go to `github.com/<owner>/<repo>/upload/main/<subpath>/`, upload a same-named file to overwrite it in place, then commit. This avoids the CodeMirror line-editor entirely and is reliable.
+- Repo: `github.com/aryanrawat9203-design/marketplace`. **Update 2026-07-08: direct git network access now works from the assistant's sandbox** — `git ls-remote origin`, `git push origin main` succeed with the existing credential helper (`git config credential.helper` → `manager`), no browser needed. Verify with `git push --dry-run origin main` at the start of a session; if it succeeds, use plain `git add`/`commit`/`push` — it's far more reliable than the browser workaround below. Only fall back to the steps below if a push genuinely fails again.
+- **Fallback if direct push is blocked again: whole-file upload via the browser.** Go to `github.com/<owner>/<repo>/upload/main/<subpath>/`, upload a same-named file to overwrite it in place, then commit. This avoids the CodeMirror line-editor entirely and is reliable.
   - After the file lands in the upload queue, take a fresh screenshot and click the commit-message box and "Commit changes" button by the coordinates in that screenshot — element refs from before the upload go stale and can silently click the wrong thing (this has actually happened: a click landed on "choose your files" instead of the commit box, so the "commit" appeared to succeed but nothing was actually saved).
   - Always verify afterward with a raw fetch (`raw.githubusercontent.com/.../main/<path>`) — don't trust the page redirect as proof the commit landed.
-- **Avoid the inline web editor for JSX/TSX changes** — it has a recurring bug where typing `<tag>` pairs inserts duplicate stray closing fragments. Reserve it only for small single-line, non-JSX tweaks (plain TS/JSON/config) where a whole-file upload would be overkill; select-the-whole-line-and-retype is safer than a partial edit there.
+- **Avoid the inline web editor for JSX/TSX changes** (only relevant if you're on the browser fallback) — it has a recurring bug where typing `<tag>` pairs inserts duplicate stray closing fragments. Reserve it only for small single-line, non-JSX tweaks (plain TS/JSON/config) where a whole-file upload would be overkill; select-the-whole-line-and-retype is safer than a partial edit there.
 - For new React-tree-heavy files written through the inline editor (rare, e.g. quick `next/og` tweaks), prefer `React.createElement(...)` over JSX — zero `<tag>` characters means the auto-close bug can't trigger.
 
 ## Environment / secrets
@@ -65,7 +65,7 @@ Configured in Vercel project settings (not visible to the assistant directly): S
 
 - Vercel, Supabase, n8n Cloud, Canva — connected and stable.
 - Razorpay — **disconnects periodically on its own** (its policies, not a Cowork/Claude-side issue). This is routine: if Razorpay tool calls fail with an auth/connection error, just prompt Aryan to reconnect via the one-click connector card and continue once he says "ok" — no deeper troubleshooting needed.
-- GitHub has no MCP connector; repo access is via the browser + whole-file-upload technique above.
+- GitHub has no MCP connector; repo access is via direct `git` from the sandbox (see Git / editing workflow above), browser + whole-file-upload only as fallback.
 
 ## Security posture (verified live 2026-07-07)
 
