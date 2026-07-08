@@ -7,49 +7,79 @@
           "interval": [
             {
               "field": "hours",
-              "hoursInterval": 2
+              "hoursInterval": 1
             }
           ]
         }
       },
-      "id": "18425c67-b07b-48cc-a41f-f4b1cf1965ea",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "c0573b68-386f-42ab-b328-21111e225a7e",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming request records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    requestId: String(j.requestId ?? j.id ?? '').trim(),\n    query: typeof j.query === 'string' ? j.query.trim() : j.query ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        400
+      ],
+      "id": "9c4e630c-ff43-4784-9b28-8a6338f443ae",
+      "name": "Normalize Request Payload"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "requestId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "3aa82afa-db9f-4fea-95aa-0f07438c975f",
+      "name": "Remove Duplicate Requests"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
             {
-              "id": "c5afdeb6-8a10-4f66-af65-3951770634f3",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "5566b945-d5b5-4469-b926-9fce43a192e5",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
+              "name": "query",
+              "value": "={{ $json.query }}"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "34f548c2-d276-48a9-8b08-e89030a823f7",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        540,
-        300
+        520,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "80ae2569-8494-4064-959a-a1a96aeac0d7",
+      "name": "Enrich — Primary Provider",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -57,12 +87,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "8734805f-4e15-4350-bea1-6af045557a84",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
+              "id": "06372f70-2d02-4f07-80d2-8fb11c50522e",
+              "leftValue": "={{ $json.company || $json.name }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -71,18 +102,96 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "9c4bb07e-b296-4af7-893b-92f7341e118a",
-      "name": "Idempotency Guard",
-      "type": "n8n-nodes-base.filter",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        760,
+        400
       ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
+      "id": "0200bd1e-0dee-4e7d-a167-89e6dc8a994b",
+      "name": "Primary Hit?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://fallback-enrich.example.com/v1/person",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        560
+      ],
+      "id": "53ae82ca-2676-44fa-a64b-f6328b5eef1e",
+      "name": "Enrich — Fallback Provider",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "b208a89f-ad74-41a7-a65b-7591b44b58ca",
+      "name": "Merge Enrichment Paths"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Score each request 0-100 from simple heuristics\nreturn $input.all().map(item => {\n  const j = item.json;\n  let score = 50;\n  if (j.query) score += 20;\n  if (j.context) score += 15;\n  if ((j.source || '') === 'referral') score += 15;\n  return { json: { ...j, score: Math.min(100, score) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        400
+      ],
+      "id": "ff519e58-b133-4485-a916-3aa7ef023ad7",
+      "name": "Score Enriched Records"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
+        },
+        "authentication": "appToken"
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        400
+      ],
+      "id": "18212ec1-99ee-4d3c-8c5e-fd98cd6f4fdf",
+      "name": "Upsert into HubSpot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -90,12 +199,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "7cb865b6-155d-4dd4-8b3c-af57c7e60b42",
-              "leftValue": "={{ $json.isValid !== false }}",
+              "id": "761edc35-4c86-4e51-b918-fd2a91ae5d07",
+              "leftValue": "={{ $json.score >= 80 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -104,46 +214,37 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "9b246628-2a0d-4a1d-8468-caef69ef8ef7",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1020,
-        300
+        2680,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "e5c5db5f-a510-4158-aac7-7fb3ae8b5799",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1020,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "cbb0960a-dd00-46b8-8ed0-daf7d1037a02",
+      "name": "Hot Lead?"
     },
     {
       "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "email": "={{ $json.email }}",
-        "additionalFields": {}
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "=🔥 Hot {{ $json.company || $json.email }} (score {{ $json.score }}) — reach out now",
+        "otherOptions": {}
       },
-      "id": "44f39706-9819-4cdb-bc99-bb967d766546",
-      "name": "Upsert HubSpot Contact",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        1260,
-        300
+        2920,
+        320
       ],
+      "id": "bc924269-36b8-4391-b17e-358df2cb8337",
+      "name": "Ping Owner Immediately",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -151,43 +252,17 @@
     },
     {
       "parameters": {
-        "url": "https://api.example.com/v1/data",
-        "options": {},
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "operation": "csv",
+        "options": {}
       },
-      "id": "d0d24659-cd89-4afc-937d-086a3401d9d3",
-      "name": "Fetch Data",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
       "position": [
-        1500,
-        300
+        3160,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Process the following input and return a helpful result:\n{{ JSON.stringify($json) }}"
-      },
-      "id": "dee772f0-d7ee-4f0b-8de5-1b0254315ab3",
-      "name": "Enrich with AI",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        1740,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
+      "id": "090acae1-4443-49aa-a867-cafebb84a186",
+      "name": "Serialize Run Output (CSV)"
     },
     {
       "parameters": {
@@ -195,19 +270,21 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Request Database"
         },
+        "title": "={{ $json.query || $json.requestId }}",
         "options": {}
       },
-      "id": "193fc7dd-571a-4722-a36f-4b87cacc3725",
-      "name": "Save to Notion",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        1980,
-        300
+        3400,
+        400
       ],
+      "id": "4c4e8a78-b6ea-484b-9492-676d97f98eb9",
+      "name": "Archive Row Snapshot",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -215,147 +292,150 @@
     },
     {
       "parameters": {
-        "model": "openai/gpt-4o-mini",
-        "options": {}
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per request (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.requestId, j.query].join('|')) } };\n});"
       },
-      "id": "0d587493-3322-4895-8e4f-e96c1658078f",
-      "name": "OpenRouter Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1220,
-        520
-      ]
+        3640,
+        400
+      ],
+      "id": "e7187936-de63-40ee-b0c3-10fa7893d37c",
+      "name": "Fingerprint for Idempotency"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "491d340d-8bf9-4d80-b161-1b67033a0d45",
-              "leftValue": "={{ $json.toolCallConfidence }}",
-              "rightValue": "0.7",
-              "operator": {
-                "type": "number",
-                "operation": "gte"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
         "options": {}
       },
-      "id": "9507da72-e6b3-4c88-87c5-7530c1ee8ce4",
-      "name": "Confidence High?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
       "position": [
-        2220,
-        300
+        3880,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "2cc56739-3cee-44e1-88df-927ac1501038",
+      "name": "Drop Already-Processed Items"
     },
     {
-      "parameters": {},
-      "id": "e7f7848b-6138-4be4-a2c5-a161e91f62c2",
-      "name": "Respond Directly",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "resource": "contact",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "lastmodifieddate",
+                    "operator": "GTE",
+                    "value": "={{ $now.minus({days: 1}).toMillis() }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "authentication": "appToken",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
       "position": [
-        2460,
-        300
-      ]
+        4120,
+        400
+      ],
+      "id": "65de70b7-f4d8-4821-8f4c-ba2482c14e79",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "id": "94cd0e87-5419-4f48-a721-d69c7eda43f5",
-      "name": "Escalate to Human Review",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compare current metrics with the previous snapshot\nconst current = $input.first().json;\nconst prev = $('Load Previous Snapshot').first().json || {};\nconst drift = {};\nfor (const k of Object.keys(current)) {\n  if (typeof current[k] === 'number' && typeof prev[k] === 'number' && prev[k] !== 0) {\n    drift[k] = Math.round(((current[k] - prev[k]) / prev[k]) * 1000) / 10;\n  }\n}\nreturn [{ json: { ...current, driftPct: drift, hasDrift: Object.values(drift).some(v => Math.abs(v) > 10) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        2460,
-        500
-      ]
+        4360,
+        400
+      ],
+      "id": "f3751731-680b-4b99-a17b-c27888f728bc",
+      "name": "Compute Drift vs Snapshot"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "5627b050-4893-459c-a445-ee1f851232da",
-              "name": "errorAt",
+              "id": "6adcd4e4-78dd-4bf1-9d01-f456b436b549",
+              "name": "runAt",
               "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "47fdf7eb-4c8e-4916-a309-c5d6504f20c5",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "64812d10-3955-4e36-9549-bd98d56cccb8",
+              "name": "status",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "adf06588-bb57-4829-82ed-d24c0ca722a3",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2700,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
-      },
-      "id": "80d0b95f-3cd0-4fa8-a9b9-c10cf267b8c0",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        760
+        4600,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "81ba6f6e-c216-4510-bfbe-72904ecf0c0d",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "54cad043-1997-47fe-87d2-be2904498758",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3180,
-        300
-      ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Request Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": {}
       },
-      "id": "0390c93b-c283-4eeb-a84c-f9113d3ea0f2",
-      "name": "Sync to Secondary System",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
       "position": [
-        3420,
-        300
+        4840,
+        400
       ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
+      "id": "b168aadb-a0c1-494a-b1fe-f53c0d1bfb79",
+      "name": "Append Audit Row (Google Sheets)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -363,321 +443,435 @@
     },
     {
       "parameters": {
-        "amount": 1,
-        "unit": "seconds"
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "=✅ Enrich contact records with HubSpot and HTTP / REST API at scale for R — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
       },
-      "id": "bc74eb72-9d27-44ea-8acf-1c877653cb36",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        3660,
-        300
+        5080,
+        400
       ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
+      "id": "f536e48e-8bae-49ec-bc41-6aeaff110a3d",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
+        "assignments": {
+          "assignments": [
+            {
+              "id": "64716abc-f6a3-4d53-bcb8-0d547c15bab8",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "fff123ba-d047-429f-abf6-954c38f83c62",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "8d5fb745-3913-4605-8271-5ba2d27e49e1",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
         },
         "options": {}
       },
-      "id": "5157a52d-2e37-4520-9eec-0312ca42fcdb",
-      "name": "Write Audit Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        3900,
-        300
+        4600,
+        740
       ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "14bab024-8bb3-4740-8e3e-4636b43ae023",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "1f63a665-2d3a-41f3-98c3-38dfa87dc518",
-      "name": "Success Notification",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        4140,
-        300
+        4840,
+        740
       ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
+      "id": "b6cf3e72-076b-4435-9b0d-d4df6d3f72d4",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Enrich contact records with HubSpot and HTTP / REST API at scale for Research Assistant\n\n**Tier:** Premium · **Difficulty:** Advanced\n**Pattern:** Research Assistant (AI Agents)\n**Architecture:** validated input, branch on confidence high?, multi-system sync, audit log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
-        "width": 380,
-        "color": 4
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Request Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
       },
-      "id": "9eb73fa8-d780-4710-92bb-d9f24bd405cc",
-      "name": "Sticky Note 006e",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5080,
+        740
+      ],
+      "id": "cb1673b5-1f56-443c-96f8-e3d050dee402",
+      "name": "Park in Dead-Letter Queue",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "## Enrich contact records with HubSpot and HTTP / REST API at scale for Research Assistant\n\n**Pattern:** Data Enrichment  \n**Trigger:** Scheduled  \n**Level:** Production\n\nProcesses requests for research assistant — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 6
+      },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4420,
-        40
-      ]
+        -260,
+        60
+      ],
+      "id": "97a85bd1-1853-46ba-99f0-bd0c0a1e360e",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Normalize Request Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Normalize Request Payload": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
+            "node": "Remove Duplicate Requests",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Idempotency Guard": {
+    "Remove Duplicate Requests": {
       "main": [
         [
           {
-            "node": "Input Valid?",
+            "node": "Enrich — Primary Provider",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Input Valid?": {
+    "Enrich — Primary Provider": {
       "main": [
         [
           {
-            "node": "Upsert HubSpot Contact",
+            "node": "Primary Hit?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert HubSpot Contact": {
+    "Primary Hit?": {
       "main": [
         [
           {
-            "node": "Fetch Data",
+            "node": "Merge Enrichment Paths",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Enrich — Fallback Provider",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Enrich — Fallback Provider": {
       "main": [
         [
           {
-            "node": "Enrich with AI",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenRouter Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Enrich with AI",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enrich with AI": {
-      "main": [
-        [
-          {
-            "node": "Save to Notion",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save to Notion": {
-      "main": [
-        [
-          {
-            "node": "Confidence High?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Confidence High?": {
-      "main": [
-        [
-          {
-            "node": "Respond Directly",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Escalate to Human Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Handle Error": {
-      "main": [
-        [
-          {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Respond Directly": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Escalate to Human Review": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
+            "node": "Merge Enrichment Paths",
             "type": "main",
             "index": 1
           }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
+        ],
         [
           {
-            "node": "Sync to Secondary System",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sync to Secondary System": {
+    "Merge Enrichment Paths": {
       "main": [
         [
           {
-            "node": "Rate Limit Guard",
+            "node": "Score Enriched Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Enriched Records": {
+      "main": [
+        [
+          {
+            "node": "Upsert into HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert into HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Hot Lead?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Rate Limit Guard": {
+    "Hot Lead?": {
       "main": [
         [
           {
-            "node": "Write Audit Log",
+            "node": "Ping Owner Immediately",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Serialize Run Output (CSV)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Write Audit Log": {
+    "Serialize Run Output (CSV)": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Archive Row Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Row Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Fingerprint for Idempotency",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fingerprint for Idempotency": {
+      "main": [
+        [
+          {
+            "node": "Drop Already-Processed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Already-Processed Items": {
+      "main": [
+        [
+          {
+            "node": "Load Previous Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Previous Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Compute Drift vs Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Drift vs Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Failure to Slack": {
+      "main": [
+        [
+          {
+            "node": "Park in Dead-Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping Owner Immediately": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

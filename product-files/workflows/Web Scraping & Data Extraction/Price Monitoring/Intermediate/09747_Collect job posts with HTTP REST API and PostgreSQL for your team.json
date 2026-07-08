@@ -7,50 +7,469 @@
           "interval": [
             {
               "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 18
+              "triggerAtHour": 6,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
-      "id": "873d495d-fd02-4104-99a7-770fa33a51b7",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "9274b9bb-6489-4600-be07-57e8e74587a6",
+      "name": "Daily Schedule"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://example-market.com/listings",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        40,
+        400
+      ],
+      "id": "ac221675-94ea-4312-af26-40d86934db2e",
+      "name": "Fetch Target Page",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": ".listing h2",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "price",
+              "cssSelector": ".listing .price",
+              "returnValue": "text",
+              "returnArray": true
+            },
+            {
+              "key": "url",
+              "cssSelector": ".listing a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "6f067798-b6f2-4e62-be66-4e69a863b1db",
+      "name": "Extract Listings (CSS)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Zip parallel arrays into one item per listing\nconst j = $input.first().json;\nconst n = (j.title || []).length;\nconst out = [];\nfor (let i = 0; i < n; i++) {\n  out.push({ json: { title: j.title[i], price: j.price?.[i], url: j.url?.[i] } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "dcdd2588-f3b7-4ee0-9f14-8f3394ebb941",
+      "name": "Rows from Arrays"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM listings WHERE updated_at > NOW() - INTERVAL '1 day' ORDER BY updated_at DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        760,
+        570
+      ],
+      "id": "89ee0a72-7093-4e0e-a6f6-c68059781cac",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "url",
+              "field2": "url"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.compareDatasets",
+      "typeVersion": 2.3,
+      "position": [
+        1240,
+        400
+      ],
+      "id": "7ed651b5-199d-4ae0-913f-3f75663c74a3",
+      "name": "Diff vs Last Run"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#scraping",
+          "cachedResultName": "#scraping"
+        },
+        "text": "=🆕 {{ $json.title }} — {{ $json.price }} ({{ $json.url }})",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1960,
+        240
+      ],
+      "id": "c8a1acfb-ca3e-490c-b57a-61a33c1ca242",
+      "name": "Alert New Findings",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO listings (listingId, url, title, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (listingId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.listingId, $json.url, $json.title ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2200,
+        420
+      ],
+      "id": "37f64513-b455-4b97-be9a-ab72e535b0c4",
+      "name": "Update Changed Rows",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO listing_log (listingId, url, title, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.listingId, $json.url, $json.title ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2440,
+        590
+      ],
+      "id": "a849e436-bd2c-4689-a749-0a7a04a9559e",
+      "name": "Write Fresh Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2920,
+        400
+      ],
+      "id": "1841043e-f60d-4878-8c4d-2db2c30a55b5",
+      "name": "Merge Diff Outcomes"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.url }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3640,
+        400
+      ],
+      "id": "6d9c893e-66e0-46c1-9564-948099be159b",
+      "name": "Enrich with Reference Data",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "ff812c16-3f10-4a21-bef2-2031c0940bb0",
-              "name": "receivedAt",
+              "id": "1c27e779-8c88-439c-a094-188520cc5aca",
+              "name": "enrichedAt",
               "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
-              "id": "71149b21-3ad5-4309-aff0-05f2f8dc4e36",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
+              "id": "8126a9a1-327d-4df8-b069-c2081f71d198",
+              "name": "enrichmentSource",
+              "value": "reference-api",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "738a5eb1-766f-47bd-b375-0557c0a7ad64",
-      "name": "Validate Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        540,
-        300
+        3880,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "2b6d9d1c-2b34-4e47-966b-30e8d3bee07c",
+      "name": "Fold In Enrichment Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "lib: Post-Process Listings"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4120,
+        400
+      ],
+      "id": "95823bcb-261f-4bb8-9ec4-62cc050d57e4",
+      "name": "Offload to Post-Process Sub-workflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "subflowStatus",
+              "value": "={{ $json.status || 'done' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        4360,
+        400
+      ],
+      "id": "42230d5b-f517-46b3-9cfe-7b378177bd47",
+      "name": "Record Sub-workflow Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per listing (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.listingId, j.url].join('|')) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4600,
+        400
+      ],
+      "id": "98b83e6f-858f-4a51-8258-4aca4d790b9f",
+      "name": "Fingerprint for Idempotency"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        4840,
+        400
+      ],
+      "id": "e738a1f8-68d0-454d-b47b-d389a0c3664e",
+      "name": "Drop Already-Processed Items"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Listing Database"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        5080,
+        400
+      ],
+      "id": "f6a53838-5be3-485a-8669-ef07f9cac41a",
+      "name": "Load Previous Snapshot 2",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compare current metrics with the previous snapshot\nconst current = $input.first().json;\nconst prev = $('Load Previous Snapshot').first().json || {};\nconst drift = {};\nfor (const k of Object.keys(current)) {\n  if (typeof current[k] === 'number' && typeof prev[k] === 'number' && prev[k] !== 0) {\n    drift[k] = Math.round(((current[k] - prev[k]) / prev[k]) * 1000) / 10;\n  }\n}\nreturn [{ json: { ...current, driftPct: drift, hasDrift: Object.values(drift).some(v => Math.abs(v) > 10) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5320,
+        400
+      ],
+      "id": "234f6ce8-7395-4d28-8f0e-56f9f0ca24ef",
+      "name": "Compute Drift vs Snapshot"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "completedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        5560,
+        400
+      ],
+      "id": "087faf54-42f2-4354-bd34-2633ae8a2cc3",
+      "name": "Stamp Completion Time"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "key": "itemCount",
+              "value": "={{ $items().length }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        5800,
+        400
+      ],
+      "id": "2de6466a-b185-498a-b241-16658cfbf146",
+      "name": "Persist Run Metadata"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        6040,
+        400
+      ],
+      "id": "296f7fb3-60ee-4cbe-ad8a-81dd4a01d81b",
+      "name": "Serialize Run Output (CSV)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO listing_log (listingId, url, title, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.listingId, $json.url, $json.title ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6280,
+        400
+      ],
+      "id": "eb681184-236f-4628-90e5-d4db1df3c286",
+      "name": "Archive Row Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -58,12 +477,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "0118c4a1-db4e-40a9-9367-ef98ddddfb3f",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
+              "id": "6cb01504-fa2f-48a9-9c15-b65d77416b94",
+              "leftValue": "={{ $json.url }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -72,505 +492,118 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "17a6bbc1-2a45-4056-bf16-4577ce036f5a",
-      "name": "Idempotency Guard",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        6520,
+        400
       ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
+      "id": "0a61ecfb-97cf-47f2-8aa5-6ad3d4810787",
+      "name": "Guard Non-Empty url"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "3a3c0194-8626-4969-9ab7-3d1bb6bcb9fb",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
+        "operation": "getCurrentDate",
+        "outputFieldName": "processedAt",
         "options": {}
       },
-      "id": "4b4f8996-c1be-4d93-8968-e8c038f2ec08",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1020,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "495d91e1-be0b-482b-bfaf-0f0189b9bc58",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1020,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
-    },
-    {
-      "parameters": {
-        "url": "https://data.example.org/latest.json",
-        "options": {}
-      },
-      "id": "91acc7f3-2e84-4260-b841-d13dfc682a11",
-      "name": "Fetch Data",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1260,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Deduplicate by email\nconst seen = new Set();\nreturn $input.all().filter(i => {\n  const k = i.json.email || i.json.id;\n  if (seen.has(k)) return false; seen.add(k); return true;\n});"
-      },
-      "id": "e64198b4-18e9-4181-a1f1-608e2bdd93fa",
-      "name": "Transform Items",
-      "type": "n8n-nodes-base.code",
+      "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
       "position": [
-        1500,
-        300
-      ]
+        6760,
+        400
+      ],
+      "id": "befb999e-46dd-4619-b884-f9bc5338a4c5",
+      "name": "Stamp Processing Time"
     },
     {
       "parameters": {
-        "text": "={{ JSON.stringify($json) }}",
-        "schemaType": "fromAttributes",
-        "attributes": {
-          "attributes": [
+        "dataToSave": {
+          "values": [
             {
-              "name": "summary",
-              "description": "A short summary",
-              "type": "string"
-            },
-            {
-              "name": "category",
-              "description": "A category label",
-              "type": "string"
+              "key": "listingId",
+              "value": "={{ $json.listingId }}"
             }
           ]
-        },
-        "options": {}
+        }
       },
-      "id": "1c6b2268-659e-4d18-987f-3684cba4adf0",
-      "name": "Structure Data with AI",
-      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
-      "typeVersion": 1.1,
-      "position": [
-        1740,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "1994251e-3080-4d7f-bb9b-00dd1c2c830b",
-      "name": "Save to PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1980,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "model": "claude-3-5-sonnet-20241022",
-        "options": {}
-      },
-      "id": "fa834c60-7aca-48ad-adc2-99fdd0550a65",
-      "name": "Anthropic Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-      "typeVersion": 1.3,
-      "position": [
-        1220,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "70cc729f-5806-4027-9bbb-b3239f99c370",
-              "leftValue": "={{ $json.itemsFound }}",
-              "rightValue": "0",
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "adc39880-4190-48f6-b6df-4fda6f21aa47",
-      "name": "New Items Found?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2220,
-        300
-      ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "336a6ab1-3a32-423a-8dd0-9d3fb117f2bb",
-      "name": "Process New Items",
-      "type": "n8n-nodes-base.noOp",
+      "type": "n8n-nodes-base.executionData",
       "typeVersion": 1,
       "position": [
-        2460,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "6140090d-b39c-4131-9539-0d166614f532",
-      "name": "Skip (Nothing New)",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2460,
-        500
-      ]
+        7000,
+        400
+      ],
+      "id": "3a1f7911-16cf-4761-ad26-345b535e9932",
+      "name": "Save Execution Metadata"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "ef286f5e-6cdd-4283-b385-0d8d530e1afb",
-              "name": "errorSource",
-              "value": "primary",
+              "id": "52556766-bc8b-4cde-8777-667396c51442",
+              "name": "runAt",
+              "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
-              "id": "a6df61ec-e6a6-4ae3-ab7f-0f4f331edb5c",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "19954701-8f36-4e0a-ab87-d41073558904",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "66d33c77-9a2f-454c-93cb-ece0a4a8f159",
+              "name": "status",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "dd2cac12-181c-4d19-b7c3-3d02961be344",
-      "name": "Handle Error — Primary",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2700,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "8e5f023d-7288-4b80-a7ee-584fec3ac9cd",
-              "name": "errorSource",
-              "value": "secondary",
-              "type": "string"
-            },
-            {
-              "id": "fde473d7-d356-43e3-988e-358c56e791ce",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "cc6388ac-4de2-4acb-b4bd-c6c90144ed06",
-      "name": "Handle Error — Secondary",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2700,
-        860
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
-      },
-      "id": "d93d1b84-cbfb-46c1-afac-baa88e018042",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        760
+        7240,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "1d23cbbf-3b9c-4379-84d7-68371d86ceb4",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "401376dc-46c4-44a9-b381-13b0914337df",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3180,
-        300
-      ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
-        "options": {}
-      },
-      "id": "368598d7-b131-43e5-9807-1993ef157cdd",
-      "name": "Sync to Secondary System",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3420,
-        300
-      ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "amount": 1,
-        "unit": "seconds"
-      },
-      "id": "8533ca77-21e8-44a5-a436-403787dc9065",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3660,
-        300
-      ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
+        "operation": "append",
         "documentId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Listing Tracker"
         },
         "sheetName": {
           "__rl": true,
-          "value": "",
-          "mode": "id"
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
         },
         "columns": {
           "mappingMode": "autoMapInputData",
-          "value": {}
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
         },
         "options": {}
       },
-      "id": "bca85ae8-749f-4dd6-850f-5a69822424e3",
-      "name": "Write Audit Log",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "typeVersion": 4.7,
       "position": [
-        3900,
-        300
+        7480,
+        400
       ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "6a48770d-f2e2-4092-8976-c1cd8d43fad2",
-              "leftValue": "={{ $json.itemsFound }}",
-              "rightValue": 100,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "08ec418e-e34f-48b8-9c01-c93cdf6809f3",
-      "name": "High-Value Item?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4140,
-        300
-      ],
-      "notes": "Human-in-the-loop for high-impact actions (§9.4)."
-    },
-    {
-      "parameters": {
-        "resume": "webhook",
-        "options": {}
-      },
-      "id": "cce2f19f-7c34-4a3b-aadf-53d9f4d32b1b",
-      "name": "Require Approval",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        4380,
-        300
-      ],
-      "notes": "Pauses until the approval webhook/resume URL is called — human-in-the-loop gate."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "fb820b8c-c67a-43da-af26-24d163cbe99b",
-              "leftValue": "={{ $json.approved }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "c7aeb7d8-b811-4dfc-9e75-423488486cf3",
-      "name": "Approved?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4620,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "003cfa4a-d33e-4071-b7ec-b0b019a31276",
-              "name": "status",
-              "value": "rejected",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "48d90f3d-6cc6-49f4-a902-c081722b6bbf",
-      "name": "Reject & Notify",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        4620,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/system-b",
-        "options": {}
-      },
-      "id": "7b16c9e0-aa62-4077-b64f-33ed821eadea",
-      "name": "Parallel: Update System B",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        4860,
-        500
-      ],
-      "notes": "Independent parallel write — runs alongside the primary path, not blocked by approval (§8.14).",
+      "id": "a0fae838-3f2d-4375-8c8b-b18fb27c1188",
+      "name": "Append Audit Row (Google Sheets)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -578,515 +611,556 @@
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "5d30a8c6-4039-4f07-8f94-2bb78ce65f18",
-      "name": "Merge Post-Approval",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        5100,
-        300
-      ],
-      "notes": "Recombine the approved and low-value-parallel paths."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "a4e4c113-b7af-4dbb-8f0e-e108663d0944",
-              "leftValue": "={{ $now.diff($('Validate Input').item.json.receivedAt).as('seconds') }}",
-              "rightValue": 300,
-              "operator": {
-                "type": "number",
-                "operation": "lt"
-              }
-            }
-          ],
-          "combinator": "and"
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#scraping",
+          "cachedResultName": "#scraping"
         },
-        "options": {}
-      },
-      "id": "7bcb90c0-462f-4300-b7da-3d7ef5e8d0c8",
-      "name": "Check Processing SLA",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        5340,
-        300
-      ],
-      "notes": "Escalate if this run is breaching its SLA window (§8.11, §9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#oncall",
-        "text": "={{ 'SLA breach on ' + $workflow.name }}",
+        "text": "=✅ Collect job posts with HTTP / REST API and PostgreSQL for your team — run completed at {{ $now.toFormat('HH:mm') }}",
         "otherOptions": {}
       },
-      "id": "0b941627-2468-49a6-8332-21c395d20408",
-      "name": "Escalate to On-Call",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        5580,
-        500
+        7720,
+        400
       ],
-      "notes": "Distinct on-call channel — separate from the general failure alert (§8.11).",
+      "id": "cae59208-6dd8-46ec-a754-da545077ca1c",
+      "name": "Send Summary to Slack",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "resource": "databasePage",
-        "operation": "create",
-        "databaseId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "propertiesUi": {}
-      },
-      "id": "28018218-6d10-440e-bef1-475e8ca73cd2",
-      "name": "Stream to Compliance Log",
-      "type": "n8n-nodes-base.notion",
-      "typeVersion": 2.2,
-      "position": [
-        5580,
-        300
-      ],
-      "notes": "Separate compliance/audit trail from the operational audit log (§8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "1427bf06-bb98-44ba-af0a-660d870485bc",
-              "name": "status",
-              "value": "processed",
+              "id": "eb54acbf-5521-4789-adfc-bf9e301fb6cb",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
               "type": "string"
             },
             {
-              "id": "7b271250-b666-4995-908e-5d9aacf259b0",
-              "name": "archivedAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "fcd83868-e253-4402-954a-443ee8e17e41",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "870ea838-d8af-4d86-ad22-d2b81ae87075",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "5ff16db7-9a77-4066-b095-c6737438e742",
-      "name": "Close Out & Archive",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        5820,
-        300
-      ]
+        7240,
+        740
+      ],
+      "id": "db0469a9-be4a-4d15-ab86-3793454d14da",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#scraping",
+          "cachedResultName": "#scraping"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "a03b0dcb-4157-41f1-bace-d9202e861b54",
-      "name": "Success Notification",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        6060,
-        300
+        7480,
+        740
       ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
+      "id": "94d3a759-8132-4dcd-a3e0-8b9c58ce4c0a",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Collect job posts with HTTP / REST API and PostgreSQL for your team\n\n**Tier:** Enterprise · **Difficulty:** Intermediate\n**Pattern:** Price Monitoring (Web Scraping & Data Extraction)\n**Architecture:** validated input, branch on new items found?, multi-system sync, audit log, human-in-the-loop approval, SLA monitoring, compliance log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
-        "width": 380,
-        "color": 4
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Listing Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
       },
-      "id": "56a0edaa-174c-4101-ad07-c23e731104cd",
-      "name": "Sticky Note b989",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        7720,
+        740
+      ],
+      "id": "78e7180d-1980-44a1-8b05-fa3558a2db44",
+      "name": "Park in Dead-Letter Queue",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "## Collect job posts with HTTP / REST API and PostgreSQL for your team\n\n**Pattern:** Web Scraping  \n**Trigger:** Scheduled  \n**Level:** Architect\n\nProcesses listings for price monitoring — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 2
+      },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6340,
-        40
-      ]
+        -260,
+        -20
+      ],
+      "id": "bd8e9e78-7bf2-4f93-8d73-20df68effd72",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Daily Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Fetch Target Page",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Fetch Target Page": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Idempotency Guard": {
-      "main": [
-        [
-          {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Fetch Data",
+            "node": "Extract Listings (CSS)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Extract Listings (CSS)": {
       "main": [
         [
           {
-            "node": "Transform Items",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Primary",
+            "node": "Rows from Arrays",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Rows from Arrays": {
       "main": [
         [
           {
-            "node": "Structure Data with AI",
+            "node": "Diff vs Last Run",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Anthropic Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Structure Data with AI",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structure Data with AI": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Save to PostgreSQL",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Primary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save to PostgreSQL": {
-      "main": [
-        [
-          {
-            "node": "New Items Found?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Primary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "New Items Found?": {
-      "main": [
-        [
-          {
-            "node": "Process New Items",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Skip (Nothing New)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Handle Error — Primary": {
-      "main": [
-        [
-          {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Handle Error — Secondary": {
-      "main": [
-        [
-          {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Process New Items": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Skip (Nothing New)": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
-        [
-          {
-            "node": "Sync to Secondary System",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sync to Secondary System": {
-      "main": [
-        [
-          {
-            "node": "Rate Limit Guard",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Primary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Rate Limit Guard": {
-      "main": [
-        [
-          {
-            "node": "Write Audit Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Write Audit Log": {
-      "main": [
-        [
-          {
-            "node": "High-Value Item?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "High-Value Item?": {
-      "main": [
-        [
-          {
-            "node": "Require Approval",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Parallel: Update System B",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Require Approval": {
-      "main": [
-        [
-          {
-            "node": "Approved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Approved?": {
-      "main": [
-        [
-          {
-            "node": "Merge Post-Approval",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Reject & Notify",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parallel: Update System B": {
-      "main": [
-        [
-          {
-            "node": "Merge Post-Approval",
+            "node": "Diff vs Last Run",
             "type": "main",
             "index": 1
           }
         ],
         [
           {
-            "node": "Handle Error — Secondary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Post-Approval": {
+    "Diff vs Last Run": {
       "main": [
         [
           {
-            "node": "Check Processing SLA",
+            "node": "Alert New Findings",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Check Processing SLA": {
-      "main": [
+        ],
+        [],
         [
           {
-            "node": "Stream to Compliance Log",
+            "node": "Update Changed Rows",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Escalate to On-Call",
+            "node": "Write Fresh Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Stream to Compliance Log": {
+    "Alert New Findings": {
       "main": [
         [
           {
-            "node": "Close Out & Archive",
+            "node": "Merge Diff Outcomes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Close Out & Archive": {
+    "Update Changed Rows": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Merge Diff Outcomes",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Fresh Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Merge Diff Outcomes",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Diff Outcomes": {
+      "main": [
+        [
+          {
+            "node": "Enrich with Reference Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Reference Data": {
+      "main": [
+        [
+          {
+            "node": "Fold In Enrichment Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fold In Enrichment Fields": {
+      "main": [
+        [
+          {
+            "node": "Offload to Post-Process Sub-workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offload to Post-Process Sub-workflow": {
+      "main": [
+        [
+          {
+            "node": "Record Sub-workflow Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Sub-workflow Result": {
+      "main": [
+        [
+          {
+            "node": "Fingerprint for Idempotency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fingerprint for Idempotency": {
+      "main": [
+        [
+          {
+            "node": "Drop Already-Processed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Already-Processed Items": {
+      "main": [
+        [
+          {
+            "node": "Load Previous Snapshot 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Previous Snapshot 2": {
+      "main": [
+        [
+          {
+            "node": "Compute Drift vs Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Drift vs Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Stamp Completion Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Completion Time": {
+      "main": [
+        [
+          {
+            "node": "Persist Run Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Run Metadata": {
+      "main": [
+        [
+          {
+            "node": "Serialize Run Output (CSV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serialize Run Output (CSV)": {
+      "main": [
+        [
+          {
+            "node": "Archive Row Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Row Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Guard Non-Empty url",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Non-Empty url": {
+      "main": [
+        [
+          {
+            "node": "Stamp Processing Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Processing Time": {
+      "main": [
+        [
+          {
+            "node": "Save Execution Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Execution Metadata": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Failure to Slack": {
+      "main": [
+        [
+          {
+            "node": "Park in Dead-Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

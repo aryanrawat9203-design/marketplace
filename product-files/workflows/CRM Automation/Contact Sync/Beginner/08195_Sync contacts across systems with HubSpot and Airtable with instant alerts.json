@@ -7,82 +7,203 @@
           "interval": [
             {
               "field": "hours",
-              "hoursInterval": 12
+              "hoursInterval": 1
             }
           ]
         }
       },
-      "id": "266e4d93-0bb0-49fe-aeaa-9503e84040e1",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "51415bfb-f0a3-49f1-bf97-ccea9f56bfb4",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "CRM Automation Base"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contacts"
+        },
+        "filterByFormula": "={LastModified} > DATEADD(NOW(), -1, 'days')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        40,
+        400
+      ],
+      "id": "10a22a9f-a4cc-4a8d-b443-8de0ebc5c9ff",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/v1/contacts",
+        "options": {
+          "timeout": 20000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
             {
-              "id": "c019a2ed-2817-4e34-b966-dd464bf4e0ca",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
+              "name": "updated_since",
+              "value": "={{ $now.minus({hours: 6}).toISO() }}"
             },
             {
-              "id": "9e70f58b-e711-426d-857b-a0f6ab2ec752",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
+              "name": "limit",
+              "value": "100"
             }
           ]
-        },
-        "options": {}
+        }
       },
-      "id": "e4c070da-953b-4124-89cb-2d09ce7421d9",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        540,
-        300
+        280,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "dd5d5c1b-492b-40e8-a638-f6b738487290",
+      "name": "Fetch Changes Since Watermark",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "cac18cf3-149f-446b-b470-8ac8a262b86c",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty"
-              }
-            }
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming contact records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    contactId: String(j.contactId ?? j.id ?? '').trim(),\n    email: typeof j.email === 'string' ? j.email.trim() : j.email ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "d2ddea8c-635f-482d-8faa-838633d35946",
+      "name": "Normalize Records"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per contact (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.contactId, j.email].join('|')) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        400
+      ],
+      "id": "89fe5a89-eeb7-4456-b143-7876b5aa76bc",
+      "name": "Fingerprint for Idempotency"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ],
+      "id": "efb27d5c-3c71-4bdd-baaf-019204b2e01d",
+      "name": "Drop Already-Processed Items"
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
+        },
+        "authentication": "appToken"
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        400
+      ],
+      "id": "923dbc16-c9c1-4fb5-ad2b-e04fe3d93592",
+      "name": "Upsert into HubSpot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Advance the incremental watermark to the newest record seen\nconst items = $input.all().map(i => i.json);\nconst newest = items.reduce((m, j) => {\n  const ts = new Date(j.updatedAt || j.receivedAt || 0).getTime();\n  return ts > m ? ts : m;\n}, 0);\nreturn [{ json: { watermark: new Date(newest || Date.now()).toISOString(), processed: items.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "1d0ee586-8495-4eec-b54b-2cb988069954",
+      "name": "Advance Watermark"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "CRM Automation Base"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contacts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "contactId"
           ],
-          "combinator": "and"
+          "schema": []
         },
         "options": {}
       },
-      "id": "eaa10b96-d786-4fef-bfaa-e58f3a402f38",
-      "name": "Idempotency Guard",
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
       "position": [
-        780,
-        300
+        1720,
+        400
       ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
+      "id": "408832ca-6482-4da1-980b-d48068ce75b8",
+      "name": "Persist Watermark (Airtable)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -90,12 +211,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "4ea04b8d-0338-42ed-9b53-481e7af8d0dd",
-              "leftValue": "={{ $json.isValid !== false }}",
+              "id": "9412d23d-b489-4887-9fc2-6f64f7c16c87",
+              "leftValue": "={{ $json.processed >= 0 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -104,270 +226,180 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "f214cf89-50c1-4016-ac8e-d9c66b78576d",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1020,
-        300
+        1960,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "9018c502-1b27-4cb6-ba5e-744ad2b1752f",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1020,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "08513425-0f81-4380-b2c0-62bf95e3b28b",
+      "name": "Row Counts Match?"
     },
     {
       "parameters": {
-        "resource": "contact",
-        "operation": "upsert",
-        "email": "={{ $json.email }}",
-        "additionalFields": {}
-      },
-      "id": "08b0255c-edce-4914-8e79-04abc9049de9",
-      "name": "Upsert HubSpot Contact",
-      "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2.1,
-      "position": [
-        1260,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a028ded5-1a90-49fc-956a-8cd79a02dc3b",
-              "name": "source",
-              "value": "='flowdex-workflow'",
-              "type": "string"
-            },
-            {
-              "id": "76bf6529-787c-4ff6-b834-d77fd164e78e",
-              "name": "summary",
-              "value": "={{ JSON.stringify($json).slice(0, 280) }}",
-              "type": "string"
-            }
-          ]
-        },
+        "authentication": "webhook",
+        "content": "=⚠️ ETL drift detected: {{ $json.processed }} rows vs expected",
         "options": {}
       },
-      "id": "7e9af72b-f756-418f-b821-ff95d3e943db",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1500,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Drop items missing an id\nreturn $input.all().filter(i => i.json && i.json.id != null);"
-      },
-      "id": "8c2e1508-8070-4fc9-8272-befe5a3b01b9",
-      "name": "Transform Items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1740,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "record",
-        "operation": "create",
-        "base": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "table": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "options": {}
-      },
-      "id": "1ce179cd-5a9b-479c-9bb6-6e513acaf686",
-      "name": "Save to Airtable",
-      "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
-      "position": [
-        1980,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "content": "={{ $json.summary || 'Update' }}"
-      },
-      "id": "c3906947-2c3b-4e1e-9c2a-2181bf6cfc32",
-      "name": "Send Discord Message",
-      "type": "n8n-nodes-base.discord",
-      "typeVersion": 2,
-      "position": [
-        2220,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "db530e22-d350-4001-a3d3-e8f1ba7052fa",
-              "leftValue": "={{ $json.contactExists }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "11542520-b917-44b6-89d3-94b0ed55a250",
-      "name": "Existing Contact?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2460,
-        300
-      ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "f229a46e-675a-4c1b-afea-2d620e7116b1",
-      "name": "Update Existing Record",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2700,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "d56e7881-7e66-400a-9299-88fe635e5779",
-      "name": "Create New Record",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2700,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "66d8e2b6-f05c-46fe-b617-bbc20652e32a",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "1e6eb41b-f3ac-40a5-86c9-5ba83bea6dec",
-      "name": "Handle Error",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2940,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
-      },
-      "id": "841770d7-4379-462c-b725-5c5026fdd29c",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        3180,
-        760
+        2200,
+        550
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "d269ce3c-fa84-4944-bc3a-2e3831ea34b3",
+      "name": "Raise Drift Alarm",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 2000
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "64bf59cb-d27c-4ee2-93cd-b0d1dfbdf3d7",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3420,
-        300
-      ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
-        "options": {}
-      },
-      "id": "575fbe2e-2f5f-4508-abc2-b18fdc5e6dc5",
-      "name": "Sync to Secondary System",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3660,
-        300
+        2440,
+        400
       ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
+      "id": "eea8eb8d-a027-46f6-a042-6ddd16c9f30c",
+      "name": "Enrich with Reference Data",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3cd7e10f-a24a-4601-ab49-a3eb2b089908",
+              "name": "enrichedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "77721b87-2ca2-4477-827b-cd4501f99976",
+              "name": "enrichmentSource",
+              "value": "reference-api",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "664e38f2-ea1f-4c71-b7c3-3095c97d4840",
+      "name": "Fold In Enrichment Fields"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "completedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        2920,
+        400
+      ],
+      "id": "5da184e5-203a-4f4e-ad9d-f80d4af603b7",
+      "name": "Stamp Completion Time"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "key": "itemCount",
+              "value": "={{ $items().length }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        400
+      ],
+      "id": "1571cb1a-083d-4555-bfcc-dc5303329b82",
+      "name": "Persist Run Metadata"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3400,
+        400
+      ],
+      "id": "c3f5fff3-b6f2-4fa8-abe1-e64724a84f99",
+      "name": "Serialize Run Output (CSV)"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "CRM Automation Base"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contacts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        3640,
+        400
+      ],
+      "id": "e50f1c85-b7f9-4325-908b-96f964627e90",
+      "name": "Archive Row Snapshot",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -375,314 +407,500 @@
     },
     {
       "parameters": {
-        "amount": 1,
-        "unit": "seconds"
-      },
-      "id": "3078052a-9992-43d7-96d9-5976cd470e05",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3900,
-        300
-      ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0a7cd59c-8454-43a7-8f23-d62233899660",
+              "name": "runAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "f95c513d-c290-4ea2-8bb4-779aa0f28750",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "33ff0fca-f8f4-4f15-97f6-8b8e8161efbf",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            }
+          ]
         },
         "options": {}
       },
-      "id": "18ac7bbf-a254-4e30-a1b9-269c789be58e",
-      "name": "Write Audit Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        4140,
-        300
+        3880,
+        400
       ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "f22d2547-aa30-4188-8ae7-9d33219e538d",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "CRM Automation Base"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contacts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4120,
+        400
+      ],
+      "id": "588f1356-5b0a-4a82-bee3-7b318dff5db9",
+      "name": "Append Audit Row (Airtable)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#sales",
+          "cachedResultName": "#sales"
+        },
+        "text": "=✅ Sync contacts across systems with HubSpot and Airtable with instant al — run completed at {{ $now.toFormat('HH:mm') }}",
         "otherOptions": {}
       },
-      "id": "72f22c27-e1e7-4e73-b899-2a25221ee25d",
-      "name": "Success Notification",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        4380,
-        300
+        4360,
+        400
       ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
+      "id": "8ccb6954-535d-43dc-b4aa-e80c533d2909",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0bb12e4d-e891-4217-ac4d-66ec452179e6",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "2d46e80b-d8c0-4673-931f-44627d1547ff",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "216a15dd-7534-4d5c-a86c-f7ef79012582",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3880,
+        740
+      ],
+      "id": "5ce07c2c-253b-4a0d-bf79-13908a513250",
+      "name": "Capture Failure Context"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        4120,
+        740
+      ],
+      "id": "493f6c99-0ef6-4689-8b42-19467dc6c7d0",
+      "name": "Escalate Failure to Discord",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Sync contacts across systems with HubSpot and Airtable with instant alerts\n\n**Tier:** Premium · **Difficulty:** Beginner\n**Pattern:** Contact Sync (CRM Automation)\n**Architecture:** validated input, branch on existing contact?, multi-system sync, audit log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
-        "width": 380,
-        "color": 4
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contact Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
       },
-      "id": "6693ac18-0da4-462d-bff8-71f99679063a",
-      "name": "Sticky Note 85c3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4360,
+        740
+      ],
+      "id": "550635cd-d833-4bd3-8a83-b9688eb36540",
+      "name": "Park in Dead-Letter Queue",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "## Sync contacts across systems with HubSpot and Airtable with instant alerts\n\n**Pattern:** Two-System Sync  \n**Trigger:** Scheduled  \n**Level:** Production\n\nProcesses contacts for contact sync — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 1
+      },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4660,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "2ea7acd5-3cfd-4d54-9571-d10a9beaa08f",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Idempotency Guard": {
-      "main": [
-        [
-          {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Upsert HubSpot Contact",
+            "node": "Fetch Changes Since Watermark",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert HubSpot Contact": {
+    "Fetch Changes Since Watermark": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Normalize Records",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Normalize Records": {
       "main": [
         [
           {
-            "node": "Transform Items",
+            "node": "Fingerprint for Idempotency",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Fingerprint for Idempotency": {
       "main": [
         [
           {
-            "node": "Save to Airtable",
+            "node": "Drop Already-Processed Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to Airtable": {
+    "Drop Already-Processed Items": {
       "main": [
         [
           {
-            "node": "Send Discord Message",
+            "node": "Upsert into HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert into HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Advance Watermark",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Discord Message": {
+    "Advance Watermark": {
       "main": [
         [
           {
-            "node": "Existing Contact?",
+            "node": "Persist Watermark (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Watermark (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Row Counts Match?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Existing Contact?": {
+    "Row Counts Match?": {
       "main": [
         [
           {
-            "node": "Update Existing Record",
+            "node": "Enrich with Reference Data",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Create New Record",
+            "node": "Raise Drift Alarm",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Enrich with Reference Data": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Existing Record": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create New Record": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
-        [
-          {
-            "node": "Sync to Secondary System",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sync to Secondary System": {
-      "main": [
-        [
-          {
-            "node": "Rate Limit Guard",
+            "node": "Fold In Enrichment Fields",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Rate Limit Guard": {
+    "Fold In Enrichment Fields": {
       "main": [
         [
           {
-            "node": "Write Audit Log",
+            "node": "Stamp Completion Time",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Write Audit Log": {
+    "Stamp Completion Time": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Persist Run Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Run Metadata": {
+      "main": [
+        [
+          {
+            "node": "Serialize Run Output (CSV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serialize Run Output (CSV)": {
+      "main": [
+        [
+          {
+            "node": "Archive Row Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Row Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Failure to Discord": {
+      "main": [
+        [
+          {
+            "node": "Park in Dead-Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raise Drift Alarm": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

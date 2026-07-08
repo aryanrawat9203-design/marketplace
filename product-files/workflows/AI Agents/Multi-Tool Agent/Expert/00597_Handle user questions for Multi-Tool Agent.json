@@ -3,47 +3,110 @@
   "nodes": [
     {
       "parameters": {
+        "public": true,
         "options": {}
       },
-      "id": "984cefb6-a7cf-4258-b248-05d053b7823c",
-      "name": "On Chat Message",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
       "position": [
-        300,
-        300
+        -200,
+        400
       ],
-      "webhookId": "aabf85b4-a2af-4911-9edf-7728b317c89a"
+      "id": "9ed326fb-3204-45c7-9738-5a2a67e6ae29",
+      "name": "When Chat Message Received",
+      "webhookId": "3f778388-85d3-457b-b3d8-af88f5dfd434"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "8c36db58-c8bf-47e0-8877-f2b64323764b",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "bf781ef8-4bbd-4761-aede-323ddb50de99",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming request records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    requestId: String(j.requestId ?? j.id ?? '').trim(),\n    query: typeof j.query === 'string' ? j.query.trim() : j.query ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        400
+      ],
+      "id": "595e5ce6-2c5c-4c9c-85fd-afd9fcbd5eec",
+      "name": "Normalize Request Payload"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput || $json.question || JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "You answer request questions using only the retrieved knowledge-base context. If the context does not contain the answer, say so and set needsHuman=true.",
+          "maxIterations": 6
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "3709b964-02a1-433d-bc4c-4c4b20e4170f",
+      "name": "Answer from Knowledge Base",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
         },
         "options": {}
       },
-      "id": "ad5202d3-150f-4589-a965-d5bf7c647686",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        460,
+        590
+      ],
+      "id": "1d7968b7-2e19-4f81-8a3a-24e5128442e7",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "memoryKey": "kb_main",
+        "mode": "retrieve-as-tool",
+        "topK": 5,
+        "toolDescription": "Semantic search over the multi-tool agent knowledge base. Always call this before answering factual request questions."
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        500,
+        730
+      ],
+      "id": "913359e5-cb0b-4afa-bb40-83d772b05383",
+      "name": "Knowledge Base Retriever"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
       "position": [
         540,
-        300
+        900
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "04626c0f-a2e8-464b-9b1e-2a1a2ec4fda3",
+      "name": "Query Embeddings"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.rerankerCohere",
+      "typeVersion": 1,
+      "position": [
+        750,
+        900
+      ],
+      "id": "6c146bec-8523-4fe4-9d6b-00696661fdfc",
+      "name": "Rerank Retrieved Chunks"
     },
     {
       "parameters": {
@@ -51,12 +114,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "49a3a379-89b8-4985-b6ad-3d6ddfa969c7",
-              "leftValue": "={{ $json.isValid !== false }}",
+              "id": "e234396b-16de-448d-b45c-b0f1b13ca64c",
+              "leftValue": "={{ !($json.output || '').includes('needsHuman') }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -65,48 +129,122 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "09bbf811-2bf2-478f-8638-dbb5e75081ad",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        990,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "f9f0e57e-446f-4fb5-9202-d5999db95bfb",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "2c180474-021b-4e69-a92d-8c317c156cb2",
+      "name": "Grounded Answer Found?"
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=Handle this request and use tools when needed:\n{{ JSON.stringify($json) }}",
-        "options": {
-          "systemMessage": "You are a helpful automation assistant.",
-          "maxIterations": 10
-        }
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "={{ $json.output }}",
+        "otherOptions": {}
       },
-      "id": "94528962-ebfe-4b53-8eea-5e3f5a056c16",
-      "name": "AI Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.9,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        1020,
-        300
+        1230,
+        320
       ],
+      "id": "12adee1a-8182-4f2d-8cfd-165a40458b58",
+      "name": "Deliver Answer via Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Request Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1470,
+        520
+      ],
+      "id": "ab18702b-edc5-45a5-9bcf-728a1015b5d7",
+      "name": "Log Knowledge Gap",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "=📚 Unanswered question logged: {{ $json.chatInput || $json.question }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1950,
+        520
+      ],
+      "id": "d64791f6-f6f9-4cbb-a0a0-956187a81bba",
+      "name": "Flag Gap to KB Owners",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
+        },
+        "text": "=✅ Handle user questions for Multi-Tool Agent — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2670,
+        400
+      ],
+      "id": "667b5307-4a75-4203-b780-6e37c562be02",
+      "name": "Send Summary to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -117,241 +255,94 @@
         "assignments": {
           "assignments": [
             {
-              "id": "837a160d-25d9-4d15-a0f8-098adfb15142",
-              "name": "source",
-              "value": "='flowdex-workflow'",
+              "id": "8538cd1c-ee17-4047-8c58-be344f712086",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
               "type": "string"
             },
             {
-              "id": "2d04cea0-9c8a-4fdc-869b-ce5f6c7b5202",
-              "name": "status",
-              "value": "='processed'",
+              "id": "be35a558-54f9-4973-8439-76e53511d380",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
               "type": "string"
             },
             {
-              "id": "0e806c84-7026-4877-b097-a039bde3647d",
-              "name": "count",
-              "value": "={{ $json.items ? $json.items.length : 1 }}",
-              "type": "number"
+              "id": "59c0efe0-ecc4-4181-ab1c-5fc32d6c67af",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "658757ce-905c-42b7-b7c1-b082963483b7",
-      "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1260,
-        300
-      ]
+        2190,
+        740
+      ],
+      "id": "37c93a99-e643-4e98-abfc-0e077b88e9dd",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "model": {
+        "select": "channel",
+        "channelId": {
           "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini"
+          "mode": "name",
+          "value": "#ai-ops",
+          "cachedResultName": "#ai-ops"
         },
-        "options": {}
-      },
-      "id": "6dba5451-5645-4042-add2-059dc331302d",
-      "name": "OpenAI Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        740,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "toolDescription": "Fetch data from an external API",
-        "url": "https://api.example.com/data",
-        "options": {}
-      },
-      "id": "fd53e0cb-dd54-4ca9-a9e6-e8e46348fcdf",
-      "name": "HTTP Request Tool",
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [
-        940,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "33350737-d5f4-485a-84fd-f4d526ef1c77",
-              "leftValue": "={{ $json.toolCallConfidence }}",
-              "rightValue": "0.7",
-              "operator": {
-                "type": "number",
-                "operation": "gte"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "cf1a10c7-eca7-4ad2-9d83-660c3e5307b9",
-      "name": "Confidence High?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1500,
-        300
-      ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "1dbfe7ba-ce8f-40ea-aea1-2126a7c720ff",
-      "name": "Respond Directly",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1740,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "b09cc396-be40-43ff-b5d1-f49cdbd19af5",
-      "name": "Escalate to Human Review",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1740,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "60bff64d-dc13-42d8-9958-586d129dd907",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "eb8bd17a-8060-42a7-a1c2-8ef5c0221472",
-      "name": "Handle Error",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1980,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "4e0744ae-ddf2-4740-bffa-75bc61f2cc32",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        2220,
-        760
+        2430,
+        740
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "cf077f47-592b-4a97-a28e-7d267e6cd70b",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "37a8331b-ad67-4baa-b39a-750a84f06613",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2460,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Handle user questions for Multi-Tool Agent\n\n**Tier:** Professional · **Difficulty:** Expert\n**Pattern:** Multi-Tool Agent (AI Agents)\n**Architecture:** validated input, branch on confidence high?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Handle user questions for Multi-Tool Agent\n\n**Pattern:** Chatbot Responder  \n**Trigger:** Chat  \n**Level:** Core\n\nProcesses requests for multi-tool agent — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 3
       },
-      "id": "b8d04d2b-7056-419f-99d4-02255a48bf71",
-      "name": "Sticky Note 186f",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2740,
-        40
-      ]
+        -260,
+        60
+      ],
+      "id": "3d423a76-ec54-4565-ae2e-403c6550959c",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "On Chat Message": {
+    "When Chat Message Received": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Normalize Request Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Normalize Request Payload": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log Invalid Input",
+            "node": "Answer from Knowledge Base",
             "type": "main",
             "index": 0
           }
@@ -362,98 +353,135 @@
       "ai_languageModel": [
         [
           {
-            "node": "AI Agent",
+            "node": "Answer from Knowledge Base",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request Tool": {
+    "Knowledge Base Retriever": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "Answer from Knowledge Base",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent": {
+    "Query Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledge Base Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rerank Retrieved Chunks": {
+      "ai_reranker": [
+        [
+          {
+            "node": "Knowledge Base Retriever",
+            "type": "ai_reranker",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer from Knowledge Base": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Grounded Answer Found?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Grounded Answer Found?": {
       "main": [
         [
           {
-            "node": "Confidence High?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Confidence High?": {
-      "main": [
-        [
-          {
-            "node": "Respond Directly",
+            "node": "Deliver Answer via Slack",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Escalate to Human Review",
+            "node": "Log Knowledge Gap",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Log Knowledge Gap": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Flag Gap to KB Owners",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Respond Directly": {
+    "Deliver Answer via Slack": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Escalate to Human Review": {
+    "Capture Failure Context": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

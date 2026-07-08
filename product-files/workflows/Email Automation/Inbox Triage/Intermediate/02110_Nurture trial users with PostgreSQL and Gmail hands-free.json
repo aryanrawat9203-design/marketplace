@@ -6,50 +6,490 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 5
+              "field": "hours",
+              "hoursInterval": 4
             }
           ]
         }
       },
-      "id": "eef92dcb-abde-4f00-9d5b-29b400d7166f",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "c161785e-86ba-42b3-ae57-e1ee57fa022c",
+      "name": "Hourly Schedule"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming email records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    messageId: String(j.messageId ?? j.id ?? '').trim(),\n    from: typeof j.from === 'string' ? j.from.trim() : j.from ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        400
+      ],
+      "id": "bcc7829c-2995-4c6d-85c9-0b11078c6f42",
+      "name": "Normalize Email Payload"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Score each email 0-100 from simple heuristics\nreturn $input.all().map(item => {\n  const j = item.json;\n  let score = 50;\n  if (j.from) score += 20;\n  if (j.subject) score += 15;\n  if ((j.source || '') === 'referral') score += 15;\n  return { json: { ...j, score: Math.min(100, score) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "bf94aa9e-bfd6-4f71-bcdd-7214c9a6c1b1",
+      "name": "Score the Lead"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Round-robin owner assignment\nconst owners = ['ava@company.com', 'liam@company.com', 'mia@company.com'];\nreturn $input.all().map((item, i) => ({\n  json: { ...item.json, owner: owners[i % owners.length] },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "f468aea7-6dd6-48f7-9584-7b9f9c382e68",
+      "name": "Assign Round-Robin Owner"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "508e4c94-9bd8-4a03-bbd7-a5b88366b0cb",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 80,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "72c7243c-8691-4609-bf60-41fad92db5db",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 50,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        760,
+        400
+      ],
+      "id": "7bad2328-c015-4f59-a6a3-19c9c7d40d9f",
+      "name": "Route by Heat"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Email Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "messageId"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1000,
+        240
+      ],
+      "id": "557fa344-5808-4655-b40f-4bd59a828c53",
+      "name": "Hot → Google Sheets + Instant Ping",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email || 'ops@company.com' }}",
+        "subject": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
+        "message": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1480,
+        240
+      ],
+      "id": "21a1f4c3-4205-4ce2-a8e0-0f8d74155657",
+      "name": "Notify Assigned Owner",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email || 'ops@company.com' }}",
+        "subject": "=Thanks for your interest — here's a quick-start guide.",
+        "message": "=Thanks for your interest — here's a quick-start guide.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        400
+      ],
+      "id": "a4ec7b59-7204-4ff2-b635-93a2179f96ce",
+      "name": "Warm → Drip via Gmail",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (messageId, from, subject, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1960,
+        560
+      ],
+      "id": "969dec5e-2484-49ad-be58-6746483146bc",
+      "name": "Cold → Park in Nurture List",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "9427af90-83da-40a6-98d0-35023ffcff9b",
+      "name": "Combine Lead Paths"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.from }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3640,
+        400
+      ],
+      "id": "5c44f56d-1eca-416b-8a6e-2e2e09313c29",
+      "name": "Enrich with Reference Data",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "088e90d1-db60-4750-9dc1-78760b264662",
-              "name": "receivedAt",
+              "id": "c8116546-2b60-48be-b62e-b3e053f806a8",
+              "name": "enrichedAt",
               "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
-              "id": "b73804fb-81f5-459f-a42c-9cbaa1e325f2",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
+              "id": "7398f6b4-3c90-4f59-8579-be6acc785272",
+              "name": "enrichmentSource",
+              "value": "reference-api",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "a3a86865-6e25-4cfb-a4e7-0c0dcc4c4767",
-      "name": "Validate Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        540,
-        300
+        3880,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "5f0fb1f1-046b-46d7-b6e3-0e3594edda6b",
+      "name": "Fold In Enrichment Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "lib: Post-Process Emails"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4120,
+        400
+      ],
+      "id": "89e141a0-9467-4521-a5ea-ecb0f412de29",
+      "name": "Offload to Post-Process Sub-workflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "subflowStatus",
+              "value": "={{ $json.status || 'done' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        4360,
+        400
+      ],
+      "id": "3e9e84ef-7a8d-4365-9578-ab368fd4e91e",
+      "name": "Record Sub-workflow Result"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        4600,
+        400
+      ],
+      "id": "ca367880-6300-40f3-b373-0196995d620a",
+      "name": "Serialize Run Output (CSV)"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Email Database"
+        },
+        "title": "={{ $json.from || $json.messageId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        4840,
+        400
+      ],
+      "id": "baa18e63-6fbf-4268-8582-f47f46a879df",
+      "name": "Archive Row Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "completedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        5080,
+        400
+      ],
+      "id": "fcb605bb-df9c-4c8f-b45f-517de287b73c",
+      "name": "Stamp Completion Time"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "key": "itemCount",
+              "value": "={{ $items().length }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        5320,
+        400
+      ],
+      "id": "fda82805-588c-4dd6-b2fc-adcf4407ab2a",
+      "name": "Persist Run Metadata"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per email (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.messageId, j.from].join('|')) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5560,
+        400
+      ],
+      "id": "94f22b5a-cf66-4ef6-a230-a0730f7315df",
+      "name": "Fingerprint for Idempotency"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        5800,
+        400
+      ],
+      "id": "2ec5d569-7861-49fa-89fa-b887e23d514f",
+      "name": "Drop Already-Processed Items"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM emails WHERE updated_at > NOW() - INTERVAL '1 day' ORDER BY updated_at DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6040,
+        400
+      ],
+      "id": "e5fc49dc-0cf1-4bb2-a994-75f77020cddc",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compare current metrics with the previous snapshot\nconst current = $input.first().json;\nconst prev = $('Load Previous Snapshot').first().json || {};\nconst drift = {};\nfor (const k of Object.keys(current)) {\n  if (typeof current[k] === 'number' && typeof prev[k] === 'number' && prev[k] !== 0) {\n    drift[k] = Math.round(((current[k] - prev[k]) / prev[k]) * 1000) / 10;\n  }\n}\nreturn [{ json: { ...current, driftPct: drift, hasDrift: Object.values(drift).some(v => Math.abs(v) > 10) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6280,
+        400
+      ],
+      "id": "6cb6f4ee-e271-487d-b454-684a11d8c6ac",
+      "name": "Compute Drift vs Snapshot"
     },
     {
       "parameters": {
@@ -57,12 +497,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "5db9a09c-3f37-4c50-a5d0-09ea25f115e4",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
+              "id": "b7c51516-e0d0-49c4-8037-36b1488a5594",
+              "leftValue": "={{ $json.from }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -71,495 +512,109 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "cfa437d7-b1b6-4a5e-9baa-bc9f9d9f0de1",
-      "name": "Idempotency Guard",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        6520,
+        400
       ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
+      "id": "221a803b-4899-4302-b9ad-678eec03ac85",
+      "name": "Guard Non-Empty from"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
+        "keys": {
+          "key": [
             {
-              "id": "42d9e96b-d2c4-4e0a-8d4e-bbf163ffb276",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "b05c904a-6616-43e7-bd0e-52673fc1eff2",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1020,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "3bbd6114-2209-4f12-b189-aaf30bd1cdc0",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1020,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "86063583-fbbb-4ce3-b695-d07c372e794e",
-      "name": "Save to PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1260,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "amount": 30,
-        "unit": "minutes"
-      },
-      "id": "42beadc4-adf1-4254-b8d7-1563011ae7fd",
-      "name": "Wait",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1500,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Process the following input and return a helpful result:\n{{ JSON.stringify($json) }}"
-      },
-      "id": "7d96f343-cd68-458d-8eac-efa34a9e8bac",
-      "name": "Personalize Message with AI",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        1740,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "sendTo": "={{ $json.email }}",
-        "subject": "Automated update",
-        "message": "={{ $json.summary }}",
-        "options": {}
-      },
-      "id": "949a357b-7fcb-4ca1-992b-76e956464c84",
-      "name": "Send Gmail Message",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [
-        1980,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "model": "models/gemini-1.5-flash",
-        "options": {}
-      },
-      "id": "4b2d0cac-22c2-4052-a819-cda29d0ed5ad",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        1220,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "37834dad-06b9-47a1-932b-a754f129e8e8",
-              "leftValue": "={{ $json.category }}",
-              "rightValue": "urgent",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "233440db-993c-41ae-9b15-b1f5fefdcb97",
-      "name": "Needs Human Reply?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2220,
-        300
-      ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "57d397f5-ba0e-43d7-8fbe-46b10edd645f",
-      "name": "Auto-Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2460,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "fea5ef7a-66f6-4968-9060-63f9642439c0",
-      "name": "Flag for Manual Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2460,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "e4df034b-3cca-447d-9b3f-a7927f48e1a6",
-              "name": "errorSource",
-              "value": "primary",
-              "type": "string"
-            },
-            {
-              "id": "e87c9df2-c16b-4c30-9612-acc064152602",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
+              "currentKey": "id",
+              "newKey": "messageId"
             }
           ]
         },
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        6760,
+        400
+      ],
+      "id": "611343f3-bb59-4bd5-84ca-1f6af119e2a7",
+      "name": "Align Field Names"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "processedAt",
         "options": {}
       },
-      "id": "8379e46c-c41a-4595-adf4-2772dcc7c00e",
-      "name": "Handle Error — Primary",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
       "position": [
-        2700,
-        700
-      ]
+        7000,
+        400
+      ],
+      "id": "ef3d137e-32dc-4a5d-8166-5a72e5ebd273",
+      "name": "Stamp Processing Time"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "f28163a4-b2df-48c5-bee0-0da5933e2537",
-              "name": "errorSource",
-              "value": "secondary",
+              "id": "10e9e922-3dd8-47ee-901a-2a61c5e0cf0a",
+              "name": "runAt",
+              "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
-              "id": "3eb5e793-525c-49c6-a138-2fcde50c467f",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "cc7ad2b1-9122-4226-a008-df1fb16bc0c4",
-      "name": "Handle Error — Secondary",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2700,
-        860
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
-      },
-      "id": "1ada6c99-db5d-403d-9826-ee5d9ece4c4c",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        760
-      ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "7e41b827-b0f0-432f-8a26-d7d360a2704b",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3180,
-        300
-      ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
-        "options": {}
-      },
-      "id": "79cea1df-999b-4447-aff2-9f537df4a320",
-      "name": "Sync to Secondary System",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3420,
-        300
-      ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "amount": 1,
-        "unit": "seconds"
-      },
-      "id": "76a01591-e1af-479e-9acb-c850dd34d730",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3660,
-        300
-      ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
-        },
-        "options": {}
-      },
-      "id": "9b36ebb2-cf8a-4f3b-9e20-8b1de69470fa",
-      "name": "Write Audit Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        3900,
-        300
-      ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
+              "id": "b644ed5b-5d01-4032-8f3f-cc02b6ad8a2f",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
             {
-              "id": "99e0c189-4565-4a92-9066-cd25341f30bb",
-              "leftValue": "={{ $json.threadValue }}",
-              "rightValue": 100,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "c4419d87-fa05-4e15-af70-f1169310e996",
-      "name": "High-Value Item?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4140,
-        300
-      ],
-      "notes": "Human-in-the-loop for high-impact actions (§9.4)."
-    },
-    {
-      "parameters": {
-        "resume": "webhook",
-        "options": {}
-      },
-      "id": "c010be5e-c2a7-4f51-b5ce-1174a3352b15",
-      "name": "Require Approval",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        4380,
-        300
-      ],
-      "notes": "Pauses until the approval webhook/resume URL is called — human-in-the-loop gate."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "4f522f9f-0b0e-48eb-bf1a-2626961c3bfb",
-              "leftValue": "={{ $json.approved }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "62eae54b-0887-4979-a4e1-4d50b747a653",
-      "name": "Approved?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4620,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "4991953f-56da-444e-9f5a-629a871ff05b",
+              "id": "e3a4428f-0476-4d91-91e2-ed2217f2eb00",
               "name": "status",
-              "value": "rejected",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "8bb8d955-911f-42a3-bfa5-7f009be41bbd",
-      "name": "Reject & Notify",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4620,
-        700
-      ]
+        7240,
+        400
+      ],
+      "id": "f363fe9c-f3c2-455b-90d3-4059027bd03c",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/system-b",
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Email Database"
+        },
+        "title": "={{ $json.from || $json.messageId }}",
         "options": {}
       },
-      "id": "523b26b9-fed5-4882-9b7e-f9372647410d",
-      "name": "Parallel: Update System B",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
       "position": [
-        4860,
-        500
+        7480,
+        400
       ],
-      "notes": "Independent parallel write — runs alongside the primary path, not blocked by approval (§8.14).",
+      "id": "df1abcbc-59a0-4bf6-a7a6-ba52e240b73a",
+      "name": "Append Audit Row (Notion)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -567,69 +622,84 @@
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=✅ Nurture trial users with PostgreSQL and Gmail hands-free — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
       },
-      "id": "b2f95f1e-536a-4364-ae9b-7a8c84dc48c7",
-      "name": "Merge Post-Approval",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        5100,
-        300
+        7720,
+        400
       ],
-      "notes": "Recombine the approved and low-value-parallel paths."
+      "id": "de5a5686-2b9c-4683-bd88-ab05ca327fe5",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
+        "assignments": {
+          "assignments": [
             {
-              "id": "3f8bed95-ed1b-4115-8568-a186dc894d5b",
-              "leftValue": "={{ $now.diff($('Validate Input').item.json.receivedAt).as('seconds') }}",
-              "rightValue": 300,
-              "operator": {
-                "type": "number",
-                "operation": "lt"
-              }
+              "id": "73fbaefb-96d4-4a2e-adfa-347c6bbbbff5",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "c1a9cc59-b02e-4569-930f-53eb1ede3ac9",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "ab05d58a-c5c2-46ba-92e0-0de8bddb6a69",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
             }
-          ],
-          "combinator": "and"
+          ]
         },
         "options": {}
       },
-      "id": "444b042e-813e-4702-8ba5-4312fa544339",
-      "name": "Check Processing SLA",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        5340,
-        300
+        7240,
+        740
       ],
-      "notes": "Escalate if this run is breaching its SLA window (§8.11, §9.5)."
+      "id": "4c57b76e-35fa-4da5-b9e5-e2f67ae11138",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#oncall",
-        "text": "={{ 'SLA breach on ' + $workflow.name }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "a608850d-14db-4b24-8e94-d51f8455d646",
-      "name": "Escalate to On-Call",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        5580,
-        500
+        7480,
+        740
       ],
-      "notes": "Distinct on-call channel — separate from the general failure alert (§8.11).",
+      "id": "0bf0940b-9d96-46fd-a40b-89eb68da6757",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -640,442 +710,445 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Email Database"
         },
-        "propertiesUi": {}
+        "title": "={{ $json.from || $json.messageId }}",
+        "options": {}
       },
-      "id": "7936dbc7-2862-4e21-9ed2-841100e4e983",
-      "name": "Stream to Compliance Log",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        5580,
-        300
+        7720,
+        740
       ],
-      "notes": "Separate compliance/audit trail from the operational audit log (§8.14).",
+      "id": "d0e11f5b-9093-4914-8b1e-18130d373c49",
+      "name": "Park in Dead-Letter Queue",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "5d2644eb-042c-4456-9215-c4a646906871",
-              "name": "status",
-              "value": "processed",
-              "type": "string"
-            },
-            {
-              "id": "cf66c651-50bf-4a73-8694-8827ff77aed5",
-              "name": "archivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "ef53b942-1fd8-45bc-adff-64ed010e8ecd",
-      "name": "Close Out & Archive",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        5820,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "39046013-d4a5-4caf-bcdb-e09ad1f9ab3b",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        6060,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Nurture trial users with PostgreSQL and Gmail hands-free\n\n**Tier:** Enterprise · **Difficulty:** Intermediate\n**Pattern:** Inbox Triage (Email Automation)\n**Architecture:** validated input, branch on needs human reply?, multi-system sync, audit log, human-in-the-loop approval, SLA monitoring, compliance log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Nurture trial users with PostgreSQL and Gmail hands-free\n\n**Pattern:** Drip Sequence  \n**Trigger:** Scheduled  \n**Level:** Architect\n\nProcesses emails for inbox triage — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 1
       },
-      "id": "d5f61567-75ee-42f5-91df-e586fba16605",
-      "name": "Sticky Note f925",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6340,
-        40
-      ]
+        -260,
+        -20
+      ],
+      "id": "5405744a-b365-4f11-b058-57eab84ed4e9",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Normalize Email Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Normalize Email Payload": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
+            "node": "Score the Lead",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Idempotency Guard": {
+    "Score the Lead": {
       "main": [
         [
           {
-            "node": "Input Valid?",
+            "node": "Assign Round-Robin Owner",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Input Valid?": {
+    "Assign Round-Robin Owner": {
       "main": [
         [
           {
-            "node": "Save to PostgreSQL",
+            "node": "Route by Heat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot → Google Sheets + Instant Ping": {
+      "main": [
+        [
+          {
+            "node": "Notify Assigned Owner",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Route by Heat": {
       "main": [
         [
           {
-            "node": "Wait",
+            "node": "Hot → Google Sheets + Instant Ping",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait": {
-      "main": [
-        [
-          {
-            "node": "Personalize Message with AI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Personalize Message with AI",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Personalize Message with AI": {
-      "main": [
-        [
-          {
-            "node": "Send Gmail Message",
+            "node": "Warm → Drip via Gmail",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Cold → Park in Nurture List",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Gmail Message": {
+    "Notify Assigned Owner": {
       "main": [
         [
           {
-            "node": "Needs Human Reply?",
+            "node": "Combine Lead Paths",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Needs Human Reply?": {
+    "Warm → Drip via Gmail": {
       "main": [
         [
           {
-            "node": "Auto-Reply",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Flag for Manual Reply",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Handle Error — Primary": {
-      "main": [
-        [
-          {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Handle Error — Secondary": {
-      "main": [
-        [
-          {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Auto-Reply": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Flag for Manual Reply": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
-        [
-          {
-            "node": "Sync to Secondary System",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sync to Secondary System": {
-      "main": [
-        [
-          {
-            "node": "Rate Limit Guard",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Primary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Rate Limit Guard": {
-      "main": [
-        [
-          {
-            "node": "Write Audit Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Write Audit Log": {
-      "main": [
-        [
-          {
-            "node": "High-Value Item?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "High-Value Item?": {
-      "main": [
-        [
-          {
-            "node": "Require Approval",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Parallel: Update System B",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Require Approval": {
-      "main": [
-        [
-          {
-            "node": "Approved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Approved?": {
-      "main": [
-        [
-          {
-            "node": "Merge Post-Approval",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Reject & Notify",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parallel: Update System B": {
-      "main": [
-        [
-          {
-            "node": "Merge Post-Approval",
+            "node": "Combine Lead Paths",
             "type": "main",
             "index": 1
           }
         ],
         [
           {
-            "node": "Handle Error — Secondary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Post-Approval": {
+    "Cold → Park in Nurture List": {
       "main": [
         [
           {
-            "node": "Check Processing SLA",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Processing SLA": {
+    "Combine Lead Paths": {
       "main": [
         [
           {
-            "node": "Stream to Compliance Log",
+            "node": "Enrich with Reference Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Reference Data": {
+      "main": [
+        [
+          {
+            "node": "Fold In Enrichment Fields",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Escalate to On-Call",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Stream to Compliance Log": {
+    "Fold In Enrichment Fields": {
       "main": [
         [
           {
-            "node": "Close Out & Archive",
+            "node": "Offload to Post-Process Sub-workflow",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Close Out & Archive": {
+    "Offload to Post-Process Sub-workflow": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Record Sub-workflow Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Sub-workflow Result": {
+      "main": [
+        [
+          {
+            "node": "Serialize Run Output (CSV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serialize Run Output (CSV)": {
+      "main": [
+        [
+          {
+            "node": "Archive Row Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Row Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Stamp Completion Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Completion Time": {
+      "main": [
+        [
+          {
+            "node": "Persist Run Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Run Metadata": {
+      "main": [
+        [
+          {
+            "node": "Fingerprint for Idempotency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fingerprint for Idempotency": {
+      "main": [
+        [
+          {
+            "node": "Drop Already-Processed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Already-Processed Items": {
+      "main": [
+        [
+          {
+            "node": "Load Previous Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Previous Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Compute Drift vs Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Drift vs Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Guard Non-Empty from",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Non-Empty from": {
+      "main": [
+        [
+          {
+            "node": "Align Field Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Align Field Names": {
+      "main": [
+        [
+          {
+            "node": "Stamp Processing Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Processing Time": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Notion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Notion)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Failure to Slack": {
+      "main": [
+        [
+          {
+            "node": "Park in Dead-Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

@@ -6,121 +6,129 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 1
+              "field": "days",
+              "triggerAtHour": 17,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
-      "id": "8c7cdc03-a607-4553-83b9-90d624cb2f93",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        320,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "24968a36-61ad-411c-a4a2-d30cd848f8d0",
+      "name": "Daily Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "dd5cccdd-636f-48be-992f-0636b58cf658",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "bdfdc799-fc45-4850-b441-8a37c23a5e24",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Lead Database"
         },
+        "returnAll": true,
         "options": {}
       },
-      "id": "b712f709-6972-487c-b5e2-84029fe1dd10",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
       "position": [
-        560,
-        300
+        40,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "497d928d-638a-4b31-a6c0-47dbbb278c42",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/v1/leads",
+        "options": {
+          "timeout": 20000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "updated_since",
+              "value": "={{ $now.minus({hours: 6}).toISO() }}"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "8762e1f9-800d-4b4f-a5fb-a7c874895d39",
+      "name": "Fetch Changes Since Watermark",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming lead records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    leadId: String(j.leadId ?? j.id ?? '').trim(),\n    email: typeof j.email === 'string' ? j.email.trim() : j.email ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "bd37f64c-78b9-460a-931a-34725ff32b24",
+      "name": "Normalize Records"
     },
     {
       "parameters": {
         "resource": "contact",
-        "operation": "upsert",
         "email": "={{ $json.email }}",
-        "additionalFields": {}
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
+        },
+        "authentication": "appToken"
       },
-      "id": "fc5db74a-acc0-4e93-bea9-0681bffaf949",
-      "name": "Upsert HubSpot Contact",
       "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2.1,
+      "typeVersion": 2,
       "position": [
-        800,
-        300
+        760,
+        400
       ],
+      "id": "2420aff0-d4ee-4694-bcce-a02137e2eeb6",
+      "name": "Upsert into HubSpot",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "url": "https://api.example.com/records",
-        "options": {},
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Advance the incremental watermark to the newest record seen\nconst items = $input.all().map(i => i.json);\nconst newest = items.reduce((m, j) => {\n  const ts = new Date(j.updatedAt || j.receivedAt || 0).getTime();\n  return ts > m ? ts : m;\n}, 0);\nreturn [{ json: { watermark: new Date(newest || Date.now()).toISOString(), processed: items.length } }];"
       },
-      "id": "3703f77e-812c-467f-ad10-33938c7a71c4",
-      "name": "Fetch Data",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1040,
-        300
+        1000,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Process the following input and return a helpful result:\n{{ JSON.stringify($json) }}"
-      },
-      "id": "75c675b8-366f-451f-83ca-c465f5fd1cb6",
-      "name": "Enrich with AI",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        1280,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "model": "models/gemini-1.5-flash",
-        "options": {}
-      },
-      "id": "2e4bb7d2-a752-4734-92a3-998dc82f3aa7",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        1220,
-        520
-      ]
+      "id": "a5f8bd0f-3792-41a1-9f63-d9cd54f88fc5",
+      "name": "Advance Watermark"
     },
     {
       "parameters": {
@@ -128,102 +136,136 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Lead Database"
         },
+        "title": "={{ $json.email || $json.leadId }}",
         "options": {}
       },
-      "id": "6b6d1b79-e2df-4aa0-a887-412318f45e81",
-      "name": "Save to Notion",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        1520,
-        300
+        1240,
+        400
       ],
+      "id": "341a429c-a4fc-47cc-bbdb-914956a7ba47",
+      "name": "Persist Watermark (Notion)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Enrich contact records with HubSpot and HTTP / REST API at scale\n\n**Pattern:** Data Enrichment\n**Trigger:** Scheduled\n**Integrations:** HubSpot, HTTP / REST API, Notion\n\nImport, add your credentials, then adjust parameters. Original FlowDex template.",
-        "height": 260,
-        "width": 360,
-        "color": 4
+        "keys": {
+          "key": [
+            {
+              "currentKey": "id",
+              "newKey": "leadId"
+            }
+          ]
+        },
+        "additionalOptions": {}
       },
-      "id": "981d3da9-bc0c-4a83-83f7-c454c8a36bad",
-      "name": "Sticky Note",
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "79a76227-1746-4fd1-965b-d1b5e31cccbf",
+      "name": "Align Field Names"
+    },
+    {
+      "parameters": {
+        "content": "## Enrich contact records with HubSpot and HTTP / REST API at scale for Routing (04585)\n\n**Pattern:** Data Enrichment  \n**Trigger:** Scheduled  \n**Level:** Foundation\n\nProcesses leads for routing — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 6
+      },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1560,
-        80
-      ]
+        -260,
+        140
+      ],
+      "id": "3586541e-7ee2-4763-8301-5d133dff6a33",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Daily Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Upsert HubSpot Contact",
+            "node": "Fetch Changes Since Watermark",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert HubSpot Contact": {
+    "Fetch Changes Since Watermark": {
       "main": [
         [
           {
-            "node": "Fetch Data",
+            "node": "Normalize Records",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Normalize Records": {
       "main": [
         [
           {
-            "node": "Enrich with AI",
+            "node": "Upsert into HubSpot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Enrich with AI": {
+    "Upsert into HubSpot": {
       "main": [
         [
           {
-            "node": "Save to Notion",
+            "node": "Advance Watermark",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
+    "Advance Watermark": {
+      "main": [
         [
           {
-            "node": "Enrich with AI",
-            "type": "ai_languageModel",
+            "node": "Persist Watermark (Notion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Watermark (Notion)": {
+      "main": [
+        [
+          {
+            "node": "Align Field Names",
+            "type": "main",
             "index": 0
           }
         ]

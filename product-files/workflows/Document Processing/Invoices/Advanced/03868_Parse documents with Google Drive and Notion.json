@@ -6,50 +6,106 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 5
+              "field": "hours",
+              "hoursInterval": 1
             }
           ]
         }
       },
-      "id": "514dda25-b1f4-450c-b7c6-3ea04d93d4d6",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "e236e044-9ad8-4d8b-a698-a3f242276588",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "051e421a-be88-40b5-a992-cfbbec4b9a46",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "223230af-b756-45d4-9a8c-a851c654870a",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Document Database"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        40,
+        400
+      ],
+      "id": "ac940d54-ac0e-42cd-93e8-cdbea11dc24c",
+      "name": "Export All Rows (Notion)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        400
+      ],
+      "id": "4d71a415-e77c-440d-9e99-1b5547a88d84",
+      "name": "Serialize to CSV"
+    },
+    {
+      "parameters": {
+        "operation": "compress",
+        "fileName": "=backup-{{ $now.toFormat('yyyyLLdd') }}.zip",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.compression",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        400
+      ],
+      "id": "cdf8a7a8-a9bc-4393-ba3d-d9e58f50b909",
+      "name": "Compress Archive"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "=backup-{{ $now.toFormat('yyyyLLdd-HHmm') }}.zip",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Backups"
         },
         "options": {}
       },
-      "id": "ab9ae4af-5c39-44ee-9cfe-b899411502ec",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
       "position": [
-        540,
-        300
+        760,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "4b79763e-4357-4ec3-b135-04e2e271ec6e",
+      "name": "Upload Backup to Google Drive",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -57,12 +113,333 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "927ce14c-f49b-4a7d-af74-d0ab264cfd7b",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
+              "id": "a233185a-2dc2-4ca7-931f-a904ff75cc0f",
+              "leftValue": "={{ ($binary.data?.fileSize ?? 1) > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        400
+      ],
+      "id": "d7f5a8e9-e599-40e4-a7e7-be32beb85ea7",
+      "name": "Backup Size Sane?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#docs",
+          "cachedResultName": "#docs"
+        },
+        "text": "=🛑 Tonight's backup came out EMPTY — investigate immediately.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1240,
+        560
+      ],
+      "id": "9896bc75-74b4-45c6-b37b-6fd04c796197",
+      "name": "Alarm — Empty Backup",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per document (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.documentId, j.fileName].join('|')) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "b145961b-0900-4d09-910a-e456154e65bc",
+      "name": "Fingerprint for Idempotency"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        400
+      ],
+      "id": "202ef23c-3686-4277-8998-26aaa08eff96",
+      "name": "Drop Already-Processed Items"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1960,
+        400
+      ],
+      "id": "f115533a-cdee-4407-84e4-5d0bb7c590c2",
+      "name": "Serialize Run Output (CSV)"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "=run-{{ $now.toFormat('yyyyLLdd-HHmm') }}.csv",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Archives"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2200,
+        400
+      ],
+      "id": "450818cd-c2a9-4d06-bb49-452b248d57e4",
+      "name": "Archive Copy to Google Drive",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "lib: Post-Process Documents"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2440,
+        400
+      ],
+      "id": "95e41653-04f4-4dd8-8ccd-7afc834428c8",
+      "name": "Offload to Post-Process Sub-workflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "subflowStatus",
+              "value": "={{ $json.status || 'done' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "fa7d1fe6-9bb2-47c3-9ddf-18d53607478d",
+      "name": "Record Sub-workflow Result"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "completedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        2920,
+        400
+      ],
+      "id": "81f2a03c-8c01-45f5-94e3-2af4512d7e81",
+      "name": "Stamp Completion Time"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "key": "itemCount",
+              "value": "={{ $items().length }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        3160,
+        400
+      ],
+      "id": "1978441e-ab9e-4951-9eda-11af6c2615c8",
+      "name": "Persist Run Metadata"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Document Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3400,
+        400
+      ],
+      "id": "55b39f82-de4f-4144-b40e-1a7a12450f78",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Compare current metrics with the previous snapshot\nconst current = $input.first().json;\nconst prev = $('Load Previous Snapshot').first().json || {};\nconst drift = {};\nfor (const k of Object.keys(current)) {\n  if (typeof current[k] === 'number' && typeof prev[k] === 'number' && prev[k] !== 0) {\n    drift[k] = Math.round(((current[k] - prev[k]) / prev[k]) * 1000) / 10;\n  }\n}\nreturn [{ json: { ...current, driftPct: drift, hasDrift: Object.values(drift).some(v => Math.abs(v) > 10) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3640,
+        400
+      ],
+      "id": "5a7f4279-ad7e-4d36-857c-2746e95c1b0b",
+      "name": "Compute Drift vs Snapshot"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.fileName }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3880,
+        400
+      ],
+      "id": "faa698e1-ada4-4690-9cb8-e6cf644b1df6",
+      "name": "Enrich with Reference Data",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8a0e1b1-6f04-4968-a515-977b3baa26fb",
+              "name": "enrichedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "59c03a90-5d73-47f1-8e47-dc12198b99a6",
+              "name": "enrichmentSource",
+              "value": "reference-api",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4120,
+        400
+      ],
+      "id": "146791d8-2674-4536-be43-d2141a5ff217",
+      "name": "Fold In Enrichment Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a0e9c430-16f9-48f1-bf6e-4f8244eb7051",
+              "leftValue": "={{ $json.fileName }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -71,129 +448,141 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "96601ff5-12f1-43e7-924d-d5e08a734f03",
-      "name": "Idempotency Guard",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        4360,
+        400
       ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
+      "id": "507337af-ce39-4eb7-b2ec-9ae4dc18efbf",
+      "name": "Guard Non-Empty fileName"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
+        "sortFieldsUi": {
+          "sortField": [
             {
-              "id": "c5395c37-1e43-4143-8914-fef61825cf7d",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
+              "fieldName": "pageCount",
+              "order": "descending"
             }
-          ],
-          "combinator": "and"
+          ]
         },
         "options": {}
       },
-      "id": "345d1a64-c78a-431d-aaff-8dae1c745695",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1020,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "3a29357d-1762-4411-b544-a749ed64db05",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
+      "type": "n8n-nodes-base.sort",
       "typeVersion": 1,
       "position": [
-        1020,
-        500
+        4600,
+        400
       ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "f1f15342-44a3-4cc2-9755-44c01977ebb1",
+      "name": "Sort Documents Newest First"
     },
     {
       "parameters": {
-        "resource": "file",
-        "operation": "upload",
-        "name": "={{ $json.filename }}",
+        "operation": "getCurrentDate",
+        "outputFieldName": "processedAt",
         "options": {}
       },
-      "id": "d3874016-6e59-4daf-8274-8ff1074d4c59",
-      "name": "Upload to Google Drive",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        1260,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Deduplicate by email\nconst seen = new Set();\nreturn $input.all().filter(i => {\n  const k = i.json.email || i.json.id;\n  if (seen.has(k)) return false; seen.add(k); return true;\n});"
-      },
-      "id": "9fda393d-104f-4f27-829d-69dcc6df3061",
-      "name": "Transform Items",
-      "type": "n8n-nodes-base.code",
+      "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
       "position": [
-        1500,
-        300
-      ]
+        4840,
+        400
+      ],
+      "id": "13679288-fa07-49af-8a6f-65a70ed7ee73",
+      "name": "Stamp Processing Time"
     },
     {
       "parameters": {
-        "text": "={{ JSON.stringify($json) }}",
-        "schemaType": "fromAttributes",
-        "attributes": {
-          "attributes": [
+        "keys": {
+          "key": [
             {
-              "name": "summary",
-              "description": "A short summary",
+              "currentKey": "id",
+              "newKey": "documentId"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        5080,
+        400
+      ],
+      "id": "dabb781a-a489-446a-bb8f-d174e076361f",
+      "name": "Align Field Names"
+    },
+    {
+      "parameters": {
+        "maxItems": 100
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        5320,
+        400
+      ],
+      "id": "e3f7849f-891f-4c4e-8c3a-40b24875060d",
+      "name": "Cap Batch Volume"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "documentId",
+              "value": "={{ $json.documentId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        5560,
+        400
+      ],
+      "id": "6c3a4cfd-1eee-4b4a-a83e-925f6fa811e1",
+      "name": "Save Execution Metadata"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22f33861-ea07-4ac4-9095-d98c078c5614",
+              "name": "runAt",
+              "value": "={{ $now.toISO() }}",
               "type": "string"
             },
             {
-              "name": "category",
-              "description": "A category label",
+              "id": "74462701-2817-4e19-990e-7ac3f3b4a77e",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "a4d4072a-a243-4a97-b2a4-0380bc08de4b",
+              "name": "status",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "761721fc-9ae5-4b69-b796-778401ce678d",
-      "name": "Extract Fields with AI",
-      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        1740,
-        300
+        5800,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
+      "id": "41300858-f148-49b5-8584-62da53b2a85b",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
@@ -201,19 +590,21 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Document Database"
         },
+        "title": "={{ $json.fileName || $json.documentId }}",
         "options": {}
       },
-      "id": "449645ea-6a38-4f88-a0c2-f567fb362a20",
-      "name": "Save to Notion",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        1980,
-        300
+        6040,
+        400
       ],
+      "id": "cefc6a87-097c-4184-bfd2-3d67a136a6bc",
+      "name": "Append Audit Row (Notion)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -221,423 +612,84 @@
     },
     {
       "parameters": {
-        "model": "claude-3-5-sonnet-20241022",
-        "options": {}
-      },
-      "id": "5f56e90e-17e9-4eea-aaca-0b96a61c3c13",
-      "name": "Anthropic Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-      "typeVersion": 1.3,
-      "position": [
-        1220,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "55dd01d8-fcb8-41aa-8012-c46504cbba5a",
-              "leftValue": "={{ $json.docType }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#docs",
+          "cachedResultName": "#docs"
         },
-        "options": {}
+        "text": "=✅ Parse documents with Google Drive and Notion — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
       },
-      "id": "4b1b1a67-1e50-4b71-ade3-a4198b2942b0",
-      "name": "Requires Manual Review?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        2220,
-        300
+        6280,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "bde6f82d-9859-47cb-aa14-33cf8ee819f0",
-      "name": "Auto-Process Document",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2460,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "7a7a087e-9ead-4726-a9a3-3ba4735747cc",
-      "name": "Route for Manual Review",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2460,
-        500
-      ]
+      "id": "c97582c2-8a71-4c50-8417-db890d8dffa3",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "0057c042-ccc1-4d6c-bf6c-f75115e51e94",
-              "name": "errorSource",
-              "value": "primary",
+              "id": "c96c458f-c905-4704-90d3-ee3b495e2665",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
               "type": "string"
             },
             {
-              "id": "53cf0d36-615d-48e0-b371-535c09669fcd",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "c087bcaf-f828-4974-b9e7-2bdda9144569",
-      "name": "Handle Error — Primary",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2700,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "d7587932-6e1f-46ff-bc4a-7c48d6949f09",
-              "name": "errorSource",
-              "value": "secondary",
+              "id": "ce2643da-a06a-45f6-b1ed-a091a3e4776a",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
               "type": "string"
             },
             {
-              "id": "6d56f682-409c-4910-b0c6-23c0a9416801",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "e52f499f-4735-4257-b158-85970be9a231",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "0fc9c96a-9bd9-45f6-8d8a-fe4fe4e95ff4",
-      "name": "Handle Error — Secondary",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2700,
-        860
-      ]
+        5800,
+        740
+      ],
+      "id": "0c5a68f0-ea00-442d-9b12-aa2f193d9a92",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#docs",
+          "cachedResultName": "#docs"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "be487644-7b49-4617-ac90-0389d7e69065",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        2940,
-        760
+        6040,
+        740
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "ea3d9f86-bf05-485a-82d4-35f09d51ecab",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3180,
-        300
-      ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
-        "options": {}
-      },
-      "id": "070b00c0-5cfa-46a2-ad9e-d4123b76f41c",
-      "name": "Sync to Secondary System",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3420,
-        300
-      ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "amount": 1,
-        "unit": "seconds"
-      },
-      "id": "dd516f59-a52d-41ba-aa18-ef5798426e60",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        3660,
-        300
-      ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
-        },
-        "options": {}
-      },
-      "id": "966755ba-2b71-42c3-8f71-e4204fbbade9",
-      "name": "Write Audit Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        3900,
-        300
-      ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "a3426b98-ae23-4f17-b307-1091976ef7b5",
-              "leftValue": "={{ $json.documentValue }}",
-              "rightValue": 100,
-              "operator": {
-                "type": "number",
-                "operation": "gt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "67549282-3fdf-4449-8446-3ee2a2c6ee74",
-      "name": "High-Value Item?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4140,
-        300
-      ],
-      "notes": "Human-in-the-loop for high-impact actions (§9.4)."
-    },
-    {
-      "parameters": {
-        "resume": "webhook",
-        "options": {}
-      },
-      "id": "db34b87c-94c5-4a8b-afdc-616a77fa2b85",
-      "name": "Require Approval",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        4380,
-        300
-      ],
-      "notes": "Pauses until the approval webhook/resume URL is called — human-in-the-loop gate."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "fcc4707f-b4f7-4ab6-8671-4564b366cbc1",
-              "leftValue": "={{ $json.approved }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "4735cb5a-fb2a-4eca-bd25-25d7f832aeeb",
-      "name": "Approved?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        4620,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "402de1fc-1b48-4368-8901-e00e8c0e5274",
-              "name": "status",
-              "value": "rejected",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "72ec6cc0-10da-4485-81bf-e0c8fd0c84c8",
-      "name": "Reject & Notify",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        4620,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/system-b",
-        "options": {}
-      },
-      "id": "e7d935f3-299f-4e9b-a2b9-71530b18b194",
-      "name": "Parallel: Update System B",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        4860,
-        500
-      ],
-      "notes": "Independent parallel write — runs alongside the primary path, not blocked by approval (§8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      },
-      "id": "0f42d7d8-17f7-4084-9d72-bbc12a967254",
-      "name": "Merge Post-Approval",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        5100,
-        300
-      ],
-      "notes": "Recombine the approved and low-value-parallel paths."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "c3b0a9e3-6af8-4c95-85f2-a965711dba7d",
-              "leftValue": "={{ $now.diff($('Validate Input').item.json.receivedAt).as('seconds') }}",
-              "rightValue": 300,
-              "operator": {
-                "type": "number",
-                "operation": "lt"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "b16e5529-3ceb-40f0-a43c-f8730b037283",
-      "name": "Check Processing SLA",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        5340,
-        300
-      ],
-      "notes": "Escalate if this run is breaching its SLA window (§8.11, §9.5)."
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#oncall",
-        "text": "={{ 'SLA breach on ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "6e8ac389-8e03-47ad-9587-22e0e7b04c07",
-      "name": "Escalate to On-Call",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        5580,
-        500
-      ],
-      "notes": "Distinct on-call channel — separate from the general failure alert (§8.11).",
+      "id": "2e6a2629-4874-42b9-ae2e-f1c59fe7aa5f",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -648,442 +700,425 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Document Database"
         },
-        "propertiesUi": {}
+        "title": "={{ $json.fileName || $json.documentId }}",
+        "options": {}
       },
-      "id": "faeee185-809f-4782-ac5a-c7000b4d8e30",
-      "name": "Stream to Compliance Log",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        5580,
-        300
+        6280,
+        740
       ],
-      "notes": "Separate compliance/audit trail from the operational audit log (§8.14).",
+      "id": "c46711d0-72b2-4229-8ee8-a47ae30dc812",
+      "name": "Park in Dead-Letter Queue",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "429d847f-2d3a-4665-9821-30bb7f638c83",
-              "name": "status",
-              "value": "processed",
-              "type": "string"
-            },
-            {
-              "id": "b831999c-66d1-4650-b13f-23241a974895",
-              "name": "archivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b37ee67c-2f92-4f21-8d3e-da0de0fdfe2d",
-      "name": "Close Out & Archive",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        5820,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "ecc79477-a19f-4e73-8e3c-e0565462e67b",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        6060,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Parse documents with Google Drive and Notion\n\n**Tier:** Enterprise · **Difficulty:** Advanced\n**Pattern:** Invoices (Document Processing)\n**Architecture:** validated input, branch on requires manual review?, multi-system sync, audit log, human-in-the-loop approval, SLA monitoring, compliance log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Parse documents with Google Drive and Notion\n\n**Pattern:** File Processing  \n**Trigger:** Scheduled  \n**Level:** Architect\n\nProcesses documents for invoices — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 6
       },
-      "id": "d5b3df38-0c74-4e0a-94b6-0c8ca935e695",
-      "name": "Sticky Note 0ae7",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        6340,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "2c9d86fd-d46f-4efc-b102-e16822f3752a",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Export All Rows (Notion)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Export All Rows (Notion)": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Idempotency Guard": {
-      "main": [
-        [
-          {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Upload to Google Drive",
+            "node": "Serialize to CSV",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upload to Google Drive": {
+    "Serialize to CSV": {
       "main": [
         [
           {
-            "node": "Transform Items",
+            "node": "Compress Archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compress Archive": {
+      "main": [
+        [
+          {
+            "node": "Upload Backup to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Backup to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Backup Size Sane?",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Backup Size Sane?": {
       "main": [
         [
           {
-            "node": "Extract Fields with AI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Anthropic Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Extract Fields with AI",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Fields with AI": {
-      "main": [
-        [
-          {
-            "node": "Save to Notion",
+            "node": "Fingerprint for Idempotency",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Alarm — Empty Backup",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to Notion": {
+    "Fingerprint for Idempotency": {
       "main": [
         [
           {
-            "node": "Requires Manual Review?",
+            "node": "Drop Already-Processed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Already-Processed Items": {
+      "main": [
+        [
+          {
+            "node": "Serialize Run Output (CSV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serialize Run Output (CSV)": {
+      "main": [
+        [
+          {
+            "node": "Archive Copy to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Copy to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Offload to Post-Process Sub-workflow",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Requires Manual Review?": {
+    "Offload to Post-Process Sub-workflow": {
       "main": [
         [
           {
-            "node": "Auto-Process Document",
+            "node": "Record Sub-workflow Result",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Route for Manual Review",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error — Primary": {
+    "Record Sub-workflow Result": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Stamp Completion Time",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error — Secondary": {
+    "Stamp Completion Time": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Persist Run Metadata",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Auto-Process Document": {
+    "Persist Run Metadata": {
       "main": [
         [
           {
-            "node": "Merge Branch Results",
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Route for Manual Review": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
-        [
-          {
-            "node": "Sync to Secondary System",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sync to Secondary System": {
-      "main": [
-        [
-          {
-            "node": "Rate Limit Guard",
+            "node": "Compute Drift vs Snapshot",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error — Primary",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Rate Limit Guard": {
+    "Compute Drift vs Snapshot": {
       "main": [
         [
           {
-            "node": "Write Audit Log",
+            "node": "Enrich with Reference Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Write Audit Log": {
+    "Enrich with Reference Data": {
       "main": [
         [
           {
-            "node": "High-Value Item?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "High-Value Item?": {
-      "main": [
-        [
-          {
-            "node": "Require Approval",
+            "node": "Fold In Enrichment Fields",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Parallel: Update System B",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Require Approval": {
+    "Fold In Enrichment Fields": {
       "main": [
         [
           {
-            "node": "Approved?",
+            "node": "Guard Non-Empty fileName",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Approved?": {
+    "Guard Non-Empty fileName": {
       "main": [
         [
           {
-            "node": "Merge Post-Approval",
+            "node": "Sort Documents Newest First",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort Documents Newest First": {
+      "main": [
+        [
+          {
+            "node": "Stamp Processing Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Processing Time": {
+      "main": [
+        [
+          {
+            "node": "Align Field Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Align Field Names": {
+      "main": [
+        [
+          {
+            "node": "Cap Batch Volume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cap Batch Volume": {
+      "main": [
+        [
+          {
+            "node": "Save Execution Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Execution Metadata": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Notion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Notion)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Reject & Notify",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parallel: Update System B": {
+    "Capture Failure Context": {
       "main": [
         [
           {
-            "node": "Merge Post-Approval",
-            "type": "main",
-            "index": 1
-          }
-        ],
-        [
-          {
-            "node": "Handle Error — Secondary",
+            "node": "Escalate Failure to Slack",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Post-Approval": {
+    "Escalate Failure to Slack": {
       "main": [
         [
           {
-            "node": "Check Processing SLA",
+            "node": "Park in Dead-Letter Queue",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Processing SLA": {
+    "Alarm — Empty Backup": {
       "main": [
+        [],
         [
           {
-            "node": "Stream to Compliance Log",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Escalate to On-Call",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Stream to Compliance Log": {
+    "Send Summary to Slack": {
       "main": [
+        [],
         [
           {
-            "node": "Close Out & Archive",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Close Out & Archive": {
-      "main": [
-        [
-          {
-            "node": "Success Notification",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

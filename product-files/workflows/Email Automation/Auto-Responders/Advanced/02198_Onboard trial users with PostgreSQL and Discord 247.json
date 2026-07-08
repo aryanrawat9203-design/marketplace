@@ -7,50 +7,20 @@
           "interval": [
             {
               "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 8
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
-      "id": "6eac3c38-d903-4edc-baae-7bf82262e50f",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "9b1af376-b0a5-4b9e-a280-60d0914f4aae",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "f52681b2-13d7-4c84-a4be-5e29163c3d77",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "1f9c1b78-39b2-4ea2-ade1-8f98eb28af43",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
+        -200,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "cc4bcf1e-368a-4b78-bac9-f34f536c90d3",
+      "name": "Daily Schedule"
     },
     {
       "parameters": {
@@ -58,12 +28,13 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "dc513212-9e2e-49b2-820d-4a7e3269037a",
-              "leftValue": "={{ $json.receivedAt || $now.toISO() }}",
+              "id": "9eedcc72-9280-437b-b8d8-fe95066c551b",
+              "leftValue": "={{ $json.from }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -72,87 +43,142 @@
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "b3892aa5-d341-466e-8bf0-602c75865f2d",
-      "name": "Idempotency Guard",
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
-      "position": [
-        780,
-        300
-      ],
-      "notes": "Idempotency guard — replace with a real dedup key lookup (Redis/DB) in production (§9.1, §9.5)."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "8f331966-b59e-4651-ac06-eac68315376a",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "67f18cc8-9e1a-4976-985f-35d0367a94e6",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1020,
-        300
+        40,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "ccbcf783-faf2-4d8e-9819-56caccab337c",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1020,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "5a241edd-c1cc-40da-b486-9c8232822338",
+      "name": "Required Fields Present?"
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
+        "errorType": "errorMessage",
+        "errorMessage": "Missing required field 'from' on incoming email."
       },
-      "id": "32d8521c-a08e-4779-9e4f-d501d9ec42bb",
-      "name": "Save to PostgreSQL",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        40,
+        570
+      ],
+      "id": "0692de32-0da2-4d65-ae7b-84474825ee4f",
+      "name": "Abort — Malformed Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Score each email 0-100 from simple heuristics\nreturn $input.all().map(item => {\n  const j = item.json;\n  let score = 50;\n  if (j.from) score += 20;\n  if (j.subject) score += 15;\n  if ((j.source || '') === 'referral') score += 15;\n  return { json: { ...j, score: Math.min(100, score) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "5da1a2aa-31fd-4ef6-875f-73fcc444f795",
+      "name": "Score the Lead"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Round-robin owner assignment\nconst owners = ['ava@company.com', 'liam@company.com', 'mia@company.com'];\nreturn $input.all().map((item, i) => ({\n  json: { ...item.json, owner: owners[i % owners.length] },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "5587b1d6-3c59-496d-ad8f-659b8905a77d",
+      "name": "Assign Round-Robin Owner"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fd965396-8c8f-405a-a721-0c47f8d5c42b",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 80,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "72c5ee9a-ea7c-4689-ba9e-8da3741a6ff6",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 50,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        760,
+        400
+      ],
+      "id": "b2a7d954-a8f8-4fbb-831e-f2ee1c5d1c77",
+      "name": "Route by Heat"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO emails (messageId, from, subject, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (messageId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
+      },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1260,
-        300
+        1000,
+        240
       ],
+      "id": "fcc24c21-6433-4333-8dfb-4a05c31f41af",
+      "name": "Hot → PostgreSQL + Instant Ping",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -160,31 +186,24 @@
     },
     {
       "parameters": {
-        "amount": 30,
-        "unit": "minutes"
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
+        "otherOptions": {}
       },
-      "id": "e789dff3-29ad-4b1f-9fb5-de0efb30a9f8",
-      "name": "Wait",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        1500,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Process the following input and return a helpful result:\n{{ JSON.stringify($json) }}"
-      },
-      "id": "df785d02-5eaa-40e8-9d5b-1786527fda11",
-      "name": "Personalize Message with AI",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        1740,
-        300
+        1480,
+        240
       ],
+      "id": "d128fb15-d04d-427e-85d8-df61e602817e",
+      "name": "Notify Assigned Owner",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -192,18 +211,18 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "content": "={{ $json.summary || 'Update' }}"
+        "authentication": "webhook",
+        "content": "=Thanks for your interest — here's a quick-start guide.",
+        "options": {}
       },
-      "id": "94423ed4-6838-4788-a5e5-b125f47e1fd0",
-      "name": "Send Discord Message",
       "type": "n8n-nodes-base.discord",
       "typeVersion": 2,
       "position": [
-        1980,
-        300
+        1720,
+        400
       ],
+      "id": "701cec73-e379-48c6-9681-35c849dd0d97",
+      "name": "Warm → Drip via Discord",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -211,151 +230,219 @@
     },
     {
       "parameters": {
-        "model": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini"
-        },
-        "options": {}
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (messageId, from, subject, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
       },
-      "id": "7306dece-12cb-4b2c-a9db-84f2a99ee8ee",
-      "name": "OpenAI Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [
-        1220,
-        520
-      ]
+        1960,
+        560
+      ],
+      "id": "9308231c-0842-4b8f-b1ae-f035afc32af6",
+      "name": "Cold → Park in Nurture List",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "76b6a5e0-9052-4aba-bc4e-dd72a47a16c2",
-              "leftValue": "={{ $json.category }}",
-              "rightValue": "urgent",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "608ab2a8-16ad-41f7-90bc-22cbe710eb7f",
+      "name": "Combine Lead Paths"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "completedAt",
         "options": {}
       },
-      "id": "6eddd90d-a818-41a9-8d6e-9ca331dc51d5",
-      "name": "Needs Human Reply?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
       "position": [
-        2220,
-        300
+        3640,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "b5292fcc-ffad-40b8-9804-d4da9e3e56e7",
+      "name": "Stamp Completion Time"
     },
     {
-      "parameters": {},
-      "id": "80f20b12-4266-409b-8918-cd66a3d80e50",
-      "name": "Auto-Reply",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "key": "itemCount",
+              "value": "={{ $items().length }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
       "typeVersion": 1,
       "position": [
-        2460,
-        300
-      ]
+        3880,
+        400
+      ],
+      "id": "e4956b16-76d7-485f-a6af-170e49dccfeb",
+      "name": "Persist Run Metadata"
     },
     {
-      "parameters": {},
-      "id": "3929f813-eb84-46bd-b1e2-8b981e9a7d65",
-      "name": "Flag for Manual Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "method": "GET",
+        "url": "https://enrichment.example.com/v2/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.from }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        2460,
-        500
-      ]
+        4120,
+        400
+      ],
+      "id": "814c238b-2afd-4c7a-a6a3-08390e59acad",
+      "name": "Enrich with Reference Data",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "4aac4d79-4583-4b28-ad8c-bbf9d534f5ea",
-              "name": "errorAt",
+              "id": "c8c7358a-b860-4912-88a7-223ebc8c4326",
+              "name": "enrichedAt",
               "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "6f6c48ca-8849-4066-b933-77d2af28c9a8",
+              "name": "enrichmentSource",
+              "value": "reference-api",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "e09185ca-5c7e-4cab-a9f1-0977faa13d9c",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2700,
-        700
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
-      },
-      "id": "7a775971-69fc-430a-843f-aaed2b51c6d3",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        760
+        4360,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "77c07b86-d3b2-4166-8b88-bb7cda3f76b6",
+      "name": "Fold In Enrichment Fields"
     },
     {
       "parameters": {
-        "mode": "append",
-        "numberInputs": 2
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a stable idempotency key per email (djb2 hash, no deps)\nfunction hash(s) {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n}\nreturn $input.all().map(item => {\n  const j = item.json;\n  return { json: { ...j, idempotencyKey: hash([j.messageId, j.from].join('|')) } };\n});"
       },
-      "id": "9b9dabb1-2f62-4329-be7b-bbea4fbaac49",
-      "name": "Merge Branch Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        3180,
-        300
+        4600,
+        400
       ],
-      "notes": "Recombine both decision paths before shared downstream steps (§11.1 — avoid losing the false branch)."
+      "id": "61b6b365-b40f-4a9d-b6be-81f3b634cb9c",
+      "name": "Fingerprint for Idempotency"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.example.com/v1/sync",
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.idempotencyKey }}",
         "options": {}
       },
-      "id": "9ef1b2ae-5ce5-4532-8d5d-cd32b66b9271",
-      "name": "Sync to Secondary System",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
       "position": [
-        3420,
-        300
+        4840,
+        400
       ],
-      "notes": "Second-system fan-out — real multi-integration requirement for this tier (§9.1).",
+      "id": "1a41d842-12f5-442a-bdc7-7a810c280d13",
+      "name": "Drop Already-Processed Items"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef5f5ab5-a91d-4fcc-9037-b8c9452d1a1f",
+              "name": "runAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "544b2eb6-2f70-46dd-ade2-5eae9172d38c",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "6a973581-57e3-4b0b-bf24-d3b1e4a56421",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5080,
+        400
+      ],
+      "id": "817d8c26-c4a6-421d-8ac2-8800014b6dcd",
+      "name": "Summarize Run Stats"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (messageId, from, subject, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5320,
+        400
+      ],
+      "id": "4c1754b6-aa7b-45dc-9fd1-8cd54a8ca22d",
+      "name": "Append Audit Row (PostgreSQL)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -363,314 +450,409 @@
     },
     {
       "parameters": {
-        "amount": 1,
-        "unit": "seconds"
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=✅ Onboard trial users with PostgreSQL and Discord 24/7 — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
       },
-      "id": "6933fcc1-e787-41dd-b95c-91a9c0ea9dbd",
-      "name": "Rate Limit Guard",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        3660,
-        300
+        5560,
+        400
       ],
-      "notes": "Respect downstream API rate limits before the next batch of writes (§9.5)."
+      "id": "0bb16c50-3184-4d54-8428-48b79b82178a",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "",
-          "mode": "id"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e4992813-00b2-400c-803d-8e0f8d2cd38e",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "d6eb7a18-0d2f-4560-9d3c-ede60a22085f",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "e7199a7c-fa01-4a05-95e1-4ea9d577787f",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
         },
         "options": {}
       },
-      "id": "6aa7663a-3b31-4116-b674-2cf564a345ac",
-      "name": "Write Audit Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        3900,
-        300
+        5080,
+        740
       ],
-      "notes": "Audit trail entry — timestamp, outcome, and branch taken (§9.3, §8.14).",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "e3bd9cbc-4bae-4e9f-bcc5-074d9034d0ed",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
+        "authentication": "webhook",
+        "content": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "options": {}
       },
-      "id": "72eefb52-8e7f-4f06-a925-6c73155f418f",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
       "position": [
-        4140,
-        300
+        5320,
+        740
       ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
+      "id": "77fcb4d3-13d9-4f4a-8bb8-597178d45a3d",
+      "name": "Escalate Failure to Discord",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Onboard trial users with PostgreSQL and Discord 24/7\n\n**Tier:** Premium · **Difficulty:** Advanced\n**Pattern:** Auto-Responders (Email Automation)\n**Architecture:** validated input, branch on needs human reply?, multi-system sync, audit log.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (messageId, from, subject, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5560,
+        740
+      ],
+      "id": "3df5677f-ffac-421e-bbc6-d7a728ae7b3f",
+      "name": "Park in Dead-Letter Queue",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "## Onboard trial users with PostgreSQL and Discord 24/7\n\n**Pattern:** Drip Sequence  \n**Trigger:** Scheduled  \n**Level:** Production\n\nProcesses emails for auto-responders — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 6
       },
-      "id": "43c61e76-030e-4329-9aa2-e22c6d9c8712",
-      "name": "Sticky Note 0eec",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4420,
-        40
-      ]
+        -260,
+        -20
+      ],
+      "id": "0747c2e6-25a3-4739-8e97-ce4758fd1323",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Daily Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Required Fields Present?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Required Fields Present?": {
       "main": [
         [
           {
-            "node": "Idempotency Guard",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Idempotency Guard": {
-      "main": [
-        [
-          {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Save to PostgreSQL",
+            "node": "Score the Lead",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Abort — Malformed Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Score the Lead": {
       "main": [
         [
           {
-            "node": "Wait",
+            "node": "Assign Round-Robin Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Round-Robin Owner": {
+      "main": [
+        [
+          {
+            "node": "Route by Heat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot → PostgreSQL + Instant Ping": {
+      "main": [
+        [
+          {
+            "node": "Notify Assigned Owner",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait": {
+    "Route by Heat": {
       "main": [
         [
           {
-            "node": "Personalize Message with AI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Personalize Message with AI",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Personalize Message with AI": {
-      "main": [
-        [
-          {
-            "node": "Send Discord Message",
+            "node": "Hot → PostgreSQL + Instant Ping",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Discord Message": {
-      "main": [
-        [
-          {
-            "node": "Needs Human Reply?",
+            "node": "Warm → Drip via Discord",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Cold → Park in Nurture List",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Needs Human Reply?": {
+    "Notify Assigned Owner": {
       "main": [
         [
           {
-            "node": "Auto-Reply",
+            "node": "Combine Lead Paths",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Flag for Manual Reply",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Warm → Drip via Discord": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Auto-Reply": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Flag for Manual Reply": {
-      "main": [
-        [
-          {
-            "node": "Merge Branch Results",
+            "node": "Combine Lead Paths",
             "type": "main",
             "index": 1
           }
-        ]
-      ]
-    },
-    "Merge Branch Results": {
-      "main": [
+        ],
         [
           {
-            "node": "Sync to Secondary System",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sync to Secondary System": {
+    "Cold → Park in Nurture List": {
       "main": [
         [
           {
-            "node": "Rate Limit Guard",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Lead Paths": {
+      "main": [
+        [
+          {
+            "node": "Stamp Completion Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Completion Time": {
+      "main": [
+        [
+          {
+            "node": "Persist Run Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Run Metadata": {
+      "main": [
+        [
+          {
+            "node": "Enrich with Reference Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich with Reference Data": {
+      "main": [
+        [
+          {
+            "node": "Fold In Enrichment Fields",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Rate Limit Guard": {
+    "Fold In Enrichment Fields": {
       "main": [
         [
           {
-            "node": "Write Audit Log",
+            "node": "Fingerprint for Idempotency",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Write Audit Log": {
+    "Fingerprint for Idempotency": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Drop Already-Processed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Already-Processed Items": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (PostgreSQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (PostgreSQL)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Failure to Discord": {
+      "main": [
+        [
+          {
+            "node": "Park in Dead-Letter Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

@@ -6,113 +6,77 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 15
+              "field": "hours",
+              "hoursInterval": 4
             }
           ]
         }
       },
-      "id": "dc351991-6427-4130-890a-b1bb0721c3b4",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a1295f61-9555-49c3-95c3-9b675d7ee128",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "e936930e-7a35-4689-bd41-1def8bc23a34",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "1bfb25d0-6688-4e18-89e5-f42af0b87e70",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
+        -200,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "406f3cb5-0c47-48ea-9017-30d07dbb1bbc",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "07ca67ee-f3f2-4926-a5f9-8209a693f8d8",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Job Database"
         },
+        "returnAll": true,
         "options": {}
       },
-      "id": "cbb11593-a737-496e-8680-351937359178",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
+      "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        40,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "a80e0c86-75a2-47a0-96f8-e7f2cf85ecd5",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "14c1ddc3-5b9a-46f7-aaff-189db3736d02",
+      "name": "Load Previous Snapshot",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "url": "https://api.example.com/v1/data",
-        "options": {},
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "method": "GET",
+        "url": "https://api.example.com/v1/jobs",
+        "options": {
+          "timeout": 20000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "updated_since",
+              "value": "={{ $now.minus({hours: 6}).toISO() }}"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        }
       },
-      "id": "ce8799c0-040e-43f9-b1bd-3ec9fb667d40",
-      "name": "Fetch Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1020,
-        300
+        280,
+        400
       ],
+      "id": "7967ed6d-4220-4800-88ce-082650ae945e",
+      "name": "Fetch Changes Since Watermark",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -120,51 +84,69 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "9b37ebdc-f9ea-4b22-98a2-3ee6451e21cc",
-              "name": "count",
-              "value": "={{ $json.items ? $json.items.length : 1 }}",
-              "type": "number"
-            },
-            {
-              "id": "a0b895d3-26fb-46cb-ba55-0e275cd7010e",
-              "name": "status",
-              "value": "='processed'",
-              "type": "string"
-            },
-            {
-              "id": "48cda117-c6bf-42a0-a602-87458ea5303c",
-              "name": "source",
-              "value": "='flowdex-workflow'",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming job records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    jobId: String(j.jobId ?? j.id ?? '').trim(),\n    type: typeof j.type === 'string' ? j.type.trim() : j.type ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
       },
-      "id": "0260cc96-e63f-40fb-afc7-192c74b5ee91",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1260,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Deduplicate by email\nconst seen = new Set();\nreturn $input.all().filter(i => {\n  const k = i.json.email || i.json.id;\n  if (seen.has(k)) return false; seen.add(k); return true;\n});"
-      },
-      "id": "1134f090-4f2a-487e-96d2-4ca85df5e30b",
-      "name": "Transform Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
-        300
-      ]
+        520,
+        400
+      ],
+      "id": "c87d4893-3d61-4fd5-8eef-1d0e67271ca5",
+      "name": "Normalize Records"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Job Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "jobId"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        760,
+        400
+      ],
+      "id": "4b9064b8-a343-44b0-9cfb-d18695a33405",
+      "name": "Upsert into Google Sheets",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Advance the incremental watermark to the newest record seen\nconst items = $input.all().map(i => i.json);\nconst newest = items.reduce((m, j) => {\n  const ts = new Date(j.updatedAt || j.receivedAt || 0).getTime();\n  return ts > m ? ts : m;\n}, 0);\nreturn [{ json: { watermark: new Date(newest || Date.now()).toISOString(), processed: items.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ],
+      "id": "b9c98c12-7ddd-41f2-b8eb-8dc9f52d369e",
+      "name": "Advance Watermark"
     },
     {
       "parameters": {
@@ -172,19 +154,21 @@
         "operation": "create",
         "databaseId": {
           "__rl": true,
+          "mode": "list",
           "value": "",
-          "mode": "id"
+          "cachedResultName": "Job Database"
         },
+        "title": "={{ $json.type || $json.jobId }}",
         "options": {}
       },
-      "id": "e66432e8-3c5d-4ba2-889e-48fc3e4337a8",
-      "name": "Save to Notion",
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        1740,
-        300
+        1240,
+        400
       ],
+      "id": "000c4d71-b404-4f21-973f-8ab2be05d51f",
+      "name": "Persist Watermark (Notion)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -192,25 +176,44 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "sendTo": "={{ $json.email }}",
-        "subject": "Automated update",
-        "message": "={{ $json.summary }}",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "status",
+              "order": "descending"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "7d76914e-a525-4ff5-82c2-be29fca2e79a",
-      "name": "Send Gmail Message",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
       "position": [
-        1980,
-        300
+        1480,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
+      "id": "265be420-d745-454f-83d3-af9439e80593",
+      "name": "Sort Jobs Newest First"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "jobId",
+              "value": "={{ $json.jobId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        400
+      ],
+      "id": "b37e581b-0b3d-4435-82b8-fd3e27f80f5f",
+      "name": "Save Execution Metadata"
     },
     {
       "parameters": {
@@ -218,299 +221,456 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "214933c1-eb1b-4f90-b28d-7d2e5b17afaa",
-              "leftValue": "={{ $json.stepResult }}",
-              "rightValue": "true",
+              "id": "2c1014be-149c-422c-baa1-389acfae1474",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "",
               "operator": {
-                "type": "boolean",
-                "operation": "equals"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "d5ca8b94-579d-4d97-ba36-4617d3ea9722",
-      "name": "Step Succeeded?",
-      "type": "n8n-nodes-base.if",
+      "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        2220,
-        300
+        1960,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "c5a44bd1-81be-4ecf-abc7-7de9e14c190a",
+      "name": "Guard Non-Empty type"
     },
     {
-      "parameters": {},
-      "id": "8355726b-8f94-43a8-9634-c8de5c84b934",
-      "name": "Continue Orchestration",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "keys": {
+          "key": [
+            {
+              "currentKey": "id",
+              "newKey": "jobId"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-base.renameKeys",
       "typeVersion": 1,
       "position": [
-        2460,
-        300
-      ]
+        2200,
+        400
+      ],
+      "id": "74cb404c-11de-47fe-bde8-a8c8476ad17a",
+      "name": "Align Field Names"
     },
     {
-      "parameters": {},
-      "id": "e3b034e5-f9ee-4e6a-a09d-3924ca1538a3",
-      "name": "Trigger Fallback Path",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "maxItems": 50
+      },
+      "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        2460,
-        500
-      ]
+        2440,
+        400
+      ],
+      "id": "1236e348-1a5c-4b88-a749-5b9a0a6a66cd",
+      "name": "Cap Batch Volume"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "processedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "9d2e8896-f0e6-448c-9a06-64e3f646da3f",
+      "name": "Stamp Processing Time"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "0b7726f4-7181-47bf-b890-8e5fdb357ac8",
-              "name": "errorAt",
+              "id": "ac0c030e-acd2-4f3b-b2f9-66b62dfe554f",
+              "name": "runAt",
               "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e579da5e-91f9-4c37-9e28-9e6e37d40a7f",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "5af616f5-0f73-47b2-9db5-b7ea7d08d279",
+              "name": "status",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "2e96e624-90bb-4a6a-95a2-f09fc7d1029c",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2700,
-        700
-      ]
+        2920,
+        400
+      ],
+      "id": "d37af833-8759-4b7b-882f-71907abba9c4",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Job Database"
+        },
+        "title": "={{ $json.type || $json.jobId }}",
+        "options": {}
       },
-      "id": "8815bfd0-4ba0-4908-85f3-1daca317bb89",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
+      "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        2940,
-        760
+        3160,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "f4130af3-98d3-46a3-b27e-7f9cefe1ab0d",
+      "name": "Append Audit Row (Notion)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#automation",
+          "cachedResultName": "#automation"
+        },
+        "text": "=✅ Streamline a multi-step process with HTTP / REST API and Notion 24/7 — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3400,
+        400
+      ],
+      "id": "efc16a98-1f78-40e8-98d3-2962cdaacbe8",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9018dc3a-92c3-47d2-8ad4-207cdf5ff5c0",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "26ca9aa9-ad00-4091-a69f-4edb42c9a7c4",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "b5de7252-e9d8-4c63-8729-3e2b3f491d3b",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2920,
+        740
+      ],
+      "id": "b4c5b347-acf8-4591-9c83-63688c196942",
+      "name": "Capture Failure Context"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email || 'ops@company.com' }}",
+        "subject": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage ",
+        "message": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3160,
+        740
+      ],
+      "id": "eedd07eb-146b-4c6d-b02b-985472b9254d",
+      "name": "Escalate Failure to Gmail",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "ae0f3895-04eb-47ab-a184-c32e035908bc",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        3180,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Streamline a multi-step process with HTTP / REST API and Notion 24/7\n\n**Tier:** Professional · **Difficulty:** Beginner\n**Pattern:** Triggers (Workflow Automation)\n**Architecture:** validated input, branch on step succeeded?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Streamline a multi-step process with HTTP / REST API and Notion 24/7\n\n**Pattern:** Workflow Automation  \n**Trigger:** Scheduled  \n**Level:** Advanced\n\nProcesses jobs for triggers — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 3
       },
-      "id": "47e3239b-c380-4a11-b2c9-462650e9e6d2",
-      "name": "Sticky Note 4b19",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3460,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "3e4232be-33b0-44a5-87bb-ce4540d20a3f",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Fetch Data",
+            "node": "Fetch Changes Since Watermark",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Fetch Changes Since Watermark": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Normalize Records",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Normalize Records": {
       "main": [
         [
           {
-            "node": "Transform Items",
+            "node": "Upsert into Google Sheets",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Upsert into Google Sheets": {
       "main": [
         [
           {
-            "node": "Save to Notion",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save to Notion": {
-      "main": [
-        [
-          {
-            "node": "Send Gmail Message",
+            "node": "Advance Watermark",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Gmail Message": {
+    "Advance Watermark": {
       "main": [
         [
           {
-            "node": "Step Succeeded?",
+            "node": "Persist Watermark (Notion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Watermark (Notion)": {
+      "main": [
+        [
+          {
+            "node": "Sort Jobs Newest First",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Step Succeeded?": {
+    "Sort Jobs Newest First": {
       "main": [
         [
           {
-            "node": "Continue Orchestration",
+            "node": "Save Execution Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Execution Metadata": {
+      "main": [
+        [
+          {
+            "node": "Guard Non-Empty type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Non-Empty type": {
+      "main": [
+        [
+          {
+            "node": "Align Field Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Align Field Names": {
+      "main": [
+        [
+          {
+            "node": "Cap Batch Volume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cap Batch Volume": {
+      "main": [
+        [
+          {
+            "node": "Stamp Processing Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Processing Time": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (Notion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (Notion)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Trigger Fallback Path",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Capture Failure Context": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Escalate Failure to Gmail",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Continue Orchestration": {
+    "Send Summary to Slack": {
       "main": [
+        [],
         [
           {
-            "node": "Success Notification",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Trigger Fallback Path": {
-      "main": [
-        [
-          {
-            "node": "Success Notification",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

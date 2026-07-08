@@ -7,119 +7,35 @@
           "interval": [
             {
               "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 6
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
-      "id": "19bdca0d-60cd-4dbe-9387-b6207721c043",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "962c7b79-e035-457b-90c9-46037be8577e",
+      "name": "Daily Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "2afbf44d-4433-49eb-b287-02c766e2008b",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "20c24b62-5eb5-475b-9f72-26c29fd1ece8",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
+        "operation": "executeQuery",
+        "query": "SELECT * FROM contacts WHERE updated_at > NOW() - INTERVAL '1 day' ORDER BY updated_at DESC;",
         "options": {}
       },
-      "id": "7d5f4d9c-1dc6-4825-889a-6eb05bbc5429",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
-      ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "3ba880ab-682f-403d-8e7b-c8b56cd53bd9",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "608531cf-979c-4c31-bec9-142ca834d0eb",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        780,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "d6f4b89e-febf-44dd-ac95-372a8776afd9",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "95d9e82c-79fa-4e11-9ddb-3cfda520166e",
-      "name": "Save to PostgreSQL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1020,
-        300
+        40,
+        400
       ],
+      "id": "2b6714cf-7ead-4768-8b8a-975db29546db",
+      "name": "Read Pending Queue (PostgreSQL)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -127,327 +43,413 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "d9e5a812-8049-4d22-bf5e-007034fe13db",
-              "leftValue": "={{ $json.score }}",
-              "rightValue": 50,
-              "operator": {
-                "type": "number",
-                "operation": "gte"
-              }
-            }
-          ]
-        },
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming contact records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    contactId: String(j.contactId ?? j.id ?? '').trim(),\n    email: typeof j.email === 'string' ? j.email.trim() : j.email ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "c4a8f419-5229-4fea-a2a8-b66eb7b764d3",
+      "name": "Normalize Contact Payload"
+    },
+    {
+      "parameters": {
+        "batchSize": 20,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        520,
+        400
+      ],
+      "id": "65736b95-9c37-42be-932c-3ef8d0e7746f",
+      "name": "Work in Batches"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.example.com/v1/contacts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        560
+      ],
+      "id": "5b1d28ad-caf2-441d-a3fe-dccde9cc0c41",
+      "name": "Process Batch Item",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        560
+      ],
+      "id": "05bda5fe-80fb-4af5-8919-2d6fb2227421",
+      "name": "Respect Rate Limits"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
         "options": {}
       },
-      "id": "13c7c2e7-b443-496e-924e-ea5763da19c9",
-      "name": "Filter Items",
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
-      "position": [
-        1260,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "sms",
-        "operation": "send",
-        "from": "",
-        "to": "={{ $json.phone }}",
-        "message": "={{ $json.summary }}"
-      },
-      "id": "9fcb1d60-e7d2-4191-8af2-22d58c87059b",
-      "name": "Send Twilio Message",
-      "type": "n8n-nodes-base.twilio",
+      "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        1500,
-        300
+        1480,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueErrorOutput"
+      "id": "27c9b1e9-6083-450e-8af9-e12e38c45042",
+      "name": "Aggregate Batch Results"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "8d6608fe-86de-4f9a-b2d9-f954ba6ad347",
-              "leftValue": "={{ $json.contactExists }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Contact Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "contactId"
           ],
-          "combinator": "and"
+          "schema": []
         },
         "options": {}
       },
-      "id": "113a9de4-8e0c-4384-b238-3e8276b818aa",
-      "name": "Existing Contact?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
       "position": [
-        1740,
-        300
+        1720,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "66d704e0-62de-49ab-b452-c334b37ef205",
+      "name": "Mark Completed in Google Sheets",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "id": "9aa93a64-a808-4f71-98bf-51fe5366e6a9",
-      "name": "Update Existing Record",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "maxItems": 50
+      },
+      "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        1980,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "a7336a2e-3c59-4bc2-a31a-fb279fd46c5d",
-      "name": "Create New Record",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1980,
-        500
-      ]
+        1960,
+        400
+      ],
+      "id": "8f69d02c-62cc-4ca4-a91b-ac41366d08aa",
+      "name": "Cap Batch Volume"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "69d072e8-dc9c-4616-b61d-8047f3c837df",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "a25aef2f-e60e-41c8-9a80-cc6d43dcc261",
+              "name": "pipeline",
+              "value": "Deal Updates",
+              "type": "string"
+            },
+            {
+              "id": "7768ab3d-606e-428f-aabc-73b42d0f9dd8",
+              "name": "version",
+              "value": "2.0",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "3a853cd9-fdbc-4f32-aaa7-d4ffab1e08d5",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2220,
-        700
-      ]
+        2200,
+        400
+      ],
+      "id": "e05379fb-4b09-4891-8a2e-9c51476f2b89",
+      "name": "Tag Pipeline Metadata"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
+        "from": "+15550100000",
+        "to": "={{ $json.phone || 'ONCALL_NUMBER' }}",
+        "message": "=✅ Re-engage upcoming appointments with PostgreSQL and Twilio and log the — run completed at {{ $now.toFormat('HH:mm') }}",
+        "options": {}
       },
-      "id": "885f17ef-bad3-48af-ad2c-5c5de06f768d",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
       "position": [
-        2460,
-        760
+        2440,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "3c2189ad-0244-4f3a-950b-972eed9fcb6a",
+      "name": "Send Summary to Twilio",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "882dd142-5de9-43b1-9ec6-e39300155eb9",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "a18bc0f8-0b7a-4a2e-85c9-877f1d46868a",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "df6ffb6a-7afa-47d1-bd6d-8bad9dbf7d14",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1960,
+        740
+      ],
+      "id": "bf6b673f-411f-4d79-9f8b-cbe62e002a2f",
+      "name": "Capture Failure Context"
+    },
+    {
+      "parameters": {
+        "from": "+15550100000",
+        "to": "={{ $json.phone || 'ONCALL_NUMBER' }}",
+        "message": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        740
+      ],
+      "id": "c4f5ee52-63df-4a3a-a9e6-900999f763da",
+      "name": "Escalate Failure to Twilio",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "762b04ff-4863-4158-bf0b-f520758a7f04",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2700,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Re-engage upcoming appointments with PostgreSQL and Twilio and log the results\n\n**Tier:** Professional · **Difficulty:** Beginner\n**Pattern:** Deal Updates (CRM Automation)\n**Architecture:** validated input, branch on existing contact?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Re-engage upcoming appointments with PostgreSQL and Twilio and log the results\n\n**Pattern:** Reminders & Follow-ups  \n**Trigger:** Scheduled  \n**Level:** Core\n\nProcesses contacts for deal updates — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 2
       },
-      "id": "889efef4-a76b-4742-80f3-41887b86163a",
-      "name": "Sticky Note f128",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2980,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "49e022cb-cba6-4c2e-9687-0c4c51f9ccd5",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Daily Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Read Pending Queue (PostgreSQL)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Read Pending Queue (PostgreSQL)": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Save to PostgreSQL",
+            "node": "Normalize Contact Payload",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Normalize Contact Payload": {
       "main": [
         [
           {
-            "node": "Filter Items",
+            "node": "Work in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Work in Batches": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Batch Results",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Process Batch Item",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Filter Items": {
+    "Process Batch Item": {
       "main": [
         [
           {
-            "node": "Send Twilio Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Twilio Message": {
-      "main": [
-        [
-          {
-            "node": "Existing Contact?",
+            "node": "Respect Rate Limits",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Existing Contact?": {
+    "Respect Rate Limits": {
       "main": [
         [
           {
-            "node": "Update Existing Record",
+            "node": "Work in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Batch Results": {
+      "main": [
+        [
+          {
+            "node": "Mark Completed in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Completed in Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Cap Batch Volume",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Create New Record",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Cap Batch Volume": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Tag Pipeline Metadata",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Existing Record": {
+    "Tag Pipeline Metadata": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Send Summary to Twilio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create New Record": {
+    "Capture Failure Context": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Escalate Failure to Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Twilio": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

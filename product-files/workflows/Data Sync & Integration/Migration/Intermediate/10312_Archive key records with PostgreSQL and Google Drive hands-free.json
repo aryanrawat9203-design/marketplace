@@ -6,153 +6,58 @@
         "rule": {
           "interval": [
             {
-              "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 9
+              "field": "hours",
+              "hoursInterval": 2
             }
           ]
         }
       },
-      "id": "c0fc5d63-6036-4bde-9ddf-5f9f3a4bc23e",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "012426da-27e4-48ca-b216-87fe9395cddd",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "3842bd99-035b-468d-ad02-28036c0d70b1",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "ca7ef63a-ad4a-40a7-8f0a-cd40846eeb49",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
+        "operation": "executeQuery",
+        "query": "SELECT * FROM records WHERE updated_at > NOW() - INTERVAL '1 day' ORDER BY updated_at DESC;",
         "options": {}
       },
-      "id": "5b9b2880-130c-4c51-970d-0835a7a167ef",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
-      ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "2e297abd-0201-4768-9275-652a59a72fac",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "791f5b2e-2d70-4efe-a528-9b215c1642a4",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        780,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "13966e1b-4054-467b-b681-81151a2a0df3",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "7ee23a95-958f-458a-b3d3-775eb81ca242",
-      "name": "Save to PostgreSQL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1020,
-        300
+        40,
+        400
       ],
+      "id": "51841ac1-5e47-4336-9272-d031a0802a35",
+      "name": "Load Previous Snapshot",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Deduplicate by email\nconst seen = new Set();\nreturn $input.all().filter(i => {\n  const k = i.json.email || i.json.id;\n  if (seen.has(k)) return false; seen.add(k); return true;\n});"
-      },
-      "id": "635c907c-95b7-4834-a140-ceb590489402",
-      "name": "Transform Items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1260,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "file",
-        "operation": "upload",
-        "name": "={{ $json.filename }}",
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ $json.searchTerm || '*' }}",
+        "returnAll": false,
+        "limit": 25,
         "options": {}
       },
-      "id": "292ec9b4-1af7-48fc-9d7f-924e29db0b1c",
-      "name": "Upload to Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1500,
-        300
+        280,
+        400
       ],
+      "id": "5cafb636-a132-4d15-8799-7cc9c1a9f153",
+      "name": "Fetch Changes (Google Drive)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -160,20 +65,86 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "subject": "Automated update",
-        "bodyContent": "={{ $json.summary }}",
-        "toRecipients": "={{ $json.email }}"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming record records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    recordId: String(j.recordId ?? j.id ?? '').trim(),\n    sourceId: typeof j.sourceId === 'string' ? j.sourceId.trim() : j.sourceId ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
       },
-      "id": "2a0d4f27-0d40-44c3-95bb-5715c0b63866",
-      "name": "Send Outlook Message",
-      "type": "n8n-nodes-base.microsoftOutlook",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1740,
-        300
+        520,
+        400
       ],
+      "id": "1a529a97-f4b1-41b3-9c83-04b51b61dd8c",
+      "name": "Normalize Records"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Record Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "recordId"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        760,
+        400
+      ],
+      "id": "1861b631-42c6-40eb-a7f0-92b6f6e152ff",
+      "name": "Upsert into Google Sheets",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Advance the incremental watermark to the newest record seen\nconst items = $input.all().map(i => i.json);\nconst newest = items.reduce((m, j) => {\n  const ts = new Date(j.updatedAt || j.receivedAt || 0).getTime();\n  return ts > m ? ts : m;\n}, 0);\nreturn [{ json: { watermark: new Date(newest || Date.now()).toISOString(), processed: items.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ],
+      "id": "85246bcd-0c76-4d93-ba35-a36c980f49a4",
+      "name": "Advance Watermark"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO records (recordId, sourceId, updatedAt, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (recordId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.recordId, $json.sourceId, $json.updatedAt ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1240,
+        400
+      ],
+      "id": "5fb2ab2f-d987-4d7d-8884-bcfa1f32336c",
+      "name": "Persist Watermark (PostgreSQL)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -185,288 +156,344 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "cd95abc4-1e6a-4723-ad53-41e3e0de02c7",
-              "leftValue": "={{ $json.recordsChanged }}",
-              "rightValue": "0",
+              "id": "fbcdb3e5-dad7-4f59-bc67-70a6c905a286",
+              "leftValue": "={{ $json.sourceId }}",
+              "rightValue": "",
               "operator": {
-                "type": "number",
-                "operation": "gt"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
           "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "37835c45-3961-44a6-81ff-d29ac9a498c1",
+      "name": "Guard Non-Empty sourceId"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "recordId",
+              "value": "={{ $json.recordId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        400
+      ],
+      "id": "bb38a360-a2e6-4957-b391-c30bfa4f1017",
+      "name": "Save Execution Metadata"
+    },
+    {
+      "parameters": {
+        "maxItems": 25
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1960,
+        400
+      ],
+      "id": "144ca11e-145b-4875-abff-cbf81065fca5",
+      "name": "Cap Batch Volume"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "checksum",
+              "order": "descending"
+            }
+          ]
         },
         "options": {}
       },
-      "id": "6552e566-7d57-4a92-8f6f-9fcea836b710",
-      "name": "Changes Detected?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
       "position": [
-        1980,
-        300
+        2200,
+        400
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "48d3ac5f-d56b-4a0a-bd8a-f695e2a9d67c",
+      "name": "Sort Records Newest First"
     },
     {
-      "parameters": {},
-      "id": "e4f77fee-1602-4952-ac4e-c46e59f1cca7",
-      "name": "Sync Changes",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "subject": "=✅ Archive key records with PostgreSQL and Google Drive hands-free — run complet",
+        "bodyContent": "=✅ Archive key records with PostgreSQL and Google Drive hands-free — run completed at {{ $now.toFormat('HH:mm') }}",
+        "toRecipients": "={{ $json.email || 'ops@company.com' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
       "position": [
-        2220,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "7d0047d0-8c48-4616-b8a3-5060e3bd0641",
-      "name": "Skip (No Changes)",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2220,
-        500
-      ]
+        2440,
+        400
+      ],
+      "id": "c0551a0a-e403-4ccf-b91e-95ad4a845a2e",
+      "name": "Send Summary to Outlook",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "d79143f0-1029-4c33-b1cf-8a2528557535",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "50b21b6b-464e-40d6-a5ec-9195c2399e1b",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "73851e5a-8ae9-49aa-9069-5a7df8fbbd95",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "3aef8e0f-dec9-4323-920b-0e22e4efc882",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "38b2ad7b-5703-4798-9dfe-87ce10b930d5",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2460,
-        700
-      ]
+        1960,
+        740
+      ],
+      "id": "fc5f97a4-71b8-48f8-b5f4-f401a3aa57ec",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
-        "otherOptions": {}
+        "subject": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage ",
+        "bodyContent": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "toRecipients": "={{ $json.email || 'ops@company.com' }}",
+        "additionalFields": {}
       },
-      "id": "229ab2d8-597f-45a6-afa6-4b1268112398",
-      "name": "Alert on Failure",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
       "position": [
-        2700,
-        760
+        2200,
+        740
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "a5b40a24-12b9-4015-8b98-e383b139e5d0",
+      "name": "Escalate Failure to Outlook",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "a2afb2dc-1efa-4932-bac2-d6abd40d405b",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Archive key records with PostgreSQL and Google Drive hands-free\n\n**Tier:** Professional · **Difficulty:** Intermediate\n**Pattern:** Migration (Data Sync & Integration)\n**Architecture:** validated input, branch on changes detected?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Archive key records with PostgreSQL and Google Drive hands-free\n\n**Pattern:** Backup & Archive  \n**Trigger:** Scheduled  \n**Level:** Core\n\nProcesses records for migration — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 6
       },
-      "id": "f7bb5978-4c96-4fad-91fa-9ff108a90f45",
-      "name": "Sticky Note 0299",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3220,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "586a9aea-c9e4-4a85-a7fd-d4c0ecc9c0c7",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Load Previous Snapshot",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Load Previous Snapshot": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Save to PostgreSQL",
+            "node": "Fetch Changes (Google Drive)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Fetch Changes (Google Drive)": {
       "main": [
         [
           {
-            "node": "Transform Items",
+            "node": "Normalize Records",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Normalize Records": {
       "main": [
         [
           {
-            "node": "Upload to Google Drive",
+            "node": "Upsert into Google Sheets",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upload to Google Drive": {
+    "Upsert into Google Sheets": {
       "main": [
         [
           {
-            "node": "Send Outlook Message",
+            "node": "Advance Watermark",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Outlook Message": {
+    "Advance Watermark": {
       "main": [
         [
           {
-            "node": "Changes Detected?",
+            "node": "Persist Watermark (PostgreSQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Watermark (PostgreSQL)": {
+      "main": [
+        [
+          {
+            "node": "Guard Non-Empty sourceId",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Changes Detected?": {
+    "Guard Non-Empty sourceId": {
       "main": [
         [
           {
-            "node": "Sync Changes",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Skip (No Changes)",
+            "node": "Save Execution Metadata",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Save Execution Metadata": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Cap Batch Volume",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sync Changes": {
+    "Cap Batch Volume": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Sort Records Newest First",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Skip (No Changes)": {
+    "Sort Records Newest First": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Send Summary to Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Outlook": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

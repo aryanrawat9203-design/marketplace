@@ -6,233 +6,326 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 15
+              "field": "hours",
+              "hoursInterval": 4
             }
           ]
         }
       },
-      "id": "6c22cc3c-b9ea-494c-87be-f02e2e70edeb",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        320,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "e3015323-d3b5-40a2-b3a8-9d2677cf65bb",
+      "name": "Hourly Schedule"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "a29bf0b6-9d4c-42a4-99f4-df35068bae34",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
+              "id": "6d5ee582-8cf3-40a1-ad03-c224fc2832d6",
+              "name": "page",
+              "value": "1",
+              "type": "number"
             },
             {
-              "id": "fe43956a-572f-4547-8f0f-482678f791c3",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
+              "id": "f61585b5-f5c5-4eb7-8ecc-44c13fa875fb",
+              "name": "hasMore",
+              "value": "true",
               "type": "boolean"
             }
           ]
         },
         "options": {}
       },
-      "id": "82ac4bcc-03cf-427a-ae48-3128266fafaa",
-      "name": "Validate Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        560,
-        300
+        40,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "3af24f17-e408-4559-9b09-71623bab7fc3",
+      "name": "Init Cursor"
     },
     {
       "parameters": {
-        "url": "https://data.example.org/latest.json",
-        "options": {}
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
       },
-      "id": "c7fb4fc8-e1b9-4bde-b074-e330be5227f8",
-      "name": "Fetch Data",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        280,
+        400
+      ],
+      "id": "6af3fd40-56d1-4df7-8528-8b31a4b74142",
+      "name": "Page Loop"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/v1/listings",
+        "options": {
+          "timeout": 20000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "={{ $json.page }}"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        }
+      },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        800,
-        300
+        520,
+        560
       ],
+      "id": "1a9b8b11-b05c-4991-82c3-78bac4c5796c",
+      "name": "Fetch Page from API",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "// Deduplicate by email\nconst seen = new Set();\nreturn $input.all().filter(i => {\n  const k = i.json.email || i.json.id;\n  if (seen.has(k)) return false; seen.add(k); return true;\n});"
+        "fieldToSplitOut": "data",
+        "options": {}
       },
-      "id": "7e08d964-e35c-4dec-acaf-2a18faadb929",
-      "name": "Transform Items",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
       "position": [
-        1040,
-        300
-      ]
+        1000,
+        560
+      ],
+      "id": "eccfc6aa-006b-4f16-bbcd-654772730ca8",
+      "name": "Split Result Items"
     },
     {
       "parameters": {
-        "text": "={{ JSON.stringify($json) }}",
-        "schemaType": "fromAttributes",
-        "attributes": {
-          "attributes": [
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming listing records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    listingId: String(j.listingId ?? j.id ?? '').trim(),\n    url: typeof j.url === 'string' ? j.url.trim() : j.url ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        560
+      ],
+      "id": "1191eec4-7b74-4bd2-bc74-9691d5636a64",
+      "name": "Normalize Page Items"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "listingId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        400
+      ],
+      "id": "42b09781-acb3-45d5-95fc-0f3c748c27ac",
+      "name": "Remove Duplicate Listings"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO listings (listingId, url, title, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (listingId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.listingId, $json.url, $json.title ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2200,
+        400
+      ],
+      "id": "530eca53-7958-48dc-9a54-0fa0663b4b67",
+      "name": "Upsert Harvest into PostgreSQL",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
             {
-              "name": "summary",
-              "description": "A short summary",
-              "type": "string"
-            },
-            {
-              "name": "category",
-              "description": "A category label",
-              "type": "string"
+              "aggregation": "count",
+              "field": "listingId"
             }
           ]
         },
         "options": {}
       },
-      "id": "3a19e7b5-3dcf-4bff-b584-24686c3bc607",
-      "name": "Structure Data with AI",
-      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "type": "n8n-nodes-base.summarize",
       "typeVersion": 1.1,
       "position": [
-        1280,
-        300
+        2440,
+        400
       ],
+      "id": "74cc1275-1a86-4c2b-bde8-350808d46d7b",
+      "name": "Tally Harvest Stats"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#scraping",
+          "cachedResultName": "#scraping"
+        },
+        "text": "=✅ Collect listings with HTTP / REST API and PostgreSQL at scale — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2680,
+        400
+      ],
+      "id": "2f5c3e38-e090-46b3-b788-795bab34488d",
+      "name": "Send Summary to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "model": "llama-3.1-70b-versatile",
-        "options": {}
+        "content": "## Collect listings with HTTP / REST API and PostgreSQL at scale\n\n**Pattern:** Web Scraping  \n**Trigger:** Scheduled  \n**Level:** Foundation\n\nProcesses listings for listings — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 3
       },
-      "id": "2820b202-8061-4d75-b9e9-0081a1fac77a",
-      "name": "Groq Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        1220,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "0a96ab98-6a85-44ef-ba77-671484afbc9d",
-      "name": "Save to PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1520,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Collect listings with HTTP / REST API and PostgreSQL at scale\n\n**Pattern:** Web Scraping\n**Trigger:** Scheduled\n**Integrations:** HTTP / REST API, PostgreSQL\n\nImport, add your credentials, then adjust parameters. Original FlowDex template.",
-        "height": 260,
-        "width": 360,
-        "color": 4
-      },
-      "id": "c5f5b129-79ea-4bb4-96d2-2d3cf2ee27eb",
-      "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1560,
-        80
-      ]
+        -260,
+        140
+      ],
+      "id": "ab715d53-0cfe-4b24-abe6-180ebbe93615",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Hourly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Init Cursor",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Init Cursor": {
       "main": [
         [
           {
-            "node": "Fetch Data",
+            "node": "Page Loop",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Page Loop": {
       "main": [
         [
           {
-            "node": "Transform Items",
+            "node": "Remove Duplicate Listings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Page from API",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Fetch Page from API": {
       "main": [
         [
           {
-            "node": "Structure Data with AI",
+            "node": "Split Result Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Structure Data with AI": {
+    "Split Result Items": {
       "main": [
         [
           {
-            "node": "Save to PostgreSQL",
+            "node": "Normalize Page Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Groq Chat Model": {
-      "ai_languageModel": [
+    "Normalize Page Items": {
+      "main": [
         [
           {
-            "node": "Structure Data with AI",
-            "type": "ai_languageModel",
+            "node": "Page Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate Listings": {
+      "main": [
+        [
+          {
+            "node": "Upsert Harvest into PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Harvest into PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Tally Harvest Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tally Harvest Stats": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
             "index": 0
           }
         ]

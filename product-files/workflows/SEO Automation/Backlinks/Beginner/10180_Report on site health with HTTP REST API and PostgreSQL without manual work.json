@@ -6,277 +6,329 @@
         "rule": {
           "interval": [
             {
-              "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 6
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
             }
           ]
         }
       },
-      "id": "872a132f-9690-44cf-8080-88d58f2b4a8f",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        320,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "a56f994d-580e-412e-95ff-8a5a32d536a9",
+      "name": "Weekly Schedule"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "da9060c7-3755-4851-a22c-b4e9dc37cd69",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
+              "id": "aa2e9ef1-449b-455f-b736-e79c1faaf461",
+              "name": "page",
+              "value": "1",
+              "type": "number"
             },
             {
-              "id": "24270697-b3c0-44fd-b493-072c4dbbe5d1",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
+              "id": "bf463ed4-929c-4d80-aec8-3b56a9cd548f",
+              "name": "hasMore",
+              "value": "true",
               "type": "boolean"
             }
           ]
         },
         "options": {}
       },
-      "id": "f6b77d91-f29e-46f1-bf37-3c2ee23f42dd",
-      "name": "Validate Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        560,
-        300
+        40,
+        400
       ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
+      "id": "082037f7-ecd3-4181-b547-1d73ff1c3a87",
+      "name": "Init Cursor"
     },
     {
       "parameters": {
-        "url": "https://data.example.org/latest.json",
-        "options": {}
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
       },
-      "id": "94a7d68a-b85b-496d-b694-4a4bab31d00e",
-      "name": "Fetch Data",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        280,
+        400
+      ],
+      "id": "e8131ac9-16bc-4b41-aa65-60d098876d05",
+      "name": "Page Loop"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/v1/pages",
+        "options": {
+          "timeout": 20000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "={{ $json.page }}"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        }
+      },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        800,
-        300
+        520,
+        560
       ],
+      "id": "6cc42ce1-123a-4f6d-ab00-fa81c63f61fb",
+      "name": "Fetch Page from API",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        560
+      ],
+      "id": "ac72bb75-b722-4ddf-a487-93a68d5e51a7",
+      "name": "Split Result Items"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming page records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    pageId: String(j.pageId ?? j.id ?? '').trim(),\n    url: typeof j.url === 'string' ? j.url.trim() : j.url ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        560
+      ],
+      "id": "e8652a45-0a8c-426a-a36b-06af23c9bcac",
+      "name": "Normalize Page Items"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "pageId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        400
+      ],
+      "id": "7c177589-fc9d-451f-9699-562743af90a5",
+      "name": "Remove Duplicate Pages"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pages (pageId, url, keyword, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (pageId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.pageId, $json.url, $json.keyword ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2200,
+        400
+      ],
+      "id": "80f37511-c506-4ff1-a13f-11f7e3cefb5f",
+      "name": "Upsert Harvest into PostgreSQL",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
             {
-              "id": "550ae5e8-5d3e-46e1-92bf-42c22634d44a",
-              "name": "count",
-              "value": "={{ $json.items ? $json.items.length : 1 }}",
-              "type": "number"
-            },
-            {
-              "id": "c5b1b4a1-ec79-4633-822d-dedf92085def",
-              "name": "summary",
-              "value": "={{ JSON.stringify($json).slice(0, 280) }}",
-              "type": "string"
-            },
-            {
-              "id": "a176e4cb-6c89-482e-9978-ab8d963b2c4d",
-              "name": "status",
-              "value": "='processed'",
-              "type": "string"
+              "aggregation": "count",
+              "field": "pageId"
             }
           ]
         },
         "options": {}
       },
-      "id": "a9583a2c-b71d-44ca-8d9e-11bd38a299bf",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
       "position": [
-        1040,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Process the following input and return a helpful result:\n{{ JSON.stringify($json) }}"
-      },
-      "id": "fffa7f27-f867-4fde-b04d-2af82d057232",
-      "name": "Recommend Fixes with AI",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        1280,
-        300
+        2440,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "89d96660-7cfd-4511-92ac-8bd4b747f4e6",
+      "name": "Tally Harvest Stats"
     },
     {
       "parameters": {
-        "model": "models/gemini-1.5-flash",
-        "options": {}
-      },
-      "id": "46c096fe-949b-4319-9f93-39d90ecf0a0d",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        1220,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "db1c98dd-cda6-4009-8129-f8ec80cd0bac",
-      "name": "Save to PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1520,
-        300
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
         "select": "channel",
         "channelId": {
           "__rl": true,
-          "value": "general",
-          "mode": "name"
+          "mode": "name",
+          "value": "#seo",
+          "cachedResultName": "#seo"
         },
-        "text": "={{ $json.summary || 'New event' }}",
+        "text": "=✅ Report on site health with HTTP / REST API and PostgreSQL without manu — run completed at {{ $now.toFormat('HH:mm') }}",
         "otherOptions": {}
       },
-      "id": "a3b55159-66c9-4338-9b01-c5d97151235f",
-      "name": "Send Slack Message",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        1760,
-        300
+        2680,
+        400
       ],
+      "id": "8d646078-0d15-467f-8aa6-138a581cfca1",
+      "name": "Send Summary to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "content": "## Report on site health with HTTP / REST API and PostgreSQL without manual work\n\n**Pattern:** SEO Audit\n**Trigger:** Scheduled\n**Integrations:** HTTP / REST API, PostgreSQL, Slack\n\nImport, add your credentials, then adjust parameters. Original FlowDex template.",
-        "height": 260,
-        "width": 360,
-        "color": 4
+        "content": "## Report on site health with HTTP / REST API and PostgreSQL without manual work\n\n**Pattern:** SEO Audit  \n**Trigger:** Scheduled  \n**Level:** Foundation\n\nProcesses pages for backlinks — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
+        "color": 2
       },
-      "id": "0debbaf7-176b-43e1-9655-8ac726069fae",
-      "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1800,
-        80
-      ]
+        -260,
+        140
+      ],
+      "id": "a4fe83df-5696-40b5-b62b-72577b1b1182",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Weekly Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Init Cursor",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Init Cursor": {
       "main": [
         [
           {
-            "node": "Fetch Data",
+            "node": "Page Loop",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Data": {
+    "Page Loop": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Remove Duplicate Pages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Page from API",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Fetch Page from API": {
       "main": [
         [
           {
-            "node": "Recommend Fixes with AI",
+            "node": "Split Result Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Recommend Fixes with AI": {
+    "Split Result Items": {
       "main": [
         [
           {
-            "node": "Save to PostgreSQL",
+            "node": "Normalize Page Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Normalize Page Items": {
       "main": [
         [
           {
-            "node": "Send Slack Message",
+            "node": "Page Loop",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
+    "Remove Duplicate Pages": {
+      "main": [
         [
           {
-            "node": "Recommend Fixes with AI",
-            "type": "ai_languageModel",
+            "node": "Upsert Harvest into PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Harvest into PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Tally Harvest Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tally Harvest Stats": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
             "index": 0
           }
         ]

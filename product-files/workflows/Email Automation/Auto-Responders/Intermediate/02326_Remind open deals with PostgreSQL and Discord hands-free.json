@@ -6,119 +6,36 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 12
+              "field": "days",
+              "triggerAtHour": 17,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
-      "id": "0d0f8e83-5839-4b22-9f83-c115c336b479",
-      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        300,
-        300
-      ]
+        -200,
+        400
+      ],
+      "id": "0ea9fe12-ab52-4134-96ea-e4679fd3bdaf",
+      "name": "Daily Schedule"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "9c778f35-8e27-4a65-a586-3c09cb6138fa",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "dc998ede-fa64-43a0-9dd8-b7ae32b204e2",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
+        "operation": "executeQuery",
+        "query": "SELECT * FROM emails WHERE updated_at > NOW() - INTERVAL '1 day' ORDER BY updated_at DESC;",
         "options": {}
       },
-      "id": "3fc705f2-a0e1-4c3b-8ed2-234ba8e57a97",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
-      ],
-      "notes": "Validate & normalize the input before downstream steps (§9.1)."
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "8f0f16d1-4025-4234-93f2-5ce96e02e33f",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "72340c31-8c2f-4883-982c-e153a07e273f",
-      "name": "Input Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        780,
-        300
-      ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "4303ca65-84fd-4be1-bcf6-6ac3b322b600",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "id": "2086bf7b-5974-4f6d-b37f-714553d3ca6d",
-      "name": "Save to PostgreSQL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1020,
-        300
+        40,
+        400
       ],
+      "id": "8a892dbe-fc98-4bb5-a95d-5b38152a5c9c",
+      "name": "Read Pending Queue (PostgreSQL)",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -126,325 +43,435 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "combinator": "and",
-          "conditions": [
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming email records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    messageId: String(j.messageId ?? j.id ?? '').trim(),\n    from: typeof j.from === 'string' ? j.from.trim() : j.from ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "d95f6666-57a0-4838-9bba-4ab8fae1365a",
+      "name": "Normalize Email Payload"
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        520,
+        400
+      ],
+      "id": "043d862a-ded0-42c4-812e-581489c3fe62",
+      "name": "Work in Batches"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.example.com/v1/emails",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        560
+      ],
+      "id": "8034b793-1747-412a-b782-7538c4e77739",
+      "name": "Process Batch Item",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        560
+      ],
+      "id": "11b04d6a-b057-40b3-a703-2d47816bb28d",
+      "name": "Respect Rate Limits"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        400
+      ],
+      "id": "83b5f9e0-b74e-4886-a588-021d2b4a47df",
+      "name": "Aggregate Batch Results"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Email Tracker"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Main",
+          "cachedResultName": "Main"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "messageId"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1720,
+        400
+      ],
+      "id": "fea9adbe-1da3-42ef-83b4-b7d47cdba938",
+      "name": "Mark Completed in Google Sheets",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
             {
-              "id": "991e5b04-3292-40d0-8bfa-83c26a08b18e",
-              "leftValue": "={{ $json.score }}",
-              "rightValue": 50,
-              "operator": {
-                "type": "number",
-                "operation": "gte"
-              }
+              "fieldName": "receivedAt",
+              "order": "descending"
             }
           ]
         },
         "options": {}
       },
-      "id": "0ddcc1aa-e510-4748-bb3d-784045c50a8f",
-      "name": "Filter Items",
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
       "position": [
-        1260,
-        300
-      ]
+        1960,
+        400
+      ],
+      "id": "ff40ebe3-b628-4148-a3c3-d102365ddc3d",
+      "name": "Sort Emails Newest First"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "content": "={{ $json.summary || 'Update' }}"
+        "maxItems": 100
       },
-      "id": "b7f55151-20e8-494e-81a5-546ad491fd50",
-      "name": "Send Discord Message",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        400
+      ],
+      "id": "ad2ee512-e89e-4173-9c1e-80b8f209e1ea",
+      "name": "Cap Batch Volume"
+    },
+    {
+      "parameters": {
+        "operation": "getCurrentDate",
+        "outputFieldName": "processedAt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        400
+      ],
+      "id": "c5576cbb-429c-4bf8-9813-6273a363eb1c",
+      "name": "Stamp Processing Time"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=✅ Remind open deals with PostgreSQL and Discord hands-free — run completed at {{ $now.toFormat('HH:mm') }}",
+        "options": {}
+      },
       "type": "n8n-nodes-base.discord",
       "typeVersion": 2,
       "position": [
-        1500,
-        300
+        2680,
+        400
       ],
+      "id": "eb8cf3f7-a171-44a6-b5b6-1ddc85e1cc01",
+      "name": "Send Summary to Discord",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
       "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "540a900b-2804-430f-b718-c4ff3d7a1c83",
-              "leftValue": "={{ $json.category }}",
-              "rightValue": "urgent",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "8794b393-057a-4122-b221-58fa65904953",
-      "name": "Needs Human Reply?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1740,
-        300
-      ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
-    },
-    {
-      "parameters": {},
-      "id": "2572e551-445a-4890-80d9-1b8a4a111e43",
-      "name": "Auto-Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1980,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "a5fa84df-42af-49c9-8237-808b1eb9fee7",
-      "name": "Flag for Manual Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        1980,
-        500
-      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "e42a0c4b-53b5-41b2-bffa-5787a14e97cf",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "11631f61-6613-4075-b602-04310c27aeda",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "c93001f4-9115-43c0-9077-1f612941bb2d",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "147f0a32-0d3a-40c5-aaaf-c26333697aad",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "38eccacf-1b28-4051-ac6a-1ba9bd50b5ae",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2220,
-        700
-      ]
+        2200,
+        740
+      ],
+      "id": "ceffa4e5-885f-4515-acf7-1f4a64d3d14a",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "a6322e70-ed71-4fee-bb43-825f14149a78",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        2460,
-        760
+        2440,
+        740
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "fcd60a73-cc92-4f98-af56-d05ada0c3ad3",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "ad71f0d4-de0b-461e-bffc-0b09b149b724",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2700,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Remind open deals with PostgreSQL and Discord hands-free\n\n**Tier:** Professional · **Difficulty:** Intermediate\n**Pattern:** Auto-Responders (Email Automation)\n**Architecture:** validated input, branch on needs human reply?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Remind open deals with PostgreSQL and Discord hands-free\n\n**Pattern:** Reminders & Follow-ups  \n**Trigger:** Scheduled  \n**Level:** Core\n\nProcesses emails for auto-responders — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 3
       },
-      "id": "e85be705-e13f-4217-98e0-8c84160c809c",
-      "name": "Sticky Note 60b3",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2980,
-        40
-      ]
+        -260,
+        140
+      ],
+      "id": "d4f12408-7342-428c-9da7-b2ae5cc8625d",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "Schedule Trigger": {
+    "Daily Schedule": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Read Pending Queue (PostgreSQL)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Read Pending Queue (PostgreSQL)": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Save to PostgreSQL",
+            "node": "Normalize Email Payload",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Normalize Email Payload": {
       "main": [
         [
           {
-            "node": "Filter Items",
+            "node": "Work in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Work in Batches": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Batch Results",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Process Batch Item",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Filter Items": {
+    "Process Batch Item": {
       "main": [
         [
           {
-            "node": "Send Discord Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Discord Message": {
-      "main": [
-        [
-          {
-            "node": "Needs Human Reply?",
+            "node": "Respect Rate Limits",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Needs Human Reply?": {
+    "Respect Rate Limits": {
       "main": [
         [
           {
-            "node": "Auto-Reply",
+            "node": "Work in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Batch Results": {
+      "main": [
+        [
+          {
+            "node": "Mark Completed in Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Completed in Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Sort Emails Newest First",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Flag for Manual Reply",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Sort Emails Newest First": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Cap Batch Volume",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Auto-Reply": {
+    "Cap Batch Volume": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Stamp Processing Time",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Flag for Manual Reply": {
+    "Stamp Processing Time": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Send Summary to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Discord": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

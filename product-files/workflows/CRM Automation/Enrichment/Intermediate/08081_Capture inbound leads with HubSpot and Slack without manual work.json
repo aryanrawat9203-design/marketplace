@@ -3,66 +3,36 @@
   "nodes": [
     {
       "parameters": {
-        "formTitle": "Submit your details",
-        "formDescription": "Fill in the fields below to get started.",
+        "formTitle": "Capture inbound leads with HubSpot and Slack without manual ",
         "formFields": {
           "values": [
             {
-              "fieldLabel": "Full Name",
-              "fieldType": "text",
-              "requiredField": true
-            },
-            {
               "fieldLabel": "Email",
-              "fieldType": "email",
               "requiredField": true
             },
             {
-              "fieldLabel": "Message",
-              "fieldType": "textarea"
+              "fieldLabel": "Company",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Dealstage",
+              "requiredField": false
             }
           ]
         },
-        "options": {}
+        "options": {
+          "appendAttribution": false
+        }
       },
-      "id": "6519afcd-2ba1-42b4-9453-b952fae21fcf",
-      "name": "On Form Submission",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
-        300,
-        300
+        -200,
+        400
       ],
-      "webhookId": "9d067b91-99ec-4b6c-b7d8-d7a973f14c3f"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "372d748e-28f1-4565-8964-1d6fba16404c",
-              "name": "receivedAt",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
-            },
-            {
-              "id": "0e46bac6-1a28-4a58-8f42-976f5e5c78e8",
-              "name": "isValid",
-              "value": "={{ $json ? true : false }}",
-              "type": "boolean"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "47f3a85e-9154-445a-a56d-2b9764341c2e",
-      "name": "Validate Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
-      ]
+      "id": "5a801cd8-3382-41be-8ac5-daf12e6e4863",
+      "name": "New Contact Form Submission",
+      "webhookId": "390cb6f5-f900-430f-b53a-2f15009ea74a"
     },
     {
       "parameters": {
@@ -70,105 +40,158 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "955e9480-bec1-4ed9-9f59-942f4cb0f9be",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
+              "id": "01c1042f-8bba-42e9-a1b7-5c3f90d47831",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "706c8c82-2da8-46a4-a3fe-48d5eefe2af1",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        40,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "bd378a87-280d-4550-8472-d462fb13e679",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "90d76e83-2872-41fa-b697-90d11e564035",
+      "name": "Required Fields Present?"
     },
     {
       "parameters": {
-        "jsCode": "// Normalize and tag each item\nreturn $input.all().map(i => {\n  i.json.normalized = true;\n  i.json.processedAt = new Date().toISOString();\n  return i;\n});"
+        "errorType": "errorMessage",
+        "errorMessage": "Missing required field 'email' on incoming contact."
       },
-      "id": "3a38666f-5e03-4259-9337-7644779498c4",
-      "name": "Transform Items",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        40,
+        570
+      ],
+      "id": "051e1e42-efcf-49ff-af26-d281502ecdf7",
+      "name": "Abort — Malformed Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Score each contact 0-100 from simple heuristics\nreturn $input.all().map(item => {\n  const j = item.json;\n  let score = 50;\n  if (j.email) score += 20;\n  if (j.company) score += 15;\n  if ((j.source || '') === 'referral') score += 15;\n  return { json: { ...j, score: Math.min(100, score) } };\n});"
+      },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1020,
-        300
-      ]
+        280,
+        400
+      ],
+      "id": "691123bc-7acb-4b4e-897a-e28ddd813d60",
+      "name": "Score the Lead"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "combinator": "and",
-          "conditions": [
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Round-robin owner assignment\nconst owners = ['ava@company.com', 'liam@company.com', 'mia@company.com'];\nreturn $input.all().map((item, i) => ({\n  json: { ...item.json, owner: owners[i % owners.length] },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "e9341220-56e4-4756-9df3-52afaedda83d",
+      "name": "Assign Round-Robin Owner"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
             {
-              "id": "17f5494c-193e-4136-a186-133ba6912a8e",
-              "leftValue": "={{ $json.amount }}",
-              "rightValue": "paid",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "22d85bcf-56d9-49b6-827c-d797cc796a03",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 80,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fe7e31f9-c3ca-4f50-a10f-141d3a272f19",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 50,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra"
+        }
       },
-      "id": "3ffc24d5-4459-4429-9781-478bb485c4db",
-      "name": "Route on Condition",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
       "position": [
-        1260,
-        300
-      ]
+        760,
+        400
+      ],
+      "id": "00a2350b-a1f9-4b24-a69d-eb1b5c3cdd0b",
+      "name": "Route by Heat"
     },
     {
       "parameters": {
         "resource": "contact",
-        "operation": "upsert",
         "email": "={{ $json.email }}",
-        "additionalFields": {}
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
+        },
+        "authentication": "appToken"
       },
-      "id": "d62e110a-0e55-46a9-a58a-1946364ece67",
-      "name": "Upsert HubSpot Contact",
       "type": "n8n-nodes-base.hubspot",
-      "typeVersion": 2.1,
+      "typeVersion": 2,
       "position": [
-        1500,
-        300
+        1000,
+        240
       ],
+      "id": "ef79c180-a91c-437b-a702-e508e195a0e9",
+      "name": "Hot → HubSpot + Instant Ping",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -176,322 +199,454 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
         "select": "channel",
         "channelId": {
           "__rl": true,
-          "value": "general",
-          "mode": "name"
+          "mode": "name",
+          "value": "#sales",
+          "cachedResultName": "#sales"
         },
-        "text": "={{ $json.summary || 'New event' }}",
+        "text": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
         "otherOptions": {}
       },
-      "id": "795b7a9f-5462-440a-af96-1a81e6a82bc3",
-      "name": "Send Slack Message",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        1740,
-        300
+        1480,
+        240
       ],
+      "id": "aba98c33-9a70-459b-a053-1d22172dcf84",
+      "name": "Notify Assigned Owner",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
       "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "id": "b4f162ac-9423-4e2f-b332-7e8f54555382",
-      "name": "Skip (No Action)",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#sales",
+          "cachedResultName": "#sales"
+        },
+        "text": "=Thanks for your interest — here's a quick-start guide.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        1040,
-        520
-      ]
+        1720,
+        400
+      ],
+      "id": "eadc7822-0651-478c-919f-63bf93b386a5",
+      "name": "Warm → Drip via Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "4c1721a6-c527-450e-b73b-16e9bdeb5098",
-              "leftValue": "={{ $json.contactExists }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
+        "resource": "contact",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
         },
-        "options": {}
+        "authentication": "appToken"
       },
-      "id": "aece53ad-07bc-490e-b49f-2e8269dd55fb",
-      "name": "Existing Contact?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
       "position": [
-        1980,
-        300
+        1960,
+        560
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "e5b8543f-2fd1-4d40-849d-e7a88c5b0e83",
+      "name": "Cold → Park in Nurture List",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "id": "334a3dc3-6109-4d69-a6c6-521e00a5ce4e",
-      "name": "Update Existing Record",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
       "position": [
-        2220,
-        300
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "642372ca-b9d8-4646-8ab1-5c6019dded1d",
-      "name": "Create New Record",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2220,
-        500
-      ]
+        2680,
+        400
+      ],
+      "id": "c72f5e22-e5d7-4848-a133-4583fe868e90",
+      "name": "Combine Lead Paths"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "3e625707-5f98-4126-baf3-c00e5ff38a3b",
-              "name": "errorAt",
+              "id": "8839ae93-669d-4233-b9e9-7718cb7f8bf6",
+              "name": "runAt",
               "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e5687fc6-bf7e-47e8-83bc-0f7356714dfc",
+              "name": "itemCount",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "7d58c921-f208-48a3-bd39-fc240b72d6df",
+              "name": "status",
+              "value": "completed",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "36d0d7a7-40f7-49cb-8ce3-f859507f7d7b",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2460,
-        700
-      ]
+        3640,
+        400
+      ],
+      "id": "deebcc1a-1659-44a4-8298-f40a8ed596e3",
+      "name": "Summarize Run Stats"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
+        "resource": "contact",
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $json.company }}"
+        },
+        "authentication": "appToken"
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        3880,
+        400
+      ],
+      "id": "9a10e036-9bda-49ce-8faf-585390816bb1",
+      "name": "Append Audit Row (HubSpot)",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#sales",
+          "cachedResultName": "#sales"
+        },
+        "text": "=✅ Capture inbound leads with HubSpot and Slack without manual work — run completed at {{ $now.toFormat('HH:mm') }}",
         "otherOptions": {}
       },
-      "id": "c06d5b09-fcaf-44a0-b676-668aa1ddcfe7",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        2700,
-        760
+        4120,
+        400
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "150b667e-dfcc-479a-916d-7729fd696dae",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4d4ee403-a45b-4356-9178-9b40899d0b77",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "5f2bc497-626c-42f7-a071-8370296aabc3",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "ebdbbfa4-0eb9-45ca-b301-6ad85667fb11",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3640,
+        740
+      ],
+      "id": "e5ce0223-7e39-494d-bb23-a59abfd122af",
+      "name": "Capture Failure Context"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#sales",
+          "cachedResultName": "#sales"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3880,
+        740
+      ],
+      "id": "57a0824f-463f-46bd-b247-fbd9ca6ed091",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "5bf9f44e-9d88-40f0-ad0d-e9e8be1ea4f9",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2940,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Capture inbound leads with HubSpot and Slack without manual work\n\n**Tier:** Professional · **Difficulty:** Intermediate\n**Pattern:** Enrichment (CRM Automation)\n**Architecture:** validated input, branch on existing contact?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Capture inbound leads with HubSpot and Slack without manual work\n\n**Pattern:** Lead Capture & Routing  \n**Trigger:** Form  \n**Level:** Advanced\n\nProcesses contacts for enrichment — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 1
       },
-      "id": "736c8ec9-c90e-43c9-b367-aa782e2950dc",
-      "name": "Sticky Note cb1f",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        3220,
-        40
-      ]
+        -260,
+        -20
+      ],
+      "id": "a3a75b62-e5ce-48cb-aa61-c6a9a649a5f0",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "On Form Submission": {
+    "New Contact Form Submission": {
       "main": [
         [
           {
-            "node": "Validate Input",
+            "node": "Required Fields Present?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validate Input": {
+    "Required Fields Present?": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Transform Items",
+            "node": "Score the Lead",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Abort — Malformed Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transform Items": {
+    "Score the Lead": {
       "main": [
         [
           {
-            "node": "Route on Condition",
+            "node": "Assign Round-Robin Owner",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Route on Condition": {
+    "Assign Round-Robin Owner": {
       "main": [
         [
           {
-            "node": "Upsert HubSpot Contact",
+            "node": "Route by Heat",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert HubSpot Contact": {
+    "Hot → HubSpot + Instant Ping": {
       "main": [
         [
           {
-            "node": "Send Slack Message",
+            "node": "Notify Assigned Owner",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Slack Message": {
+    "Route by Heat": {
       "main": [
         [
           {
-            "node": "Existing Contact?",
+            "node": "Hot → HubSpot + Instant Ping",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Existing Contact?": {
-      "main": [
-        [
-          {
-            "node": "Update Existing Record",
+            "node": "Warm → Drip via Slack",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Create New Record",
+            "node": "Cold → Park in Nurture List",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Notify Assigned Owner": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Existing Record": {
+    "Warm → Drip via Slack": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create New Record": {
+    "Cold → Park in Nurture List": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Lead Paths": {
+      "main": [
+        [
+          {
+            "node": "Summarize Run Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Run Stats": {
+      "main": [
+        [
+          {
+            "node": "Append Audit Row (HubSpot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Audit Row (HubSpot)": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }

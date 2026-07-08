@@ -3,163 +3,241 @@
   "nodes": [
     {
       "parameters": {
-        "formTitle": "Submit your details",
-        "formDescription": "Fill in the fields below to get started.",
+        "formTitle": "Log form submissions with PostgreSQL and Discord at scale",
         "formFields": {
           "values": [
             {
-              "fieldLabel": "Full Name",
-              "fieldType": "text",
-              "requiredField": true
-            },
-            {
               "fieldLabel": "Email",
-              "fieldType": "email",
               "requiredField": true
             },
             {
-              "fieldLabel": "Message",
-              "fieldType": "textarea"
+              "fieldLabel": "Company",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Score",
+              "requiredField": false
             }
           ]
         },
-        "options": {}
+        "options": {
+          "appendAttribution": false
+        }
       },
-      "id": "af15c1f6-3e9c-423b-bc5a-6a6093317fac",
-      "name": "On Form Submission",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
-        320,
-        300
+        -200,
+        400
       ],
-      "webhookId": "be81b25a-8579-4bdd-aedd-b3902bf0b89f"
+      "id": "3a3bfad3-b549-4aa9-8369-57efd4a2b222",
+      "name": "New Lead Form Submission",
+      "webhookId": "e1df2338-426e-4776-837a-be3073f08f58"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "1059b3f8-58b8-4a85-bb75-3b3931776f1e",
-              "name": "status",
-              "value": "='processed'",
-              "type": "string"
-            },
-            {
-              "id": "fb37aeb9-a80f-4e01-8dff-53e61d83713a",
-              "name": "summary",
-              "value": "={{ JSON.stringify($json).slice(0, 280) }}",
-              "type": "string"
-            },
-            {
-              "id": "54da8d6d-c70e-46ab-8395-9e5c827ca832",
-              "name": "source",
-              "value": "='flowdex-workflow'",
-              "type": "string"
+        "method": "GET",
+        "url": "={{ $json.fileUrl }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
             }
-          ]
-        },
-        "options": {}
+          }
+        }
       },
-      "id": "ae9e0e3b-cc09-4f50-99b9-cbedb372c431",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        560,
-        300
-      ]
+        40,
+        400
+      ],
+      "id": "76fb912a-aee4-4ea8-a992-571eb319f2f3",
+      "name": "Download Source File",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
+        "operation": "xlsx",
         "options": {}
       },
-      "id": "6c4cb5a8-e9eb-46ee-a4a5-4bb432c90cef",
-      "name": "Save to PostgreSQL",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        280,
+        400
+      ],
+      "id": "1c3bfe63-c45b-4dd2-b002-f30e1283250b",
+      "name": "Parse XLSX Contents"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize incoming lead records to a stable schema\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  out.push({ json: {\n    leadId: String(j.leadId ?? j.id ?? '').trim(),\n    email: typeof j.email === 'string' ? j.email.trim() : j.email ?? null,\n    source: j.source ?? 'api',\n    receivedAt: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "73e2f4f3-1d51-4112-b84f-c773c0bb19ac",
+      "name": "Clean & Reshape Rows"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads (leadId, email, company, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (leadId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.leadId, $json.email, $json.company ] }}"
+        }
+      },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        800,
-        300
+        760,
+        400
       ],
+      "id": "ce44ba23-783e-4502-9872-8c9d710a49c4",
+      "name": "Load Rows into PostgreSQL",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "content": "={{ $json.summary || 'Update' }}"
+        "keys": {
+          "key": [
+            {
+              "currentKey": "id",
+              "newKey": "leadId"
+            }
+          ]
+        },
+        "additionalOptions": {}
       },
-      "id": "dde35e56-8e47-4d2e-b7dc-02b6b9140219",
-      "name": "Send Discord Message",
-      "type": "n8n-nodes-base.discord",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
       "position": [
-        1040,
-        300
+        1000,
+        400
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "id": "4e3fcf3d-0471-4d16-9e93-00090b998ecd",
+      "name": "Align Field Names"
     },
     {
       "parameters": {
-        "content": "## Log form submissions with PostgreSQL and Discord at scale\n\n**Pattern:** Form Intake\n**Trigger:** Form\n**Integrations:** PostgreSQL, Discord\n\nImport, add your credentials, then adjust parameters. Original FlowDex template.",
-        "height": 260,
-        "width": 360,
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ae221451-cead-42bb-be26-f2fc568615f7",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1240,
+        400
+      ],
+      "id": "65ca2430-b03b-4c24-a5c2-25c7e146d7df",
+      "name": "Guard Non-Empty email"
+    },
+    {
+      "parameters": {
+        "content": "## Log form submissions with PostgreSQL and Discord at scale\n\n**Pattern:** Form Intake  \n**Trigger:** Form  \n**Level:** Foundation\n\nProcesses leads for outreach — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
+        "width": 380,
         "color": 4
       },
-      "id": "31f3d83d-b284-4af9-9b6f-394320927ba4",
-      "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1080,
-        80
-      ]
+        -260,
+        140
+      ],
+      "id": "5e1b39e6-0532-4d16-be77-4d5e2da25da5",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "On Form Submission": {
+    "New Lead Form Submission": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Download Source File",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Download Source File": {
       "main": [
         [
           {
-            "node": "Save to PostgreSQL",
+            "node": "Parse XLSX Contents",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Parse XLSX Contents": {
       "main": [
         [
           {
-            "node": "Send Discord Message",
+            "node": "Clean & Reshape Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & Reshape Rows": {
+      "main": [
+        [
+          {
+            "node": "Load Rows into PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Rows into PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Align Field Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Align Field Names": {
+      "main": [
+        [
+          {
+            "node": "Guard Non-Empty email",
             "type": "main",
             "index": 0
           }

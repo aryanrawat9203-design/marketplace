@@ -3,72 +3,36 @@
   "nodes": [
     {
       "parameters": {
-        "formTitle": "Submit your details",
-        "formDescription": "Fill in the fields below to get started.",
+        "formTitle": "Log form submissions with PostgreSQL and Outlook at scale",
         "formFields": {
           "values": [
             {
-              "fieldLabel": "Full Name",
-              "fieldType": "text",
+              "fieldLabel": "From",
               "requiredField": true
             },
             {
-              "fieldLabel": "Email",
-              "fieldType": "email",
-              "requiredField": true
+              "fieldLabel": "Subject",
+              "requiredField": false
             },
             {
-              "fieldLabel": "Message",
-              "fieldType": "textarea"
+              "fieldLabel": "Receivedat",
+              "requiredField": false
             }
           ]
         },
-        "options": {}
+        "options": {
+          "appendAttribution": false
+        }
       },
-      "id": "85cf268e-ed10-4134-a804-1e750273f9c5",
-      "name": "On Form Submission",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
-        300,
-        300
+        -200,
+        400
       ],
-      "webhookId": "7ed9f3c2-dc7a-48a6-9c20-e8c51730f8fa"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "ff50627b-1089-49c2-9bf8-2779a6723e9c",
-              "name": "source",
-              "value": "='flowdex-workflow'",
-              "type": "string"
-            },
-            {
-              "id": "3b6d2f84-7e6e-4740-b66c-e8f33a5e04f3",
-              "name": "summary",
-              "value": "={{ JSON.stringify($json).slice(0, 280) }}",
-              "type": "string"
-            },
-            {
-              "id": "c922ea0b-f5ad-449d-bb93-c32bf063bf30",
-              "name": "count",
-              "value": "={{ $json.items ? $json.items.length : 1 }}",
-              "type": "number"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "19e258a1-e225-4b65-aad9-b7c8bdf5fafa",
-      "name": "Edit Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        540,
-        300
-      ]
+      "id": "af12b046-95c4-44d3-b716-332f6ffcc300",
+      "name": "New Email Form Submission",
+      "webhookId": "da9b66a4-5826-4724-a169-0a0abefe6c53"
     },
     {
       "parameters": {
@@ -76,68 +40,157 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "strict",
+            "version": 2
           },
           "conditions": [
             {
-              "id": "9a76889f-bf71-4eea-84d6-0a99d6745837",
-              "leftValue": "={{ $json.isValid !== false }}",
-              "rightValue": true,
+              "id": "21aa0fee-c9e2-46ee-b2ef-fb24b148c71e",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
           "combinator": "and"
-        },
-        "options": {}
+        }
       },
-      "id": "57437d77-0f12-47d0-8bf4-3dbb8b5e55d2",
-      "name": "Input Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        780,
-        300
+        40,
+        400
       ],
-      "notes": "Validate early — quarantine invalid items instead of processing them (§9.1)."
-    },
-    {
-      "parameters": {},
-      "id": "9c8899e3-989a-4129-8318-b00723f6be93",
-      "name": "Log Invalid Input",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        780,
-        500
-      ],
-      "notes": "Dead-letter placeholder — route to a data table/DB for later inspection (§9.3)."
+      "id": "fef665b7-0efe-4507-b3a9-32e03bd6b246",
+      "name": "Required Fields Present?"
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "name"
-        },
-        "table": {
-          "__rl": true,
-          "value": "records",
-          "mode": "name"
-        },
-        "options": {}
+        "errorType": "errorMessage",
+        "errorMessage": "Missing required field 'from' on incoming email."
       },
-      "id": "24ebecba-0f7d-4f8c-9ae2-48a0f3094e65",
-      "name": "Save to PostgreSQL",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        40,
+        570
+      ],
+      "id": "182677e4-1036-4f73-b037-a2f759bbb1f6",
+      "name": "Abort — Malformed Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Score each email 0-100 from simple heuristics\nreturn $input.all().map(item => {\n  const j = item.json;\n  let score = 50;\n  if (j.from) score += 20;\n  if (j.subject) score += 15;\n  if ((j.source || '') === 'referral') score += 15;\n  return { json: { ...j, score: Math.min(100, score) } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        400
+      ],
+      "id": "6c331b32-c06f-4d2d-b8d6-2d6fd4fc6c70",
+      "name": "Score the Lead"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Round-robin owner assignment\nconst owners = ['ava@company.com', 'liam@company.com', 'mia@company.com'];\nreturn $input.all().map((item, i) => ({\n  json: { ...item.json, owner: owners[i % owners.length] },\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        400
+      ],
+      "id": "bd9aa593-f428-4075-ac95-f1f091f51945",
+      "name": "Assign Round-Robin Owner"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b01bf668-7570-4e84-938b-d5c75f925fdb",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 80,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "98dba363-352f-493d-8618-abeb79410d39",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 50,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        760,
+        400
+      ],
+      "id": "a2b395e9-d858-4184-afc2-e4dc60c362f5",
+      "name": "Route by Heat"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO emails (messageId, from, subject, updated_at)\nVALUES ($1, $2, $3, NOW())\nON CONFLICT (messageId) DO UPDATE SET updated_at = NOW();",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
+      },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1020,
-        300
+        1000,
+        240
       ],
+      "id": "12892ac1-6ed7-454c-bd6c-fa1f45cd38be",
+      "name": "Hot → PostgreSQL + Instant Ping",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -145,20 +198,39 @@
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "subject": "Automated update",
-        "bodyContent": "={{ $json.summary }}",
-        "toRecipients": "={{ $json.email }}"
+        "subject": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
+        "bodyContent": "=🔥 New hot lead {{ $json.email }} → {{ $json.owner }}",
+        "toRecipients": "={{ $json.email || 'ops@company.com' }}",
+        "additionalFields": {}
       },
-      "id": "c0d8d106-973d-45ac-8eb3-d9baed71b819",
-      "name": "Send Outlook Message",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1480,
+        240
+      ],
+      "id": "a3ec9c90-bc82-4624-b865-e3fbd9aa8595",
+      "name": "Notify Assigned Owner",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "subject": "=Thanks for your interest — here's a quick-start guide.",
+        "bodyContent": "=Thanks for your interest — here's a quick-start guide.",
+        "toRecipients": "={{ $json.email || 'ops@company.com' }}",
+        "additionalFields": {}
+      },
       "type": "n8n-nodes-base.microsoftOutlook",
       "typeVersion": 2,
       "position": [
-        1260,
-        300
+        1720,
+        400
       ],
+      "id": "0f197256-9840-4bbc-bdfb-aa6ac43d3a1c",
+      "name": "Warm → Drip via Outlook",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -166,263 +238,317 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "32bb28e9-b93f-4636-9fa0-6df947e3771c",
-              "leftValue": "={{ $json.category }}",
-              "rightValue": "urgent",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+        "operation": "executeQuery",
+        "query": "INSERT INTO email_log (messageId, from, subject, logged_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $json.messageId, $json.from, $json.subject ] }}"
+        }
       },
-      "id": "7a26c36d-e410-4267-ba50-c2cd5b9e0dd3",
-      "name": "Needs Human Reply?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [
-        1500,
-        300
+        1960,
+        560
       ],
-      "notes": "Real business branch — route on the condition that actually distinguishes this item, per the category's production pattern (§8)."
+      "id": "0360a88f-78d7-4a0a-8ae8-ebfe4cb06157",
+      "name": "Cold → Park in Nurture List",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
-      "parameters": {},
-      "id": "488f385e-e13b-42d0-80c8-3c8419049eb3",
-      "name": "Auto-Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
       "position": [
-        1740,
-        300
-      ]
+        2680,
+        400
+      ],
+      "id": "cdb7e9b3-cc3d-4602-a867-e52bdd51a101",
+      "name": "Combine Lead Paths"
     },
     {
-      "parameters": {},
-      "id": "91a84cef-6d12-49e2-997c-f5be8f2b6442",
-      "name": "Flag for Manual Reply",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=✅ Log form submissions with PostgreSQL and Outlook at scale — run completed at {{ $now.toFormat('HH:mm') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
       "position": [
-        1740,
-        500
-      ]
+        3640,
+        400
+      ],
+      "id": "b3399cc1-f026-4257-af7e-0a37125be744",
+      "name": "Send Summary to Slack",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "0889a9ec-d5f3-44f6-82a3-df7292c3f1b7",
-              "name": "errorAt",
-              "value": "={{ $now.toISO() }}",
+              "id": "930deaf9-eed3-486d-97e7-eb4765847839",
+              "name": "failedNode",
+              "value": "={{ $json.error?.node?.name || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "41509619-91df-485b-93ae-55eb652b8b9c",
+              "name": "errorMessage",
+              "value": "={{ $json.error?.message || JSON.stringify($json).slice(0,200) }}",
+              "type": "string"
+            },
+            {
+              "id": "333aa7b9-25ef-482f-85e0-c563e09375e7",
+              "name": "workflow",
+              "value": "={{ $workflow.name }}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "b82edf69-3797-49c5-92a5-9e733177c6be",
-      "name": "Handle Error",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1980,
-        700
-      ]
+        3160,
+        740
+      ],
+      "id": "efd08d3e-450f-4015-93a2-73359413871c",
+      "name": "Capture Failure Context"
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#alerts",
-        "text": "={{ 'Failure in ' + $workflow.name + ': ' + JSON.stringify($json) }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#inbox-ops",
+          "cachedResultName": "#inbox-ops"
+        },
+        "text": "=🚨 {{ $json.workflow }} failed at {{ $json.failedNode }}: {{ $json.errorMessage }}",
         "otherOptions": {}
       },
-      "id": "69e961e4-2f02-4f1c-8890-da5603b44ffe",
-      "name": "Alert on Failure",
       "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "typeVersion": 2.3,
       "position": [
-        2220,
-        760
+        3400,
+        740
       ],
-      "notes": "Notify on failure without aborting the run (§9.3).",
+      "id": "9fa3c178-2ebd-4038-a3b7-ce21113e8630",
+      "name": "Escalate Failure to Slack",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "channel": "#automation-log",
-        "text": "={{ 'Completed: ' + $workflow.name }}",
-        "otherOptions": {}
-      },
-      "id": "c429948a-acf5-4810-a918-48fedb3609a2",
-      "name": "Success Notification",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [
-        2460,
-        300
-      ],
-      "notes": "Confirms completion — distinct from the failure alert channel.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "content": "## Log form submissions with PostgreSQL and Outlook at scale\n\n**Tier:** Professional · **Difficulty:** Intermediate\n**Pattern:** Newsletters (Email Automation)\n**Architecture:** validated input, branch on needs human reply?.\n\nImport, add your credentials, then adjust parameters. Original WorkflowCrate template.",
-        "height": 280,
+        "content": "## Log form submissions with PostgreSQL and Outlook at scale\n\n**Pattern:** Form Intake  \n**Trigger:** Form  \n**Level:** Core\n\nProcesses emails for newsletters — see node notes for details. Configure credentials on the marked nodes before first run.",
+        "height": 220,
         "width": 380,
-        "color": 4
+        "color": 2
       },
-      "id": "ea8deb59-81c8-453e-a602-1fb673784614",
-      "name": "Sticky Note 272c",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2740,
-        40
-      ]
+        -260,
+        -20
+      ],
+      "id": "5532e15c-d437-4768-bc6b-19073dd2ed00",
+      "name": "Overview"
     }
   ],
   "connections": {
-    "On Form Submission": {
+    "New Email Form Submission": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Required Fields Present?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Required Fields Present?": {
       "main": [
         [
           {
-            "node": "Input Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Input Valid?": {
-      "main": [
-        [
-          {
-            "node": "Save to PostgreSQL",
+            "node": "Score the Lead",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Invalid Input",
+            "node": "Abort — Malformed Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save to PostgreSQL": {
+    "Score the Lead": {
       "main": [
         [
           {
-            "node": "Send Outlook Message",
+            "node": "Assign Round-Robin Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Round-Robin Owner": {
+      "main": [
+        [
+          {
+            "node": "Route by Heat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot → PostgreSQL + Instant Ping": {
+      "main": [
+        [
+          {
+            "node": "Notify Assigned Owner",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Outlook Message": {
+    "Route by Heat": {
       "main": [
         [
           {
-            "node": "Needs Human Reply?",
+            "node": "Hot → PostgreSQL + Instant Ping",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Handle Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Needs Human Reply?": {
-      "main": [
-        [
-          {
-            "node": "Auto-Reply",
+            "node": "Warm → Drip via Outlook",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Flag for Manual Reply",
+            "node": "Cold → Park in Nurture List",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Handle Error": {
+    "Notify Assigned Owner": {
       "main": [
         [
           {
-            "node": "Alert on Failure",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Auto-Reply": {
+    "Warm → Drip via Outlook": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Flag for Manual Reply": {
+    "Cold → Park in Nurture List": {
       "main": [
         [
           {
-            "node": "Success Notification",
+            "node": "Combine Lead Paths",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Capture Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Lead Paths": {
+      "main": [
+        [
+          {
+            "node": "Send Summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Failure Context": {
+      "main": [
+        [
+          {
+            "node": "Escalate Failure to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary to Slack": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Failure Context",
             "type": "main",
             "index": 0
           }
