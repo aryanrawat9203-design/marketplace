@@ -87,6 +87,9 @@ export default function ReviewModerationClient() {
           <p className="mt-1 text-sm text-zinc-500">
             Only approved reviews ever appear on product pages.
           </p>
+          <a href="/admin/screenshots" className="mt-1 inline-block text-xs text-violet-400 hover:text-violet-300">
+            Template screenshots &rarr;
+          </a>
         </div>
         <button
           onClick={signOut}

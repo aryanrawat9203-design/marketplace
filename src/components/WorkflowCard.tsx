@@ -1,14 +1,29 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { IndexItem } from "@/lib/catalog";
+import { getScreenshotsForRoute } from "@/lib/screenshots";
 import { Badge, difficultyTone, tierTone } from "./Badge";
 import PriceTag from "./PriceTag";
 
-export default function WorkflowCard({ w }: { w: IndexItem }) {
+export default async function WorkflowCard({ w }: { w: IndexItem }) {
+  const cardThumb = (await getScreenshotsForRoute(w.route))?.cardThumb;
   return (
     <Link
       href={`/workflows/${w.route}`}
       className="group flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 card-hover hover:border-violet-500/50 hover:bg-zinc-900/70"
     >
+      {cardThumb && (
+        <div className="-mx-5 -mt-5 mb-4 overflow-hidden rounded-t-2xl">
+          <Image
+            src={cardThumb}
+            alt=""
+            width={640}
+            height={360}
+            className="aspect-video w-full object-cover"
+            unoptimized
+          />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {w.free && <Badge tone="emerald">Free sample</Badge>}
         {w.difficulty && <Badge tone={difficultyTone(w.difficulty)}>{w.difficulty}</Badge>}

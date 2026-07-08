@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getByRoute, related } from "@/lib/catalog";
+import { getScreenshotsForRoute } from "@/lib/screenshots";
 import { bundleForCategory, bundleForSubcategory } from "@/lib/bundles";
 import { Badge, difficultyTone, tierTone } from "@/components/Badge";
 import WorkflowCard from "@/components/WorkflowCard";
@@ -29,11 +31,15 @@ export async function generateMetadata({
   const w = getByRoute(route);
   if (!w) return { title: "Template not found" };
   const preview = previewWorkflow(w.route);
-  const ogImg = `/api/og?title=${encodeURIComponent(w.title)}&category=${encodeURIComponent(w.category ?? "")}&nodes=${preview?.nodeCount ?? 0}`;
+  const shots = await getScreenshotsForRoute(w.route);
+  const shareImage =
+    shots?.cardThumb ??
+    shots?.overview ??
+    `/api/og?title=${encodeURIComponent(w.title)}&category=${encodeURIComponent(w.category ?? "")}&nodes=${preview?.nodeCount ?? 0}`;
   return {
     title: w.title,
     description: w.shortDescription ?? w.description ?? undefined,
-    openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article", images: [ogImg] },
+    openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article", images: [shareImage] },
   };
 }
 
@@ -62,6 +68,8 @@ export default async function WorkflowDetail({
   const preview = previewWorkflow(w.route);
   const graph = workflowGraphData(w.route);
   const reviews = await reviewSummary(w.route);
+  const shots = await getScreenshotsForRoute(w.route);
+  const gallery = [shots?.overview, shots?.nodeDetail].filter((s): s is string => Boolean(s));
 
   const productFaqs: [string, string][] = [
     [
@@ -121,6 +129,7 @@ export default async function WorkflowDetail({
       availability: "https://schema.org/InStock",
       url: `${baseUrl()}/workflows/${w.route}`,
     },
+    ...(gallery.length > 0 ? { image: gallery } : {}),
     // Only real, moderated buyer reviews ever reach this markup.
     ...(reviews.count > 0
       ? {
@@ -179,6 +188,24 @@ export default async function WorkflowDetail({
 
       <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-50">{w.title}</h1>
       {w.subtitle && <p className="mt-2 text-lg text-zinc-400">{w.subtitle}</p>}
+
+      {gallery.length > 0 && (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {gallery.map((src, i) => (
+            <div key={src} className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40">
+              <Image
+                src={src}
+                alt={i === 0 ? `${w.title} — workflow overview` : `${w.title} — key node detail`}
+                width={960}
+                height={540}
+                className="w-full object-cover"
+                unoptimized
+                priority={i === 0}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-10 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2 min-w-0">
@@ -351,6 +378,18 @@ export default async function WorkflowDetail({
                 />
               )}
               {!w.free && <TrustStrip />}
+              {shots?.capabilities && (
+                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800/80">
+                  <Image
+                    src={shots.capabilities}
+                    alt={`${w.title} — error handling, data quality, and customization`}
+                    width={640}
+                    height={360}
+                    className="w-full object-cover"
+                    unoptimized
+                  />
+                </div>
+              )}
             </div>
             <ul className="mt-5 space-y-2 text-sm text-zinc-400">
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Instant download after payment</li>

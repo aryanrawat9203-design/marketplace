@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import type { Screenshots } from "./screenshots";
 
 export type IndexItem = {
   id: string;
@@ -22,6 +23,8 @@ export type IndexItem = {
   mrp: number;
   off: number;
   free: boolean;
+  /** Merged in at read time from Supabase; absent for the vast majority of templates. */
+  screenshots?: Screenshots;
 };
 
 export type DetailItem = {
@@ -56,6 +59,8 @@ export type DetailItem = {
   workflowFile: string;
   owned?: boolean;
   totalNodes: number;
+  /** Merged in at read time from Supabase; absent for the vast majority of templates. */
+  screenshots?: Screenshots;
 };
 
 export type Taxo = { name: string; count: number };
