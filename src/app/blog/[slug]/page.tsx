@@ -95,6 +95,19 @@ export default async function BlogPostDetail({
                             Browse all {p.platform} templates &rarr;
                   </Link>
               )}
+
+          <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+                <p className="text-sm text-zinc-300">
+                        Want structured practice? Our practice bundles arrange real, ready-to-import
+                        templates into a beginner-to-advanced curriculum.
+                </p>
+                <Link
+                        href="/practice-bundles"
+                        className="mt-2 inline-block text-sm font-medium text-violet-400 hover:text-violet-300"
+                >
+                        Explore practice bundles &rarr;
+                </Link>
+          </div>
         </div>
       );
 }
