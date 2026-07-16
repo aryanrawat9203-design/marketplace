@@ -4,9 +4,9 @@ import { practiceBundles } from "@/lib/bundles";
 import { inr } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Practice bundles — learn n8n with a real curriculum",
+  title: "n8n workflow templates for practice — structured practice bundles",
   description:
-    "Structured n8n practice bundles that go from your first automation to production-grade, enterprise architecture. Sold as bundles only — a complete learning curriculum, not a grab-bag of templates.",
+    "Practice n8n with ready-to-import workflow templates arranged as a real curriculum — from your first simple automation to production-grade, enterprise architecture. Sold as bundles only.",
 };
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -30,7 +30,8 @@ export default function PracticeBundlesPage() {
         </span>
         <h1 className="mt-3 text-3xl font-bold text-zinc-50">Practice bundles</h1>
         <p className="mt-2 text-zinc-400">
-          A structured curriculum, not a grab-bag. Every bundle starts with simple, 4&ndash;8 node
+          The fastest way to practice n8n is importing real workflow templates and pulling them apart.
+          These bundles arrange that practice into a structured curriculum, not a grab-bag. Every bundle starts with simple, 4&ndash;8 node
           automations and works up to the same production patterns &mdash; branching, retries, idempotency,
           audit logging, human-in-the-loop approval &mdash; used in our real Enterprise-tier templates. Sold
           as bundles only.
@@ -142,6 +143,24 @@ export default function PracticeBundlesPage() {
           in the hardest tier &mdash; human-in-the-loop approval and SLA monitoring. You&apos;re practicing on
           the same architecture patterns used in our highest-tier commercial templates, not toy examples.
         </p>
+      </section>
+
+      <section className="mt-14">
+        <h2 className="text-lg font-semibold text-zinc-100">New to practicing with templates?</h2>
+        <div className="mt-3 flex flex-col gap-2 text-sm">
+          <Link
+            href="/blog/n8n-workflow-templates-for-practice"
+            className="font-medium text-violet-400 hover:text-violet-300"
+          >
+            How to actually learn n8n from practice templates &rarr;
+          </Link>
+          <Link
+            href="/blog/n8n-workflow-examples-for-beginners"
+            className="font-medium text-violet-400 hover:text-violet-300"
+          >
+            7 n8n workflow examples for beginners &rarr;
+          </Link>
+        </div>
       </section>
     </div>
   );
