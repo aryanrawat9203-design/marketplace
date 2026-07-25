@@ -14,6 +14,7 @@ import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
 import { previewWorkflow, workflowGraphData } from "@/lib/commerce";
 import { reviewSummary } from "@/lib/reviews";
+import { learningFor } from "@/lib/learning";
 import WorkflowGraph from "@/components/WorkflowGraph";
 import AddToCartButton from "@/components/AddToCartButton";
 import StickyBuyBar from "@/components/StickyBuyBar";
@@ -70,6 +71,7 @@ export default async function WorkflowDetail({
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = [shots?.overview, shots?.nodeDetail].filter((s): s is string => Boolean(s));
+  const learning = learningFor(w);
 
   const productFaqs: [string, string][] = [
     [
@@ -343,6 +345,30 @@ export default async function WorkflowDetail({
               </div>
             </div>
           )}
+
+          <div className="mt-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-semibold text-zinc-100">What you&apos;ll learn</h2>
+              <span className="rounded bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+                {learning.band} level
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-zinc-400">{learning.bandNote}</p>
+            <ul className="mt-3 space-y-2">
+              {learning.skills.map((s) => (
+                <li key={s} className="flex gap-2 text-sm text-zinc-300">
+                  <span className="text-violet-400">&#8226;</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 border-t border-zinc-800/80 pt-3 text-sm text-zinc-400">
+              Every node carries its own documentation on the canvas, plus notes explaining why the
+              architecture was built this way, a credential setup guide, troubleshooting, and three
+              practice exercises. Sample data comes pinned to the trigger, so you can hit Execute and
+              watch data flow before connecting a single account.
+            </p>
+          </div>
 
           <div className="mt-8">
             <h2 className="text-lg font-semibold text-zinc-100">Common questions</h2>
