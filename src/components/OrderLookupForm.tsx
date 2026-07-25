@@ -58,7 +58,7 @@ export default function OrderLookupForm() {
           type="email"
           required
           autoComplete="email"
-          className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
       </div>
       <div>
@@ -71,7 +71,7 @@ export default function OrderLookupForm() {
           type="text"
           required
           placeholder="order_..."
-          className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
         <p className="mt-1 text-xs text-zinc-500">
           Found in your Razorpay payment confirmation or the order-confirmation email.
@@ -81,7 +81,7 @@ export default function OrderLookupForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
+        className="btn-primary px-6 py-3"
       >
         {status === "sending" ? "Looking up..." : "Email me my download link"}
       </button>

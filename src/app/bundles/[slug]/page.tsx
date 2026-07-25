@@ -78,7 +78,17 @@ export default async function BundleDetail({
         <Link href="/bundles" className="hover:text-zinc-300">Bundles</Link>
       </nav>
 
-      <div className={`mt-4 h-40 rounded-2xl bg-gradient-to-br ${b.gradient}`} />
+      <div className={`relative mt-4 h-40 overflow-hidden rounded-2xl bg-gradient-to-br ${b.gradient}`}>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-dot-grid opacity-40 [mask-image:linear-gradient(115deg,black,transparent_70%)]"
+        />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        <div className="absolute bottom-4 left-5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-white/85">
+          {b.type === "lifetime" ? "Lifetime access" : b.type === "full" ? "Full library" : "Bundle"} &middot;{" "}
+          {fmt(b.count)} templates
+        </div>
+      </div>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -103,8 +113,8 @@ export default async function BundleDetail({
             <div className="mt-10">
               <div className="flex items-end justify-between">
                 <h2 className="text-lg font-semibold text-zinc-100">Sample templates inside</h2>
-                <Link href={browseHref} className="text-sm text-violet-400 hover:text-violet-300">
-                  Browse all {fmt(b.count)} &rarr;
+                <Link href={browseHref} className="link-arrow">
+                  Browse all {fmt(b.count)} <span className="arrow">&rarr;</span>
                 </Link>
               </div>
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -117,7 +127,7 @@ export default async function BundleDetail({
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+          <div className="card-raised p-5">
             <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="lg" />
             <p className="mt-2 text-xs text-zinc-500">
               {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}

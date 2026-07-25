@@ -67,16 +67,10 @@ export default async function IntegrationPage({
         and it runs.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href={browseHref}
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-3 font-medium text-white hover:opacity-95"
-        >
+        <Link href={browseHref} className="btn-primary px-5 py-3">
           Browse all {fmt(integration.count)} templates
         </Link>
-        <Link
-          href="/bundles"
-          className="rounded-xl border border-zinc-700 px-5 py-3 font-medium text-zinc-200 hover:bg-zinc-800/60"
-        >
+        <Link href="/bundles" className="btn-secondary px-5 py-3">
           View bundles &amp; pricing
         </Link>
       </div>
@@ -89,7 +83,7 @@ export default async function IntegrationPage({
               <Link
                 key={name}
                 href={`/workflows?platform=${encodeURIComponent(integration.name)}&category=${encodeURIComponent(name)}`}
-                className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-sm text-zinc-300 hover:border-violet-500/50 hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
               >
                 {name} <span className="text-zinc-500">({fmt(count)})</span>
               </Link>
@@ -101,8 +95,8 @@ export default async function IntegrationPage({
       <div className="mt-10">
         <div className="flex items-end justify-between">
           <h2 className="text-lg font-semibold text-zinc-100">Most popular {integration.name} templates</h2>
-          <Link href={browseHref} className="text-sm text-violet-400 hover:text-violet-300">
-            View all &rarr;
+          <Link href={browseHref} className="link-arrow">
+            View all <span className="arrow">&rarr;</span>
           </Link>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -112,7 +106,7 @@ export default async function IntegrationPage({
         </div>
       </div>
 
-      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-6">
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
           <h2 className="font-semibold text-zinc-100">
             Need a {integration.name} workflow that isn&apos;t here?
@@ -121,10 +115,7 @@ export default async function IntegrationPage({
             Describe it and get a fixed quote - custom-built, ready to import.
           </p>
         </div>
-        <Link
-          href="/custom"
-          className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 text-sm font-medium text-white hover:opacity-95"
-        >
+        <Link href="/custom" className="btn-primary px-5 py-2.5 text-sm">
           Request a custom build
         </Link>
       </div>

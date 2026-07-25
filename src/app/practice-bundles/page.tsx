@@ -25,10 +25,8 @@ export default function PracticeBundlesPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <div className="max-w-2xl">
-        <span className="rounded-md bg-violet-500/15 px-2 py-1 text-xs font-semibold text-violet-300">
-          Learn n8n
-        </span>
-        <h1 className="mt-3 text-3xl font-bold text-zinc-50">Practice bundles</h1>
+        <p className="eyebrow">Learn n8n</p>
+        <h1 className="mt-2.5 text-3xl font-bold text-zinc-50">Practice bundles</h1>
         <p className="mt-2 text-zinc-400">
           The fastest way to practice n8n is importing real workflow templates and pulling them apart.
           These bundles arrange that practice into a structured curriculum, not a grab-bag. Every bundle starts with simple, 4&ndash;8 node
@@ -49,17 +47,19 @@ export default function PracticeBundlesPage() {
             <Link
               key={b.slug}
               href={`/practice-bundles/${b.slug}`}
-              className={`group flex flex-col overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40 card-hover hover:border-violet-500/50`}
+              className="card card-hover group flex flex-col overflow-hidden"
             >
-              <div className={`h-2 bg-gradient-to-r ${b.gradient}`} />
+              <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
               <div className="flex flex-1 flex-col p-5">
-                <span className="text-xs font-semibold text-zinc-500">Step {i + 1}</span>
-                <h3 className="mt-1 font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                  Step {i + 1}
+                </span>
+                <h3 className="mt-1.5 font-sans font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
                 <p className="mt-2 text-xs text-zinc-500">{b.skillLevel}</p>
-                <p className="mt-2 flex-1 text-sm text-zinc-400">{b.tagline}</p>
-                <p className="mt-3 text-xs text-zinc-500">{fmt(b.count)} templates</p>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-zinc-50">{inr(b.price)}</span>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{b.tagline}</p>
+                <p className="mt-3 font-mono text-xs text-zinc-500">{fmt(b.count)} templates</p>
+                <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
+                  <span className="font-display text-xl font-bold tracking-tight text-zinc-50">{inr(b.price)}</span>
                   <span className="text-sm text-zinc-500 line-through">{inr(b.mrp)}</span>
                   <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
                     {b.off}% off
@@ -82,16 +82,16 @@ export default function PracticeBundlesPage() {
             <Link
               key={b.slug}
               href={`/practice-bundles/${b.slug}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40 card-hover hover:border-violet-500/50"
+              className="card card-hover group flex flex-col overflow-hidden"
             >
-              <div className={`h-2 bg-gradient-to-r ${b.gradient}`} />
+              <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
+                <h3 className="font-sans font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
                 <p className="mt-1 text-xs text-zinc-500">{b.audience}</p>
-                <p className="mt-2 flex-1 text-sm text-zinc-400">{b.tagline}</p>
-                <p className="mt-3 text-xs text-zinc-500">{fmt(b.count)} templates</p>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-zinc-50">{inr(b.price)}</span>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{b.tagline}</p>
+                <p className="mt-3 font-mono text-xs text-zinc-500">{fmt(b.count)} templates</p>
+                <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
+                  <span className="font-display text-xl font-bold tracking-tight text-zinc-50">{inr(b.price)}</span>
                   <span className="text-sm text-zinc-500 line-through">{inr(b.mrp)}</span>
                   <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
                     {b.off}% off
@@ -109,7 +109,7 @@ export default function PracticeBundlesPage() {
             href={`/practice-bundles/${flagshipBundle.slug}`}
             className={`group block overflow-hidden rounded-2xl bg-gradient-to-br ${flagshipBundle.gradient} p-[1px] card-hover`}
           >
-            <div className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-[#0b0b11] p-6 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start justify-between gap-4 rounded-[15px] bg-[#0b0b12] p-6 sm:flex-row sm:items-center sm:p-7">
               <div>
                 <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
                   {flagshipBundle.off}% off
@@ -120,21 +120,19 @@ export default function PracticeBundlesPage() {
                   {fmt(flagshipBundle.count)} templates &middot; individually worth {inr(flagshipBundle.individualValue)}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="text-3xl font-extrabold text-zinc-50">{inr(flagshipBundle.price)}</div>
+                  <div className="font-display text-3xl font-bold tracking-tight text-zinc-50">{inr(flagshipBundle.price)}</div>
                   <div className="text-sm text-zinc-500 line-through">{inr(flagshipBundle.mrp)}</div>
                 </div>
-                <span className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white group-hover:bg-violet-500">
-                  View bundle
-                </span>
+                <span className="btn-primary px-4 py-2 text-sm">View bundle</span>
               </div>
             </div>
           </Link>
         </section>
       )}
 
-      <section className="mt-14 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-6">
+      <section className="card mt-14 p-6">
         <h2 className="text-lg font-semibold text-zinc-100">Not just harder &mdash; harder for a reason</h2>
         <p className="mt-2 max-w-3xl text-sm text-zinc-400">
           Every template in these bundles is pulled from our real production catalog. Early templates are

@@ -57,8 +57,8 @@ export default function LoginModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-[#0c0c12] p-6 shadow-xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="anim-rise w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c0c13] p-6 shadow-2xl shadow-black/60 [animation-duration:300ms]">
         <div className="flex items-start justify-between">
           <h2 className="text-lg font-semibold text-zinc-100">Sign in to WorkflowCrate</h2>
           {!force && (
@@ -77,10 +77,7 @@ export default function LoginModal({
             : "Sign in for faster checkout and order history."}
         </p>
 
-        <button
-          onClick={withGoogle}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 font-medium text-zinc-100 hover:bg-zinc-800"
-        >
+        <button onClick={withGoogle} className="btn-secondary mt-5 w-full px-4 py-2.5">
           Continue with Google
         </button>
 
@@ -100,13 +97,9 @@ export default function LoginModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500"
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-2.5 font-medium text-white hover:opacity-95 disabled:opacity-60"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full px-4 py-2.5">
               {loading ? "Sending..." : "Email me a sign-in link"}
             </button>
             {err && <p className="text-sm text-red-400">{err}</p>}

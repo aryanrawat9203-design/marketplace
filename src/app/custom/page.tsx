@@ -67,7 +67,7 @@ export default function CustomPage() {
 
       <div className="mt-8 grid gap-6 sm:grid-cols-3">
         {steps.map(([t, d], i) => (
-          <div key={t} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+          <div key={t} className="card p-5">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-violet-500/15 font-semibold text-violet-300">
               {i + 1}
             </div>
@@ -86,11 +86,11 @@ export default function CustomPage() {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+          <div className="card p-5">
             <h2 className="text-sm font-semibold text-zinc-200">Common questions</h2>
             <div className="mt-3 space-y-2">
               {faqs.map(([q, a]) => (
-                <details key={q} className="group rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3">
+                <details key={q} className="group rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
                   <summary className="cursor-pointer list-none text-sm font-medium text-zinc-200 marker:content-none group-open:text-white">
                     {q}
                   </summary>
@@ -99,7 +99,7 @@ export default function CustomPage() {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 text-sm text-zinc-400">
+          <div className="card p-5 text-sm text-zinc-400">
             Not sure yet? Something close might already exist -{" "}
             <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
               search the catalog

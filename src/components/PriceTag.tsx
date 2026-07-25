@@ -3,9 +3,9 @@ import { inr } from "@/lib/pricing";
 type Size = "sm" | "md" | "lg";
 
 const sale: Record<Size, string> = {
-  sm: "text-base font-bold",
-  md: "text-2xl font-bold",
-  lg: "text-4xl font-extrabold",
+  sm: "font-display text-base font-bold tracking-tight",
+  md: "font-display text-2xl font-bold tracking-tight",
+  lg: "font-display text-4xl font-bold tracking-tight",
 };
 const was: Record<Size, string> = {
   sm: "text-xs",

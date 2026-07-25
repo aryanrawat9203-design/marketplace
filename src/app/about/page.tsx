@@ -21,7 +21,8 @@ export default function AboutPage() {
       </p>
       <h2>Single templates or bundles</h2>
       <p>
-        Buy one template at a time, grab a whole <Link href="/bundles">category bundle</Link>, or get the
+        Buy one template at a time, grab a whole <Link href="/bundles">category bundle</Link>, or get
+        the
         full library in a single purchase. Bundles are always the best value per template.
       </p>
       <h2>Original &amp; owned</h2>
@@ -32,7 +33,7 @@ export default function AboutPage() {
       </p>
       <h2>Get in touch</h2>
       <p>
-        Questions or workflow requests? Head to our <a href="/contact">Contact</a> page - we read
+        Questions or workflow requests? Head to our <a href="/contact">Contact</a>{" "}page - we read
         everything.
       </p>
     </PageShell>

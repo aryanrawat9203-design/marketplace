@@ -124,11 +124,7 @@ export default function BuyButton({
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className={block ? "w-full" : "inline-block"}>
-        <button
-          onClick={buy}
-          disabled={loading}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60 ${w}`}
-        >
+        <button onClick={buy} disabled={loading} className={`btn-primary px-6 py-3 ${w}`}>
           {loading
             ? "Please wait..."
             : freeAccess

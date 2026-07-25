@@ -112,18 +112,26 @@ export default function CartPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-      <h1 className="text-2xl font-semibold text-zinc-100">Your cart</h1>
+      <p className="eyebrow">Checkout</p>
+      <h1 className="mt-2.5 text-2xl font-semibold text-zinc-50 sm:text-3xl">Your cart</h1>
 
       {count === 0 ? (
-        <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
-          <p className="text-zinc-300">Your cart is empty.</p>
+        <div className="card mt-10 p-10 text-center">
+          <div
+            aria-hidden="true"
+            className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-zinc-500"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+          </div>
+          <p className="mt-4 text-zinc-300">Your cart is empty.</p>
           <p className="mt-2 text-sm text-zinc-500">
             Add templates as you browse, then pay for everything in one go.
           </p>
-          <Link
-            href="/workflows"
-            className="mt-5 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 font-medium text-white hover:opacity-95"
-          >
+          <Link href="/workflows" className="btn-primary mt-6 px-5 py-2.5">
             Browse templates
           </Link>
         </div>
@@ -133,17 +141,17 @@ export default function CartPage() {
             {items.map((l) => (
               <li
                 key={`${l.kind}:${l.key}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5"
+                className="card flex items-center justify-between gap-4 p-5"
               >
                 <div className="min-w-0">
                   <Link
                     href={l.kind === "workflow" ? `/workflows/${l.key}` : `/bundles/${l.key}`}
-                    className="line-clamp-1 font-medium text-zinc-100 hover:text-white"
+                    className="line-clamp-1 font-medium text-zinc-100 transition-colors hover:text-white"
                   >
                     {l.name}
                   </Link>
                   <div className="mt-1 flex items-baseline gap-2 text-sm">
-                    <span className="font-semibold text-zinc-50">{inr(l.price)}</span>
+                    <span className="font-display font-semibold tracking-tight text-zinc-50">{inr(l.price)}</span>
                     {l.mrp > l.price && (
                       <span className="text-xs text-zinc-500 line-through">{inr(l.mrp)}</span>
                     )}
@@ -155,7 +163,7 @@ export default function CartPage() {
                 <button
                   onClick={() => remove(l.kind, l.key)}
                   aria-label={`Remove ${l.name} from cart`}
-                  className="shrink-0 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+                  className="btn-secondary shrink-0 rounded-lg px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
                 >
                   Remove
                 </button>
@@ -164,7 +172,7 @@ export default function CartPage() {
           </ul>
 
           <aside>
-            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+            <div className="card-raised p-5">
               <h2 className="text-sm font-semibold text-zinc-200">Order summary</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -185,9 +193,9 @@ export default function CartPage() {
                     <dd className="text-emerald-400">-{inr(totalPrice - discountedTotal)}</dd>
                   </div>
                 )}
-                <div className="flex justify-between border-t border-zinc-800/70 pt-2 text-base">
+                <div className="flex justify-between border-t border-white/[0.08] pt-2 text-base">
                   <dt className="font-medium text-zinc-200">Total</dt>
-                  <dd className="font-semibold text-zinc-50">{inr(discountedTotal)}</dd>
+                  <dd className="font-display font-semibold tracking-tight text-zinc-50">{inr(discountedTotal)}</dd>
                 </div>
               </dl>
 
@@ -195,11 +203,7 @@ export default function CartPage() {
                 <PromoCodeField onApplied={setPromo} />
               </div>
 
-              <button
-                onClick={checkout}
-                disabled={loading}
-                className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
-              >
+              <button onClick={checkout} disabled={loading} className="btn-primary mt-4 w-full px-6 py-3">
                 {loading ? "Please wait..." : `Checkout ${inr(discountedTotal)}`}
               </button>
               {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}

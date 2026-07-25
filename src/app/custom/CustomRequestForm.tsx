@@ -6,7 +6,7 @@ const BUDGETS = ["Under Rs 2,000", "Rs 2,000 - 5,000", "Rs 5,000 - 15,000", "Rs 
 const TIMELINES = ["As soon as possible", "Within 1-2 weeks", "Flexible"];
 
 const inputCls =
-  "mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
+  "mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
 
 export default function CustomRequestForm() {
   const [name, setName] = useState("");
@@ -23,7 +23,7 @@ export default function CustomRequestForm() {
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-8 text-center">
         <p className="font-medium text-emerald-300">Request received!</p>
         <p className="mt-2 text-sm text-zinc-400">
-          We&apos;ll reply to <span className="text-zinc-200">{email}</span> with a quote and any
+          We&apos;ll reply to <span className="text-zinc-200">{email}</span>{" "}with a quote and any
           follow-up questions, usually within 1&ndash;2 business days.
         </p>
       </div>
@@ -125,7 +125,7 @@ export default function CustomRequestForm() {
       <button
         type="submit"
         disabled={state === "sending"}
-        className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
+        className="btn-primary px-6 py-3"
       >
         {state === "sending" ? "Sending..." : "Request a quote"}
       </button>

@@ -5,6 +5,7 @@ import AuthStatus from "./AuthStatus";
 import CartButton from "./CartButton";
 import MobileMenu from "./MobileMenu";
 import NavLinks from "./NavLinks";
+import Logo from "./Logo";
 
 const navLinks = [
   { href: "/workflows", label: "Browse" },
@@ -17,23 +18,16 @@ const navLinks = [
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-800/70 bg-[#07070b]/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#07070c]/80 backdrop-blur-xl">
       <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+          aria-label="WorkflowCrate home"
+          className="shrink-0 rounded-lg transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
         >
-          <span
-            aria-hidden="true"
-            className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white"
-          >
-            W
-          </span>
-          <span className="text-zinc-100">
-            Workflow<span className="text-indigo-400">Crate</span>
-          </span>
+          <Logo />
         </Link>
-        <nav className="ml-2 hidden items-center gap-1 text-sm text-zinc-400 md:flex">
+        <nav className="ml-2 hidden items-center gap-0.5 text-sm text-zinc-400 md:flex">
           <NavLinks links={navLinks} />
         </nav>
         <div className="ml-auto hidden w-full max-w-xs md:block">

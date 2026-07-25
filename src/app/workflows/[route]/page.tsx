@@ -194,7 +194,7 @@ export default async function WorkflowDetail({
       {gallery.length > 0 && (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {gallery.map((src, i) => (
-            <div key={src} className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40">
+            <div key={src} className="card overflow-hidden">
               <Image
                 src={src}
                 alt={i === 0 ? `${w.title} — workflow overview` : `${w.title} — key node detail`}
@@ -248,10 +248,10 @@ export default async function WorkflowDetail({
               <h2 className="text-lg font-semibold text-zinc-100">Integrations</h2>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {w.platforms.map((p) => (
-                  <span key={p} className="rounded-md bg-zinc-800/70 px-2 py-1 text-xs text-zinc-300">{p}</span>
+                  <span key={p} className="chip px-2 py-1 text-xs">{p}</span>
                 ))}
                 {w.aiProviders.map((p) => (
-                  <span key={p} className="rounded-md bg-violet-500/10 px-2 py-1 text-xs text-violet-300">{p}</span>
+                  <span key={p} className="rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-xs text-violet-300">{p}</span>
                 ))}
               </div>
             </div>
@@ -284,7 +284,7 @@ export default async function WorkflowDetail({
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {preview.nodeTypes.map((t) => (
-                  <span key={t} className="rounded-md bg-zinc-800/70 px-2 py-1 text-xs text-zinc-300">{t}</span>
+                  <span key={t} className="chip px-2 py-1 text-xs">{t}</span>
                 ))}
               </div>
             </div>
@@ -322,7 +322,7 @@ export default async function WorkflowDetail({
               </h2>
               <div className="mt-3 space-y-3">
                 {reviews.reviews.map((r, i) => (
-                  <div key={i} className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+                  <div key={i} className="card rounded-xl p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span aria-label={`${r.rating} out of 5 stars`} className="text-amber-400">
                         {"★".repeat(r.rating)}
@@ -346,7 +346,7 @@ export default async function WorkflowDetail({
             </div>
           )}
 
-          <div className="mt-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+          <div className="card mt-8 p-5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold text-zinc-100">What you&apos;ll learn</h2>
               <span className="rounded bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
@@ -374,12 +374,15 @@ export default async function WorkflowDetail({
             <h2 className="text-lg font-semibold text-zinc-100">Common questions</h2>
             <div className="mt-3 space-y-2">
               {productFaqs.map(([q, a]) => (
-                <details
-                  key={q}
-                  className="group rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3"
-                >
-                  <summary className="cursor-pointer list-none text-sm font-medium text-zinc-200 marker:content-none group-open:text-white">
+                <details key={q} className="card group rounded-xl px-4 py-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-zinc-200 marker:content-none group-open:text-white">
                     {q}
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 text-zinc-500 transition-transform duration-200 group-open:rotate-45"
+                    >
+                      +
+                    </span>
                   </summary>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-400">{a}</p>
                 </details>
@@ -389,7 +392,7 @@ export default async function WorkflowDetail({
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+          <div className="card-raised p-5">
             <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
             <div className="mt-4">
               <BuyButton
@@ -425,7 +428,7 @@ export default async function WorkflowDetail({
             </ul>
             {!w.free && (
               <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-zinc-300">
-                <span className="font-semibold text-emerald-300">7-day guarantee.</span> If it won&apos;t
+                <span className="font-semibold text-emerald-300">7-day guarantee.</span>{" "}If it won&apos;t
                 import or isn&apos;t as described, we fix it or refund you.{" "}
                 <Link href="/refund" className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300">
                   Refund policy
@@ -435,7 +438,7 @@ export default async function WorkflowDetail({
           </div>
 
           {upsell && (
-            <Link href={`/bundles/${upsell.slug}`} className="block rounded-2xl border border-violet-500/30 bg-violet-500/5 p-5 hover:border-violet-500/60">
+            <Link href={`/bundles/${upsell.slug}`} className="card-hover block rounded-2xl border border-violet-500/30 bg-violet-500/[0.06] p-5 hover:border-violet-500/60">
               <div className="text-xs font-semibold uppercase tracking-wide text-violet-300">Save with a bundle</div>
               <div className="mt-1 text-sm text-zinc-300">
                 Get all <b className="text-zinc-100">{upsell.count}</b>{" "}
@@ -447,10 +450,7 @@ export default async function WorkflowDetail({
             </Link>
           )}
 
-          <Link
-            href="/custom"
-            className="block rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 hover:border-violet-500/50"
-          >
+          <Link href="/custom" className="card card-hover block p-5">
             <h3 className="text-sm font-semibold text-zinc-200">Need a variation of this?</h3>
             <p className="mt-1 text-sm text-zinc-400">
               Different apps, extra steps, your exact process - we build custom workflows to order.
@@ -460,7 +460,7 @@ export default async function WorkflowDetail({
             </span>
           </Link>
 
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+          <div className="card p-5">
             <h3 className="text-sm font-semibold text-zinc-200">At a glance</h3>
             <dl className="mt-3 space-y-2 text-sm">
               <Row k="Industry" v={w.industry} />
@@ -488,7 +488,7 @@ export default async function WorkflowDetail({
 
       <RecentlyViewedStrip excludeRoute={w.route} />
 
-      <div className="mt-12 rounded-xl border border-zinc-800/70 bg-zinc-900/30 p-4 text-xs text-zinc-500">
+      <div className="card mt-12 rounded-xl p-4 text-xs text-zinc-500">
         Original n8n workflow template created and owned by WorkflowCrate. After purchase you receive the
         ready-to-import JSON file and a license to use and adapt it in your own projects.
       </div>

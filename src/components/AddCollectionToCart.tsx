@@ -27,7 +27,7 @@ export default function AddCollectionToCart({ lines }: { lines: CartLine[] }) {
     <div className="flex flex-wrap items-center gap-3">
       <button
         onClick={() => remaining.forEach((l) => add(l))}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        className="btn-primary px-6 py-3"
       >
         Add all {lines.length} to cart &middot; {inr(total)}
       </button>

@@ -35,7 +35,7 @@ export default function ReviewForm() {
 
   if (invalid || !token) {
     return (
-      <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
+      <div className="card mt-10 p-8 text-center">
         <p className="text-zinc-300">This review link is invalid or has expired.</p>
         <p className="mt-2 text-sm text-zinc-500">
           Review links arrive in your order-confirmation email and stay valid for 90 days.{" "}
@@ -57,7 +57,7 @@ export default function ReviewForm() {
         </p>
         <Link
           href="/workflows"
-          className="mt-5 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 font-medium text-white hover:opacity-95"
+          className="btn-primary mt-5 px-5 py-2.5"
         >
           Keep browsing
         </Link>
@@ -101,7 +101,7 @@ export default function ReviewForm() {
   return (
     <form onSubmit={submit} className="mt-8 space-y-5">
       {itemTitle && (
-        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-300">
+        <div className="card rounded-xl px-4 py-3 text-sm text-zinc-300">
           Reviewing: <span className="font-medium text-zinc-100">{itemTitle}</span>
         </div>
       )}
@@ -135,7 +135,7 @@ export default function ReviewForm() {
           onChange={(e) => setAuthorName(e.target.value)}
           maxLength={60}
           placeholder="e.g. Priya S."
-          className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
@@ -149,7 +149,7 @@ export default function ReviewForm() {
           onChange={(e) => setTitle(e.target.value)}
           maxLength={120}
           placeholder="Sums it up in one line"
-          className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
@@ -166,7 +166,7 @@ export default function ReviewForm() {
           maxLength={2000}
           rows={5}
           placeholder="Did it import cleanly? Save you time? What did you use it for?"
-          className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
@@ -175,7 +175,7 @@ export default function ReviewForm() {
       <button
         type="submit"
         disabled={state === "sending"}
-        className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-3 font-medium text-white hover:opacity-95 disabled:opacity-60"
+        className="btn-primary px-6 py-3"
       >
         {state === "sending" ? "Submitting..." : "Submit review"}
       </button>

@@ -59,10 +59,11 @@ export default async function WorkflowsPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
-      <h1 className="text-2xl font-semibold text-zinc-100">{heading}</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="eyebrow">Template catalog</p>
+      <h1 className="mt-2.5 text-2xl font-semibold text-zinc-50 sm:text-3xl">{heading}</h1>
+      <p className="mt-1.5 text-sm text-zinc-500">
         {total.toLocaleString("en-IN")} templates &middot;{" "}
-        <Link href="/workflows?tier=Free" className="text-violet-400 hover:text-violet-300">
+        <Link href="/workflows?tier=Free" className="text-violet-400 transition-colors hover:text-violet-300">
           browse free samples
         </Link>
       </p>
@@ -81,16 +82,13 @@ export default async function WorkflowsPage({
               Clear filters
             </Link>
           </p>
-          <div className="mt-6 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-6">
+          <div className="mt-6 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
             <h2 className="font-semibold text-zinc-100">Can&apos;t find it? We&apos;ll build it.</h2>
             <p className="mt-1 text-sm text-zinc-400">
               Describe the automation you need and get a fixed quote - built by the same team
               behind every template in this store.
             </p>
-            <Link
-              href="/custom"
-              className="mt-4 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 text-sm font-medium text-white hover:opacity-95"
-            >
+            <Link href="/custom" className="btn-primary mt-4 px-5 py-2.5 text-sm">
               Request a custom workflow
             </Link>
           </div>
@@ -109,20 +107,20 @@ export default async function WorkflowsPage({
             {page > 1 && (
               <Link
                 href={`/workflows${buildQuery(current, { page: page - 1 })}`}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+                className="btn-secondary rounded-lg px-4 py-2"
               >
-                Prev
+                &larr; Prev
               </Link>
             )}
-            <span className="text-zinc-500">
+            <span className="font-mono text-xs text-zinc-500">
               Page {page} of {pages.toLocaleString("en-IN")}
             </span>
             {page < pages && (
               <Link
                 href={`/workflows${buildQuery(current, { page: page + 1 })}`}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+                className="btn-secondary rounded-lg px-4 py-2"
               >
-                Next
+                Next &rarr;
               </Link>
             )}
           </div>

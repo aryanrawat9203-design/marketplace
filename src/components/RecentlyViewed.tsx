@@ -55,24 +55,25 @@ export function RecentlyViewedStrip({ excludeRoute }: { excludeRoute?: string })
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <h2 className="text-xl font-semibold text-zinc-100">Recently viewed</h2>
+      <p className="eyebrow">Pick up where you left off</p>
+      <h2 className="mt-2.5 text-xl font-semibold text-zinc-100">Recently viewed</h2>
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((r) => (
           <Link
             key={r.route}
             href={`/workflows/${r.route}`}
-            className="group flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 card-hover hover:border-violet-500/50 hover:bg-zinc-900/70"
+            className="card card-hover group flex flex-col p-5"
           >
             {r.category && <div className="text-xs text-zinc-500">{r.category}</div>}
-            <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-zinc-100 group-hover:text-white">
+            <h3 className="mt-1 line-clamp-2 font-sans text-sm font-semibold text-zinc-100 group-hover:text-white">
               {r.title}
             </h3>
-            <div className="mt-3 flex items-baseline gap-2 border-t border-zinc-800/70 pt-3">
+            <div className="mt-3 flex flex-1 items-end gap-2 border-t border-white/[0.06] pt-3">
               {r.free ? (
-                <span className="font-semibold text-emerald-400">Free</span>
+                <span className="font-display font-semibold text-emerald-400">Free</span>
               ) : (
                 <>
-                  <span className="font-semibold text-zinc-50">{inr(r.price)}</span>
+                  <span className="font-display font-semibold tracking-tight text-zinc-50">{inr(r.price)}</span>
                   {r.mrp > r.price && <span className="text-xs text-zinc-500 line-through">{inr(r.mrp)}</span>}
                 </>
               )}

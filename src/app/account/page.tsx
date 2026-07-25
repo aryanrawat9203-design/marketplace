@@ -55,7 +55,7 @@ export default function AccountPage() {
         {!loading && user && (
           <button
             onClick={() => signOut()}
-            className="shrink-0 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+            className="btn-secondary shrink-0 rounded-lg px-3 py-1.5 text-sm"
           >
             Sign out
           </button>
@@ -65,11 +65,11 @@ export default function AccountPage() {
       {loading && <div className="mt-10 text-sm text-zinc-500">Loading&hellip;</div>}
 
       {!loading && !user && (
-        <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
+        <div className="mt-10 card p-8 text-center">
           <p className="text-zinc-300">Sign in to see your purchases.</p>
           <button
             onClick={() => openLogin({ force: true })}
-            className="mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 font-medium text-white hover:opacity-95"
+            className="btn-primary mt-4 px-5 py-2.5"
           >
             Sign in
           </button>
@@ -85,7 +85,7 @@ export default function AccountPage() {
       {user && error && <p className="mt-10 text-sm text-amber-300">{error}</p>}
 
       {user && orders && orders.length === 0 && (
-        <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
+        <div className="mt-10 card p-8 text-center">
           <p className="text-zinc-300">No purchases yet on {user.email}.</p>
           <p className="mt-2 text-sm text-zinc-500">
             Orders appear here automatically after payment. Paid with a different email?{" "}
@@ -96,7 +96,7 @@ export default function AccountPage() {
           </p>
           <Link
             href="/workflows"
-            className="mt-5 inline-block rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-2.5 font-medium text-white hover:opacity-95"
+            className="btn-primary mt-5 px-5 py-2.5"
           >
             Browse templates
           </Link>
@@ -108,7 +108,7 @@ export default function AccountPage() {
           {orders.map((o, i) => (
             <li
               key={`${o.razorpayOrderId ?? i}-${o.ref}`}
-              className="flex flex-col gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5 sm:flex-row sm:items-center sm:justify-between"
+              className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <div className="line-clamp-1 font-medium text-zinc-100">{o.itemTitle}</div>
@@ -121,7 +121,7 @@ export default function AccountPage() {
               </div>
               <a
                 href={o.downloadUrl}
-                className="shrink-0 rounded-xl border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-center text-sm font-medium text-violet-300 hover:bg-violet-500/20"
+                className="shrink-0 rounded-xl border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-center text-sm font-medium text-violet-300 transition-colors hover:bg-violet-500/20"
               >
                 Download again
               </a>

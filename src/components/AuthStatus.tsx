@@ -10,10 +10,7 @@ export default function AuthStatus() {
 
   if (!user) {
     return (
-      <button
-        onClick={() => openLogin()}
-        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-      >
+      <button onClick={() => openLogin()} className="btn-secondary rounded-lg px-3.5 py-1.5 text-sm">
         Log in
       </button>
     );
@@ -28,10 +25,7 @@ export default function AuthStatus() {
         My library
       </Link>
       <span className="hidden max-w-[10rem] truncate lg:inline">{user.email}</span>
-      <button
-        onClick={() => signOut()}
-        className="rounded-lg border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-      >
+      <button onClick={() => signOut()} className="btn-secondary rounded-lg px-3.5 py-1.5 text-sm">
         Sign out
       </button>
     </div>

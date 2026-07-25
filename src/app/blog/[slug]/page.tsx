@@ -96,7 +96,7 @@ export default async function BlogPostDetail({
                   </Link>
               )}
 
-          <div className="mt-10 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+          <div className="card mt-10 p-5">
                 <p className="text-sm text-zinc-300">
                         Want structured practice? Our practice bundles arrange real, ready-to-import
                         templates into a beginner-to-advanced curriculum.

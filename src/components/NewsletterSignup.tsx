@@ -45,12 +45,9 @@ export default function NewsletterSignup() {
           if (state === "error") setState("idle");
         }}
         placeholder="you@email.com"
-        className="h-11 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        className="h-11 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       />
-      <button
-        type="submit"
-        className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 text-sm font-medium text-white hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-      >
+      <button type="submit" className="btn-primary h-11 shrink-0 px-5 text-sm">
         Get free templates
       </button>
       {state === "error" && (

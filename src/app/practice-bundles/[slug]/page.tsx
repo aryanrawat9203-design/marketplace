@@ -82,7 +82,16 @@ export default async function PracticeBundleDetail({
         <Link href="/practice-bundles" className="hover:text-zinc-300">Practice bundles</Link>
       </nav>
 
-      <div className={`mt-4 h-40 rounded-2xl bg-gradient-to-br ${b.gradient}`} />
+      <div className={`relative mt-4 h-40 overflow-hidden rounded-2xl bg-gradient-to-br ${b.gradient}`}>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-dot-grid opacity-40 [mask-image:linear-gradient(115deg,black,transparent_70%)]"
+        />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+        <div className="absolute bottom-4 left-5 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-white/85">
+          Practice bundle &middot; {fmt(b.count)} templates
+        </div>
+      </div>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
@@ -90,15 +99,15 @@ export default async function PracticeBundleDetail({
           <p className="mt-2 text-lg text-zinc-400">{b.tagline}</p>
 
           <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+            <div className="card rounded-xl p-3">
               <dt className="text-xs text-zinc-500">Audience</dt>
               <dd className="mt-1 text-sm text-zinc-200">{b.audience}</dd>
             </div>
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+            <div className="card rounded-xl p-3">
               <dt className="text-xs text-zinc-500">Skill level</dt>
               <dd className="mt-1 text-sm text-zinc-200">{b.skillLevel}</dd>
             </div>
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3 sm:col-span-2">
+            <div className="card rounded-xl p-3 sm:col-span-2">
               <dt className="text-xs text-zinc-500">Learning outcome</dt>
               <dd className="mt-1 text-sm text-zinc-200">{b.learningOutcome}</dd>
             </div>
@@ -114,7 +123,7 @@ export default async function PracticeBundleDetail({
               {BAND_ORDER.filter((band) => bandCounts[band] > 0).map((band) => (
                 <div
                   key={band}
-                  className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800/80 bg-zinc-900/40 px-2 py-3 text-center last:border-r-0"
+                  className="flex flex-col items-center justify-center gap-1 border-r border-white/[0.07] bg-white/[0.02] px-2 py-3 text-center last:border-r-0"
                   style={{ width: `${(bandCounts[band] / members.length) * 100}%` }}
                 >
                   <Badge tone={bandTone(band)}>{band}</Badge>
@@ -133,7 +142,7 @@ export default async function PracticeBundleDetail({
                 <li key={m.id}>
                   <Link
                     href={`/workflows/${m.route}`}
-                    className="group flex items-center gap-3 rounded-lg border border-zinc-800/70 bg-zinc-900/30 px-3 py-2.5 hover:border-violet-500/50 hover:bg-zinc-900/60"
+                    className="group flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 transition-colors hover:border-violet-500/50 hover:bg-white/[0.05]"
                   >
                     <span className="w-7 shrink-0 text-right text-xs tabular-nums text-zinc-600">{i + 1}</span>
                     <Badge tone={bandTone(bandFor(m))}>{bandFor(m)}</Badge>
@@ -149,7 +158,7 @@ export default async function PracticeBundleDetail({
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-5">
+          <div className="card-raised p-5">
             <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="lg" />
             <p className="mt-2 text-xs text-zinc-500">
               {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}

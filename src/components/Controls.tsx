@@ -55,7 +55,24 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listId = compact ? "search-suggest-compact" : "search-suggest";
+
+  // Press "/" anywhere (outside a field) to jump into search.
+  useEffect(() => {
+    if (!compact) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      inputRef.current?.focus();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [compact]);
 
   useEffect(() => {
     const query = q.trim();
@@ -106,6 +123,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
         role="search"
       >
         <input
+          ref={inputRef}
           suppressHydrationWarning
           aria-label="Search templates"
           role="combobox"
@@ -132,8 +150,8 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
             }
           }}
           placeholder="Search 10,500+ templates..."
-          className={`w-full rounded-xl border border-zinc-700/70 bg-zinc-900/70 pl-10 pr-3 text-zinc-100 placeholder-zinc-500 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
-            compact ? "h-10 text-sm" : "h-12"
+          className={`w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
+            compact ? "h-10 pr-9 text-sm" : "h-12 pr-3"
           }`}
         />
         <svg
@@ -150,12 +168,20 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
           <circle cx="11" cy="11" r="7" />
           <path d="m21 21-4.3-4.3" />
         </svg>
+        {compact && !q && (
+          <kbd
+            aria-hidden="true"
+            className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 bg-white/[0.05] px-1.5 font-mono text-[11px] leading-5 text-zinc-500 lg:block"
+          >
+            /
+          </kbd>
+        )}
       </form>
       {showList && (
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-zinc-700/70 bg-[#101018] py-1 shadow-2xl shadow-black/50"
+          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-[#101018] py-1 shadow-2xl shadow-black/60"
         >
           {rows.map((r, i) => (
             <li key={r.key} role="option" aria-selected={i === active}>
@@ -205,7 +231,7 @@ function Select({
         params.delete("page");
         router.push(`/workflows?${params.toString()}`);
       }}
-      className="h-10 rounded-lg border border-zinc-700/70 bg-zinc-900/70 px-3 text-sm text-zinc-200 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      className="h-10 rounded-lg border border-white/10 bg-[#101018] px-3 text-sm text-zinc-200 outline-none transition-colors hover:border-white/20 focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
     >
       <option value="">{all}</option>
       {options.map((o) => (
@@ -290,11 +316,11 @@ export function PageJump({
         max={pages}
         value={val}
         onChange={(e) => setVal(e.target.value)}
-        className="h-9 w-20 rounded-lg border border-zinc-700/70 bg-zinc-900/70 px-2 text-center text-zinc-100 outline-none focus:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        className="h-9 w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-center text-zinc-100 outline-none focus:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       />
       <button
         type="submit"
-        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
       >
         Go
       </button>
