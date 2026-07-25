@@ -19,6 +19,19 @@ export type Purchasable = {
 
 const PRODUCT_ROOT = path.join(process.cwd(), "product-files");
 
+// Workflow JSON is stored compact so the corpus stays deployable (the whole
+// product-files tree is traced into the download function). Buyers are meant
+// to read and learn from these files, so they get an indented copy instead:
+// formatting on the way out costs a parse per download and nothing at rest.
+function readWorkflowFile(fp: string): Buffer {
+  const raw = fs.readFileSync(fp);
+  try {
+    return Buffer.from(JSON.stringify(JSON.parse(raw.toString("utf-8")), null, 2), "utf-8");
+  } catch {
+    return raw; // never block a download over formatting
+  }
+}
+
 export function getPurchasable(kind: Kind, key: string): Purchasable | undefined {
   if (kind === "workflow") {
     const w = getByRoute(key);
@@ -35,7 +48,7 @@ export function workflowDownload(route: string): { filename: string; body: Buffe
   if (!w?.workflowFile) return null;
   const fp = path.join(PRODUCT_ROOT, w.workflowFile);
   if (!fs.existsSync(fp)) return null;
-  return { filename: path.basename(w.workflowFile), body: fs.readFileSync(fp) };
+  return { filename: path.basename(w.workflowFile), body: readWorkflowFile(fp) };
 }
 
 function friendlyNodeType(type: string): string {
@@ -185,7 +198,7 @@ export function bundleDownload(slug: string): { filename: string; body: Buffer }
     const fp = path.join(PRODUCT_ROOT, w.workflowFile);
     if (!fs.existsSync(fp)) return;
     const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
-    entries.push({ name, data: fs.readFileSync(fp) });
+    entries.push({ name, data: readWorkflowFile(fp) });
   });
   if (entries.length === 0) return null;
   return { filename: b.slug + ".zip", body: createZip(entries) };
@@ -207,7 +220,7 @@ export function cartZip(
       if (!w?.workflowFile) continue;
       const fp = path.join(PRODUCT_ROOT, w.workflowFile);
       if (fs.existsSync(fp) && !entries.has(w.workflowFile)) {
-        entries.set(w.workflowFile, { name: w.workflowFile, data: fs.readFileSync(fp) });
+        entries.set(w.workflowFile, { name: w.workflowFile, data: readWorkflowFile(fp) });
       }
     } else {
       const b = getBundle(item.key);
@@ -218,7 +231,7 @@ export function cartZip(
         const fp = path.join(PRODUCT_ROOT, w.workflowFile);
         if (fs.existsSync(fp)) {
           const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
-          entries.set(w.workflowFile, { name, data: fs.readFileSync(fp) });
+          entries.set(w.workflowFile, { name, data: readWorkflowFile(fp) });
         }
       });
     }
