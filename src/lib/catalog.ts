@@ -120,6 +120,8 @@ export type Filters = {
   tier?: string;
   trigger?: string;
   platform?: string;
+  /** Second platform filter - powers the /integrations/<a>-and-<b> pair pages. */
+  platform2?: string;
   sort?: string;
   page?: number;
   perPage?: number;
@@ -198,6 +200,7 @@ export function queryCatalog(f: Filters) {
   if (f.tier) items = items.filter((w) => w.tier === f.tier);
   if (f.trigger) items = items.filter((w) => w.trigger === f.trigger);
   if (f.platform) items = items.filter((w) => w.platforms.includes(f.platform!));
+  if (f.platform2) items = items.filter((w) => w.platforms.includes(f.platform2!));
 
   // With a search query and no explicit sort, order by relevance.
   const sort = f.sort || (scores ? "relevance" : "demand");
