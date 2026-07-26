@@ -9,14 +9,35 @@ type Screenshots = {
   overview?: string;
   nodeDetail?: string;
   capabilities?: string;
+  dataQuality?: string;
+  customize?: string;
+  designDecisions?: string;
+  practice?: string;
+  plainEnglish?: string;
+  credentials?: string;
+  troubleshooting?: string;
   cardThumb?: string;
 };
 
+// Order matches SHOWCASE_SLOTS in lib/screenshots.ts - the homepage gallery
+// renders whichever of these are filled, in this order, with `overview` as the
+// wide hero. Missing slots are skipped rather than breaking the section.
 const SLOTS: { key: keyof Screenshots; label: string; hint: string }[] = [
-  { key: "overview", label: "Overview", hint: "Full workflow canvas + description panel" },
-  { key: "nodeDetail", label: "Node detail", hint: "Zoomed key-logic node" },
-  { key: "capabilities", label: "Capabilities strip", hint: "Error-handling / data-quality / customize-me cards" },
-  { key: "cardThumb", label: "Card thumbnail", hint: "Compact thumbnail for listing cards, OG image, and JSON-LD" },
+  { key: "overview", label: "Overview (hero)", hint: "Full workflow canvas - wide/landscape works best" },
+  { key: "nodeDetail", label: "Node detail", hint: "Zoomed key-logic node + its doc card" },
+  { key: "capabilities", label: "Error handling & retries", hint: "The retry / dead-letter sticky note" },
+  { key: "dataQuality", label: "Data quality", hint: "The dedupe / re-run-safety sticky note" },
+  { key: "customize", label: "Customize me", hint: "The quick-wins / customization sticky note" },
+  { key: "designDecisions", label: "Design decisions", hint: "Why it is built this way sticky note" },
+  { key: "practice", label: "Practice exercises", hint: "The practice / extend-it sticky note" },
+  { key: "plainEnglish", label: "Plain-English breakdown", hint: "The main markdown doc card" },
+  { key: "credentials", label: "Credentials setup", hint: "The credentials doc card" },
+  { key: "troubleshooting", label: "Troubleshooting", hint: "The troubleshooting doc card" },
+  {
+    key: "cardThumb",
+    label: "Card thumbnail (not in gallery)",
+    hint: "Listing cards, OG image and JSON-LD. Cropped to 16:9, so use a landscape image",
+  },
 ];
 
 export default function ScreenshotUploadClient() {

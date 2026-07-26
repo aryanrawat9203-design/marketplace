@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { getByRoute, getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
 import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import { getCollections, collectionStats } from "@/lib/collections";
-import { getShowcaseScreenshots } from "@/lib/screenshots";
+import { getShowcaseScreenshots, SHOWCASE_SLOTS } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -55,6 +55,78 @@ const whyItems: { title: string; desc: string; icon: string }[] = [
   },
 ];
 
+// Copy for the "see exactly what you get" gallery. Lives here rather than in the
+// DB because it's marketing copy about what each slot proves, not per-template
+// data; the admin only ever uploads the image. `w`/`h` are the natural pixel
+// dimensions of the current screenshots - they only seed the aspect-ratio box
+// (the images render `w-full h-auto`), so a replacement of a different shape
+// still renders undistorted.
+const SHOWCASE_COPY: Record<
+  (typeof SHOWCASE_SLOTS)[number],
+  { title: string; desc: string; w: number; h: number }
+> = {
+  overview: {
+    title: "Full workflow overview",
+    desc: "Every node laid out and labeled - see the entire automation before you buy, not just a title and a price.",
+    w: 1453,
+    h: 516,
+  },
+  nodeDetail: {
+    title: "Key logic, explained",
+    desc: "Zoom into the node that matters most. Each one documents what it does and what runs next.",
+    w: 255,
+    h: 311,
+  },
+  capabilities: {
+    title: "Error handling & retries",
+    desc: "External calls retry with backoff, failures park in a dead-letter queue, and the on-call channel gets the context.",
+    w: 312,
+    h: 231,
+  },
+  dataQuality: {
+    title: "Data quality built in",
+    desc: "Dedupe and diff steps make re-runs safe - the same input twice will not create duplicate records.",
+    w: 300,
+    h: 222,
+  },
+  customize: {
+    title: "Made to be customized",
+    desc: "Every node card explains its role, so you know which parts are safe to point at your own accounts.",
+    w: 322,
+    h: 217,
+  },
+  designDecisions: {
+    title: "Design decisions, documented",
+    desc: "Not just what the workflow does - why it is built this way, and what the obvious alternative would cost you.",
+    w: 336,
+    h: 216,
+  },
+  practice: {
+    title: "Practice exercises",
+    desc: "Concrete extensions to work through, so you learn the pattern instead of only importing it.",
+    w: 352,
+    h: 242,
+  },
+  plainEnglish: {
+    title: "Plain-English breakdown",
+    desc: "What it does, why it exists, and how to use it - spelled out before you ever open n8n.",
+    w: 370,
+    h: 630,
+  },
+  credentials: {
+    title: "Credential setup, step by step",
+    desc: "Exactly where each key comes from, and the gotchas that break first-time connections.",
+    w: 352,
+    h: 441,
+  },
+  troubleshooting: {
+    title: "Troubleshooting included",
+    desc: "The failures that actually happen, each with its cause and fix - not a generic FAQ.",
+    w: 337,
+    h: 441,
+  },
+};
+
 export default async function Home() {
   const taxo = getTaxonomy();
   const trending = topByDemand(8);
@@ -66,29 +138,13 @@ export default async function Home() {
 
   const showcase = await getShowcaseScreenshots();
   const showcaseItem = showcase ? getByRoute(showcase.route) : undefined;
+  // Whatever the showcase template has uploaded, in SHOWCASE_SLOTS order:
+  // first entry is the wide hero, the rest fill the masonry grid below it.
   const showcaseCards = showcase
-    ? [
-        {
-          src: showcase.screenshots.overview,
-          title: "Full workflow overview",
-          desc: "Every node laid out and labeled - see the entire automation before you buy, not just a title and a price.",
-        },
-        {
-          src: showcase.screenshots.nodeDetail,
-          title: "Key logic, explained",
-          desc: "Zoom into the node that matters most. Each one documents exactly what it checks and why.",
-        },
-        {
-          src: showcase.screenshots.capabilities,
-          title: "Built in, not bolted on",
-          desc: "Retries, error handling, data-quality checks, and a customization guide ship with every template.",
-        },
-        {
-          src: showcase.screenshots.cardThumb,
-          title: "Plain-English breakdown",
-          desc: "What it does, why it exists, and how to use it - spelled out before you ever open n8n.",
-        },
-      ]
+    ? SHOWCASE_SLOTS.flatMap((slot) => {
+        const src = showcase.screenshots[slot];
+        return src ? [{ slot, src, ...SHOWCASE_COPY[slot] }] : [];
+      })
     : [];
   const [featured, ...restShowcase] = showcaseCards;
 
@@ -173,9 +229,9 @@ export default async function Home() {
                     <Image
                       src={featured.src}
                       alt={featured.title}
-                      width={960}
-                      height={540}
-                      className="w-full object-contain"
+                      width={featured.w}
+                      height={featured.h}
+                      className="h-auto w-full object-contain"
                       unoptimized
                     />
                   </div>
@@ -189,16 +245,19 @@ export default async function Home() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Masonry, not a fixed-height grid: these screenshots range from
+                  wide sticky notes to tall doc cards, and letterboxing a 370x630
+                  card into a short row would shrink its text past legibility. */}
+              <div className="gap-4 sm:columns-2 lg:columns-3">
                 {restShowcase.map((c) => (
-                  <div key={c.title} className="card card-hover overflow-hidden">
-                    <div className="flex h-44 items-center justify-center border-b border-white/[0.06] bg-[#0a0a10]">
+                  <div key={c.slot} className="card card-hover mb-4 break-inside-avoid overflow-hidden">
+                    <div className="border-b border-white/[0.06] bg-[#0a0a10]">
                       <Image
                         src={c.src}
                         alt={c.title}
-                        width={640}
-                        height={360}
-                        className="h-full w-full object-contain"
+                        width={c.w}
+                        height={c.h}
+                        className="h-auto w-full object-contain"
                         unoptimized
                       />
                     </div>

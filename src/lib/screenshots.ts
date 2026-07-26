@@ -8,15 +8,43 @@ import { createAdminClient } from "./supabase/admin";
 // of the app expects, just sourced from the DB and merged in at read time.
 
 export type Screenshots = {
+  // Gallery slots - the homepage showcase renders these in SHOWCASE_SLOTS order.
   overview?: string;
   nodeDetail?: string;
   capabilities?: string;
+  dataQuality?: string;
+  customize?: string;
+  designDecisions?: string;
+  practice?: string;
+  plainEnglish?: string;
+  credentials?: string;
+  troubleshooting?: string;
+  // Functional slot: listing-card thumbnail, OG image and JSON-LD. Rendered as
+  // a 16:9 object-cover crop, so it wants a landscape image - not a tall doc
+  // card. Deliberately NOT part of the showcase gallery.
   cardThumb?: string;
 };
 
 export type ScreenshotSlot = keyof Screenshots;
 
-export const SCREENSHOT_SLOTS: ScreenshotSlot[] = ["overview", "nodeDetail", "capabilities", "cardThumb"];
+/**
+ * The homepage "see exactly what you get" gallery, in render order. The first
+ * entry is the wide hero image; the rest fill the grid beneath it.
+ */
+export const SHOWCASE_SLOTS = [
+  "overview",
+  "nodeDetail",
+  "capabilities",
+  "dataQuality",
+  "customize",
+  "designDecisions",
+  "practice",
+  "plainEnglish",
+  "credentials",
+  "troubleshooting",
+] as const satisfies readonly ScreenshotSlot[];
+
+export const SCREENSHOT_SLOTS: ScreenshotSlot[] = [...SHOWCASE_SLOTS, "cardThumb"];
 
 export const SCREENSHOT_BUCKET = "template-screenshots";
 const CACHE_TAG = "template-screenshots";
@@ -25,52 +53,63 @@ const SLOT_TO_COLUMN: Record<ScreenshotSlot, string> = {
   overview: "overview_url",
   nodeDetail: "node_detail_url",
   capabilities: "capabilities_url",
+  dataQuality: "data_quality_url",
+  customize: "customize_url",
+  designDecisions: "design_decisions_url",
+  practice: "practice_url",
+  plainEnglish: "plain_english_url",
+  credentials: "credentials_url",
+  troubleshooting: "troubleshooting_url",
   cardThumb: "card_thumb_url",
 };
 
-type Row = {
-  route: string;
-  overview_url: string | null;
-  node_detail_url: string | null;
-  capabilities_url: string | null;
-  card_thumb_url: string | null;
-};
+const SELECT_COLUMNS = ["route", "is_showcase", ...Object.values(SLOT_TO_COLUMN)].join(", ");
+
+type Row = { route: string; is_showcase: boolean | null } & Record<string, string | null | boolean>;
 
 function rowToScreenshots(r: Row): Screenshots {
   const s: Screenshots = {};
-  if (r.overview_url) s.overview = r.overview_url;
-  if (r.node_detail_url) s.nodeDetail = r.node_detail_url;
-  if (r.capabilities_url) s.capabilities = r.capabilities_url;
-  if (r.card_thumb_url) s.cardThumb = r.card_thumb_url;
+  for (const slot of SCREENSHOT_SLOTS) {
+    const v = r[SLOT_TO_COLUMN[slot]];
+    if (typeof v === "string" && v) s[slot] = v;
+  }
   return s;
 }
 
-async function fetchAllScreenshots(): Promise<Record<string, Screenshots>> {
+type ScreenshotData = {
+  map: Record<string, Screenshots>;
+  /** Route explicitly flagged `is_showcase` in the DB, if any. */
+  showcaseRoute?: string;
+};
+
+async function fetchAllScreenshots(): Promise<ScreenshotData> {
   const admin = createAdminClient();
-  if (!admin) return {};
+  if (!admin) return { map: {} };
   try {
-    const { data, error } = await admin
-      .from("template_screenshots")
-      .select("route, overview_url, node_detail_url, capabilities_url, card_thumb_url");
-    if (error || !data) return {};
+    const { data, error } = await admin.from("template_screenshots").select(SELECT_COLUMNS);
+    if (error || !data) return { map: {} };
     const map: Record<string, Screenshots> = {};
-    for (const r of data as Row[]) map[r.route] = rowToScreenshots(r);
-    return map;
+    let showcaseRoute: string | undefined;
+    for (const r of data as unknown as Row[]) {
+      map[r.route] = rowToScreenshots(r);
+      if (r.is_showcase) showcaseRoute = r.route;
+    }
+    return { map, showcaseRoute };
   } catch {
-    return {};
+    return { map: {} };
   }
 }
 
 // Cached across requests/instances so listing pages (many WorkflowCards) do
 // one lookup, not N+1 queries. Invalidated instantly via revalidateTag on
 // admin upload; otherwise self-heals on the next cache window regardless.
-const getCachedScreenshotsMap = unstable_cache(fetchAllScreenshots, ["template-screenshots-map"], {
+const getCachedScreenshotData = unstable_cache(fetchAllScreenshots, ["template-screenshots-map"], {
   tags: [CACHE_TAG],
   revalidate: 300,
 });
 
 export async function getScreenshotsMap(): Promise<Record<string, Screenshots>> {
-  return getCachedScreenshotsMap();
+  return (await getCachedScreenshotData()).map;
 }
 
 export async function getScreenshotsForRoute(route: string): Promise<Screenshots | undefined> {
@@ -78,24 +117,41 @@ export async function getScreenshotsForRoute(route: string): Promise<Screenshots
   return map[route];
 }
 
-export type CompleteScreenshots = Required<Screenshots>;
+/** How many of the homepage gallery slots a template has filled. */
+export function showcaseSlotCount(s: Screenshots): number {
+  return SHOWCASE_SLOTS.filter((slot) => s[slot]).length;
+}
 
 /**
- * For the homepage "see what you get" showcase: the first template (in map
- * insertion order) that has all four slots filled in. Returns undefined
- * until at least one template has a full set - the section just doesn't
- * render rather than showing a partial/broken showcase.
+ * For the homepage "see exactly what you get" showcase. Prefers the template
+ * explicitly flagged `is_showcase` in the DB (a partial unique index keeps that
+ * to at most one row); otherwise falls back to whichever template has the most
+ * gallery slots filled, so the section still works if the flag is never set.
+ *
+ * Returns undefined unless the chosen template has a hero (`overview`) plus at
+ * least two more gallery images - below that the section isn't worth rendering.
  */
 export async function getShowcaseScreenshots(): Promise<
-  { route: string; screenshots: CompleteScreenshots } | undefined
+  { route: string; screenshots: Screenshots } | undefined
 > {
-  const map = await getScreenshotsMap();
-  for (const [route, s] of Object.entries(map)) {
-    if (s.overview && s.nodeDetail && s.capabilities && s.cardThumb) {
-      return { route, screenshots: s as CompleteScreenshots };
+  const { map, showcaseRoute } = await getCachedScreenshotData();
+
+  const pick = (): { route: string; screenshots: Screenshots } | undefined => {
+    if (showcaseRoute && map[showcaseRoute]) {
+      return { route: showcaseRoute, screenshots: map[showcaseRoute] };
     }
-  }
-  return undefined;
+    let best: { route: string; screenshots: Screenshots; n: number } | undefined;
+    for (const [route, screenshots] of Object.entries(map)) {
+      const n = showcaseSlotCount(screenshots);
+      if (!best || n > best.n) best = { route, screenshots, n };
+    }
+    return best ? { route: best.route, screenshots: best.screenshots } : undefined;
+  };
+
+  const chosen = pick();
+  if (!chosen?.screenshots.overview) return undefined;
+  if (showcaseSlotCount(chosen.screenshots) < 3) return undefined;
+  return chosen;
 }
 
 /** Admin-only: attach/replace one or more screenshot URLs for a template. */
