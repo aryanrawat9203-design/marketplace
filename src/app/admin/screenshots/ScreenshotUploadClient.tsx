@@ -144,8 +144,8 @@ export default function ScreenshotUploadClient() {
     <div>
       <h1 className="text-2xl font-semibold text-zinc-100">Template screenshots</h1>
       <p className="mt-1 text-sm text-zinc-500">
-        Search a template, then attach up to four named screenshots. Fields are independent - upload
-        just the ones you have.
+        Search a template, then attach its named screenshots. Fields are independent - upload just
+        the ones you have, and the homepage gallery renders whichever are filled.
       </p>
       <a href="/admin/reviews" className="mt-1 inline-block text-xs text-violet-400 hover:text-violet-300">
         &larr; Review moderation

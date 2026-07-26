@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getByRoute, related } from "@/lib/catalog";
-import { getScreenshotsForRoute, orderedGallery } from "@/lib/screenshots";
+import { getScreenshotsForRoute, orderedGallery, SHOWCASE_SLOT_LABELS } from "@/lib/screenshots";
 import { bundleForCategory, bundleForSubcategory } from "@/lib/bundles";
 import { Badge, difficultyTone, tierTone } from "@/components/Badge";
 import WorkflowCard from "@/components/WorkflowCard";
@@ -414,13 +414,16 @@ export default async function WorkflowDetail({
               )}
               {!w.free && <TrustStrip />}
               {shots?.capabilities && (
-                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800/80">
+                // Point-of-purchase reassurance next to the buy button. Contained
+                // rather than cover-cropped: this slot holds a single sticky note
+                // whose text is the whole point of showing it.
+                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800/80 bg-[#0a0a10]">
                   <Image
                     src={shots.capabilities}
-                    alt={`${w.title} — error handling, data quality, and customization`}
+                    alt={`${w.title} — ${SHOWCASE_SLOT_LABELS.capabilities}`}
                     width={640}
                     height={360}
-                    className="w-full object-cover"
+                    className="h-auto w-full object-contain"
                     unoptimized
                   />
                 </div>
