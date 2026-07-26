@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getIntegrations } from "@/lib/integrations";
+import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
 
@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 export default function IntegrationsPage() {
   const integrations = getIntegrations();
+  const pairs = getIntegrationPairs();
   const fmt = (n: number) => n.toLocaleString("en-IN");
 
   const breadcrumb = breadcrumbJsonLd([
@@ -37,6 +38,34 @@ export default function IntegrationsPage() {
           </Link>
         ))}
       </div>
+
+      {pairs.length > 0 && (
+        <div className="mt-14">
+          <p className="eyebrow">App to app</p>
+          <h2 className="mt-2.5 text-xl font-semibold text-zinc-50 sm:text-2xl">
+            Connect two apps together
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-500">
+            Most automations join two tools. These {fmt(pairs.length)} pairings each have a set of
+            ready-to-import templates that wire them together end to end.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pairs.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/integrations/${p.slug}`}
+                className="card card-hover group flex items-center justify-between rounded-xl px-4 py-3"
+              >
+                <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
+                  {p.a.name} <span className="text-zinc-600">+</span> {p.b.name}
+                </span>
+                <span className="ml-3 shrink-0 font-mono text-xs text-zinc-500">{fmt(p.count)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
