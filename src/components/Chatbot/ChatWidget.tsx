@@ -408,23 +408,23 @@ export default function ChatWidget() {
         role="dialog"
         aria-label="WorkflowCrate assistant"
         aria-hidden={!open}
-        className={`fixed bottom-24 right-5 z-[90] flex h-[min(600px,calc(100vh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-[#0c0c12] shadow-2xl shadow-black/50 transition-all duration-200 sm:bottom-28 sm:right-6 ${
+        className={`fixed bottom-24 right-5 z-[90] flex h-[min(600px,calc(100vh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-hairline bg-surface-2 shadow-2xl shadow-black/50 transition-all duration-200 sm:bottom-28 sm:right-6 ${
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
         }`}
       >
-        <div className="flex items-center gap-2 border-b border-zinc-800 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-hairline bg-gradient-to-r from-indigo-600/20 to-violet-600/20 px-4 py-3">
           <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
             W
           </span>
           <div>
-            <p className="text-sm font-semibold text-zinc-100">WorkflowCrate Assistant</p>
-            <p className="text-xs text-zinc-500">Usually replies instantly</p>
+            <p className="text-sm font-semibold text-ink">WorkflowCrate Assistant</p>
+            <p className="text-xs text-faint">Usually replies instantly</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
             {!!user && messages.length > 0 && (
               <button
                 onClick={newChat}
-                className="rounded-lg px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+                className="rounded-lg px-2 py-1.5 text-xs text-muted hover:bg-white/[0.06] hover:text-body"
               >
                 New chat
               </button>
@@ -432,7 +432,7 @@ export default function ChatWidget() {
             <button
               onClick={() => setOpen(false)}
               aria-label="Minimize chat"
-              className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
+              className="rounded-lg p-1.5 text-faint hover:bg-white/[0.06] hover:text-body"
             >
               &#8722;
             </button>
@@ -440,14 +440,14 @@ export default function ChatWidget() {
         </div>
 
         {showLowBalanceBanner && (
-          <div className="border-b border-zinc-800 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+          <div className="border-b border-hairline bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
             {usage!.freeRemaining} free conversation{usage!.freeRemaining === 1 ? "" : "s"} left this month
             {usage!.bonusRemaining > 0 ? ` (+${usage!.bonusRemaining} top-up)` : ""}
           </div>
         )}
 
         {conversationNearLimit && !conversationAtLimit && (
-          <div className="border-b border-zinc-800 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-300">
+          <div className="border-b border-hairline bg-indigo-500/10 px-4 py-2 text-xs text-indigo-300">
             {CHATBOT_CONFIG.conversationLimitWarningMessage}
           </div>
         )}
@@ -455,7 +455,7 @@ export default function ChatWidget() {
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {everOpened && messages.length === 0 && (
             <div className="space-y-3">
-              <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100">
+              <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-surface-3 px-3 py-2 text-sm text-ink">
                 {CHATBOT_CONFIG.welcomeMessage}
               </div>
               {CHATBOT_CONFIG.features.suggestedQuestions && (
@@ -464,7 +464,7 @@ export default function ChatWidget() {
                     <button
                       key={q}
                       onClick={() => send(q)}
-                      className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-violet-500 hover:text-zinc-100"
+                      className="rounded-full border border-hairline-strong px-3 py-1.5 text-xs text-body hover:border-violet-500 hover:text-ink"
                     >
                       {q}
                     </button>
@@ -480,17 +480,17 @@ export default function ChatWidget() {
                 className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
                   m.role === "user"
                     ? "rounded-tr-sm bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                    : "rounded-tl-sm bg-zinc-800/70 text-zinc-100"
+                    : "rounded-tl-sm bg-surface-3 text-ink"
                 }`}
               >
                 {m.content}
               </div>
-              <span className="mt-1 px-1 text-[10px] text-zinc-600">{formatTime(m.at)}</span>
+              <span className="mt-1 px-1 text-[10px] text-faint">{formatTime(m.at)}</span>
             </div>
           ))}
 
           {sending && (
-            <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm bg-zinc-800/70 px-3 py-2.5 w-fit">
+            <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm bg-surface-3 px-3 py-2.5 w-fit">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
@@ -527,8 +527,8 @@ export default function ChatWidget() {
         </div>
 
         {!user ? (
-          <div className="border-t border-zinc-800 p-4 text-center">
-            <p className="text-sm text-zinc-400">Sign in to chat with the assistant.</p>
+          <div className="border-t border-hairline p-4 text-center">
+            <p className="text-sm text-muted">Sign in to chat with the assistant.</p>
             <button
               onClick={() => openLogin({ force: true })}
               className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
@@ -537,8 +537,8 @@ export default function ChatWidget() {
             </button>
           </div>
         ) : conversationAtLimit ? (
-          <div className="border-t border-zinc-800 p-4 text-center">
-            <p className="text-sm text-zinc-400">{CHATBOT_CONFIG.conversationLimitReachedMessage}</p>
+          <div className="border-t border-hairline p-4 text-center">
+            <p className="text-sm text-muted">{CHATBOT_CONFIG.conversationLimitReachedMessage}</p>
             <button
               onClick={newChat}
               className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
@@ -547,14 +547,14 @@ export default function ChatWidget() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-zinc-800 p-3">
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-hairline p-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question..."
               maxLength={CHATBOT_CONFIG.limits.maxMessageLength}
               aria-label="Message"
-              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500"
+              className="flex-1 rounded-xl border border-hairline-strong bg-surface-2 px-3 py-2 text-sm text-ink outline-none focus:border-violet-500"
             />
             <button
               type="submit"

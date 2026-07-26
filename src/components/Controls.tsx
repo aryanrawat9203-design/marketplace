@@ -150,13 +150,13 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
             }
           }}
           placeholder="Search 10,500+ templates..."
-          className={`w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
+          className={`w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 text-ink placeholder-faint outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
             compact ? "h-10 pr-9 text-sm" : "h-12 pr-3"
           }`}
         />
         <svg
           aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
           width="18"
           height="18"
           viewBox="0 0 24 24"
@@ -171,7 +171,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
         {compact && !q && (
           <kbd
             aria-hidden="true"
-            className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 bg-white/[0.05] px-1.5 font-mono text-[11px] leading-5 text-zinc-500 lg:block"
+            className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-white/10 bg-white/[0.05] px-1.5 font-mono text-[11px] leading-5 text-faint lg:block"
           >
             /
           </kbd>
@@ -181,7 +181,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-[#101018] py-1 shadow-2xl shadow-black/60"
+          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-surface-2 py-1 shadow-2xl shadow-black/60"
         >
           {rows.map((r, i) => (
             <li key={r.key} role="option" aria-selected={i === active}>
@@ -191,11 +191,11 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
                 onClick={() => go(r.href)}
                 onMouseEnter={() => setActive(i)}
                 className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm ${
-                  i === active ? "bg-violet-500/15 text-zinc-100" : "text-zinc-300"
+                  i === active ? "bg-violet-500/15 text-ink" : "text-body"
                 } ${r.key === "all" ? "font-medium text-violet-300" : ""}`}
               >
                 <span className="line-clamp-1">{r.label}</span>
-                {r.hint && <span className="shrink-0 text-xs text-zinc-500">{r.hint}</span>}
+                {r.hint && <span className="shrink-0 text-xs text-faint">{r.hint}</span>}
               </button>
             </li>
           ))}
@@ -231,7 +231,7 @@ function Select({
         params.delete("page");
         router.push(`/workflows?${params.toString()}`);
       }}
-      className="h-10 rounded-lg border border-white/10 bg-[#101018] px-3 text-sm text-zinc-200 outline-none transition-colors hover:border-white/20 focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      className="h-10 rounded-lg border border-white/10 bg-surface-2 px-3 text-sm text-body outline-none transition-colors hover:border-white/20 focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
     >
       <option value="">{all}</option>
       {options.map((o) => (
@@ -306,7 +306,7 @@ export function PageJump({
         params.set("page", String(n));
         router.push(`${basePath}?${params.toString()}`);
       }}
-      className="flex items-center gap-2 text-zinc-500"
+      className="flex items-center gap-2 text-faint"
     >
       <label htmlFor="page-jump">Go to page</label>
       <input
@@ -316,11 +316,11 @@ export function PageJump({
         max={pages}
         value={val}
         onChange={(e) => setVal(e.target.value)}
-        className="h-9 w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-center text-zinc-100 outline-none focus:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        className="h-9 w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-center text-ink outline-none focus:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       />
       <button
         type="submit"
-        className="btn-secondary rounded-lg px-3 py-1.5 text-sm"
+        className="btn-secondary btn-sm"
       >
         Go
       </button>

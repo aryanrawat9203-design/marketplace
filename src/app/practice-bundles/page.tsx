@@ -26,8 +26,8 @@ export default function PracticeBundlesPage() {
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <div className="max-w-2xl">
         <p className="eyebrow">Learn n8n</p>
-        <h1 className="mt-2.5 text-3xl font-bold text-zinc-50">Practice bundles</h1>
-        <p className="mt-2 text-zinc-400">
+        <h1 className="mt-2.5 text-3xl font-bold text-ink">Practice bundles</h1>
+        <p className="mt-2 text-muted">
           The fastest way to practice n8n is importing real workflow templates and pulling them apart.
           These bundles arrange that practice into a structured curriculum, not a grab-bag. Every bundle starts with simple, 4&ndash;8 node
           automations and works up to the same production patterns &mdash; branching, retries, idempotency,
@@ -37,8 +37,8 @@ export default function PracticeBundlesPage() {
       </div>
 
       <section className="mt-10">
-        <h2 className="text-xl font-semibold text-zinc-100">The generalist ladder</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-xl font-semibold text-ink">The generalist ladder</h2>
+        <p className="mt-1 text-sm text-muted">
           Each pack is a complete curriculum on its own. Bigger packs include everything in the smaller
           ones, plus more depth &mdash; upgrade anytime without losing progress.
         </p>
@@ -51,16 +51,16 @@ export default function PracticeBundlesPage() {
             >
               <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
               <div className="flex flex-1 flex-col p-5">
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-faint">
                   Step {i + 1}
                 </span>
-                <h3 className="mt-1.5 font-sans font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
-                <p className="mt-2 text-xs text-zinc-500">{b.skillLevel}</p>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{b.tagline}</p>
-                <p className="mt-3 font-mono text-xs text-zinc-500">{fmt(b.count)} templates</p>
+                <h3 className="mt-1.5 font-sans font-semibold text-ink group-hover:text-white">{b.name}</h3>
+                <p className="mt-2 text-xs text-faint">{b.skillLevel}</p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{b.tagline}</p>
+                <p className="mt-3 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
                 <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
-                  <span className="font-display text-xl font-bold tracking-tight text-zinc-50">{inr(b.price)}</span>
-                  <span className="text-sm text-zinc-500 line-through">{inr(b.mrp)}</span>
+                  <span className="font-display text-xl font-bold tracking-tight text-ink">{inr(b.price)}</span>
+                  <span className="text-sm text-faint line-through">{inr(b.mrp)}</span>
                   <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
                     {b.off}% off
                   </span>
@@ -72,8 +72,8 @@ export default function PracticeBundlesPage() {
       </section>
 
       <section className="mt-14">
-        <h2 className="text-xl font-semibold text-zinc-100">Specialization packs</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-xl font-semibold text-ink">Specialization packs</h2>
+        <p className="mt-1 text-sm text-muted">
           Already comfortable with the basics? Go deep on one high-demand niche instead of the full
           generalist ladder.
         </p>
@@ -86,13 +86,13 @@ export default function PracticeBundlesPage() {
             >
               <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="font-sans font-semibold text-zinc-100 group-hover:text-white">{b.name}</h3>
-                <p className="mt-1 text-xs text-zinc-500">{b.audience}</p>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{b.tagline}</p>
-                <p className="mt-3 font-mono text-xs text-zinc-500">{fmt(b.count)} templates</p>
+                <h3 className="font-sans font-semibold text-ink group-hover:text-white">{b.name}</h3>
+                <p className="mt-1 text-xs text-faint">{b.audience}</p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{b.tagline}</p>
+                <p className="mt-3 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
                 <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
-                  <span className="font-display text-xl font-bold tracking-tight text-zinc-50">{inr(b.price)}</span>
-                  <span className="text-sm text-zinc-500 line-through">{inr(b.mrp)}</span>
+                  <span className="font-display text-xl font-bold tracking-tight text-ink">{inr(b.price)}</span>
+                  <span className="text-sm text-faint line-through">{inr(b.mrp)}</span>
                   <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
                     {b.off}% off
                   </span>
@@ -109,23 +109,23 @@ export default function PracticeBundlesPage() {
             href={`/practice-bundles/${flagshipBundle.slug}`}
             className={`group block overflow-hidden rounded-2xl bg-gradient-to-br ${flagshipBundle.gradient} p-[1px] card-hover`}
           >
-            <div className="flex flex-col items-start justify-between gap-4 rounded-[15px] bg-[#0b0b12] p-6 sm:flex-row sm:items-center sm:p-7">
+            <div className="flex flex-col items-start justify-between gap-4 rounded-[15px] bg-surface-1 p-6 sm:flex-row sm:items-center sm:p-7">
               <div>
                 <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
                   {flagshipBundle.off}% off
                 </span>
-                <h2 className="mt-3 text-xl font-semibold text-zinc-50">{flagshipBundle.name}</h2>
-                <p className="mt-1 text-sm text-zinc-400">{flagshipBundle.tagline}</p>
-                <p className="mt-2 text-xs text-zinc-500">
+                <h2 className="mt-3 text-xl font-semibold text-ink">{flagshipBundle.name}</h2>
+                <p className="mt-1 text-sm text-muted">{flagshipBundle.tagline}</p>
+                <p className="mt-2 text-xs text-faint">
                   {fmt(flagshipBundle.count)} templates &middot; individually worth {inr(flagshipBundle.individualValue)}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="font-display text-3xl font-bold tracking-tight text-zinc-50">{inr(flagshipBundle.price)}</div>
-                  <div className="text-sm text-zinc-500 line-through">{inr(flagshipBundle.mrp)}</div>
+                  <div className="font-display text-3xl font-bold tracking-tight text-ink">{inr(flagshipBundle.price)}</div>
+                  <div className="text-sm text-faint line-through">{inr(flagshipBundle.mrp)}</div>
                 </div>
-                <span className="btn-primary px-4 py-2 text-sm">View bundle</span>
+                <span className="btn-primary btn-sm">View bundle</span>
               </div>
             </div>
           </Link>
@@ -133,8 +133,8 @@ export default function PracticeBundlesPage() {
       )}
 
       <section className="card mt-14 p-6">
-        <h2 className="text-lg font-semibold text-zinc-100">Not just harder &mdash; harder for a reason</h2>
-        <p className="mt-2 max-w-3xl text-sm text-zinc-400">
+        <h2 className="text-lg font-semibold text-ink">Not just harder &mdash; harder for a reason</h2>
+        <p className="mt-2 max-w-3xl text-sm text-muted">
           Every template in these bundles is pulled from our real production catalog. Early templates are
           simple on purpose: one trigger, one or two actions, no branching. Later templates add real
           business branching, retry-on-fail, idempotency guards, multi-system sync, audit logging, and &mdash;
@@ -144,7 +144,7 @@ export default function PracticeBundlesPage() {
       </section>
 
       <section className="mt-14">
-        <h2 className="text-lg font-semibold text-zinc-100">New to practicing with templates?</h2>
+        <h2 className="text-lg font-semibold text-ink">New to practicing with templates?</h2>
         <div className="mt-3 flex flex-col gap-2 text-sm">
           <Link
             href="/blog/n8n-workflow-templates-for-practice"

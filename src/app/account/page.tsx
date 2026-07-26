@@ -47,33 +47,33 @@ export default function AccountPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">My library</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="text-2xl font-semibold text-ink">My library</h1>
+          <p className="mt-1 text-sm text-faint">
             Every template and bundle you&apos;ve bought, ready to re-download anytime.
           </p>
         </div>
         {!loading && user && (
           <button
             onClick={() => signOut()}
-            className="btn-secondary shrink-0 rounded-lg px-3 py-1.5 text-sm"
+            className="btn-secondary btn-sm shrink-0 "
           >
             Sign out
           </button>
         )}
       </div>
 
-      {loading && <div className="mt-10 text-sm text-zinc-500">Loading&hellip;</div>}
+      {loading && <div className="mt-10 text-sm text-faint">Loading&hellip;</div>}
 
       {!loading && !user && (
         <div className="mt-10 card p-8 text-center">
-          <p className="text-zinc-300">Sign in to see your purchases.</p>
+          <p className="text-body">Sign in to see your purchases.</p>
           <button
             onClick={() => openLogin({ force: true })}
-            className="btn-primary mt-4 px-5 py-2.5"
+            className="btn-primary btn-md mt-4 "
           >
             Sign in
           </button>
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-4 text-xs text-faint">
             Bought as a guest?{" "}
             <Link href="/orders/lookup" className="text-violet-400 hover:text-violet-300">
               Re-download with your order id
@@ -86,8 +86,8 @@ export default function AccountPage() {
 
       {user && orders && orders.length === 0 && (
         <div className="mt-10 card p-8 text-center">
-          <p className="text-zinc-300">No purchases yet on {user.email}.</p>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="text-body">No purchases yet on {user.email}.</p>
+          <p className="mt-2 text-sm text-faint">
             Orders appear here automatically after payment. Paid with a different email?{" "}
             <Link href="/orders/lookup" className="text-violet-400 hover:text-violet-300">
               Look the order up here
@@ -96,7 +96,7 @@ export default function AccountPage() {
           </p>
           <Link
             href="/workflows"
-            className="btn-primary mt-5 px-5 py-2.5"
+            className="btn-primary btn-md mt-5 "
           >
             Browse templates
           </Link>
@@ -111,8 +111,8 @@ export default function AccountPage() {
               className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <div className="line-clamp-1 font-medium text-zinc-100">{o.itemTitle}</div>
-                <div className="mt-1 text-xs text-zinc-500">
+                <div className="line-clamp-1 font-medium text-ink">{o.itemTitle}</div>
+                <div className="mt-1 text-xs text-faint">
                   {o.kind === "bundle" ? "Bundle (ZIP)" : o.kind === "cart" ? "Multi-template order (ZIP)" : "Single template (JSON)"}
                   {" · "}
                   {inr(o.amountPaise / 100)}

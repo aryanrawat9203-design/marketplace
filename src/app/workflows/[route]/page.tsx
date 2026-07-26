@@ -20,6 +20,7 @@ import AddToCartButton from "@/components/AddToCartButton";
 import StickyBuyBar from "@/components/StickyBuyBar";
 import { RecentlyViewedTracker, RecentlyViewedStrip } from "@/components/RecentlyViewed";
 import JsonLd from "@/components/JsonLd";
+import { Breadcrumbs } from "@/components/PageHeader";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
 
@@ -48,8 +49,8 @@ function Row({ k, v }: { k: string; v: string | null | undefined }) {
   if (!v) return null;
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-zinc-500">{k}</dt>
-      <dd className="text-right text-zinc-300">{v}</dd>
+      <dt className="text-faint">{k}</dt>
+      <dd className="text-right text-body">{v}</dd>
     </div>
   );
 }
@@ -165,19 +166,21 @@ export default async function WorkflowDetail({
           free: w.free,
         }}
       />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
-        <span className="mx-1">/</span>
-        <Link href="/workflows" className="hover:text-zinc-300">Templates</Link>
-        {w.category && (
-          <>
-            <span className="mx-1">/</span>
-            <Link href={`/workflows?category=${encodeURIComponent(w.category)}`} className="hover:text-zinc-300">
-              {w.category}
-            </Link>
-          </>
-        )}
-      </nav>
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Templates", href: "/workflows" },
+          ...(w.category
+            ? [
+                {
+                  label: w.category,
+                  href: `/workflows?category=${encodeURIComponent(w.category)}`,
+                },
+              ]
+            : []),
+          { label: w.title },
+        ]}
+      />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {w.free && <Badge tone="emerald">Free sample</Badge>}
@@ -188,8 +191,8 @@ export default async function WorkflowDetail({
         {preview && <Badge tone="sky">{preview.nodeCount} nodes</Badge>}
       </div>
 
-      <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-50">{w.title}</h1>
-      {w.subtitle && <p className="mt-2 text-lg text-zinc-400">{w.subtitle}</p>}
+      <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{w.title}</h1>
+      {w.subtitle && <p className="mt-2.5 text-lg leading-relaxed text-muted">{w.subtitle}</p>}
 
       {gallery.length > 0 && (
         // object-contain in a letterbox, never object-cover: these are
@@ -199,7 +202,7 @@ export default async function WorkflowDetail({
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {gallery.map((g, i) => (
             <div key={g.slot} className="card overflow-hidden">
-              <div className="flex h-72 items-center justify-center bg-[#0a0a10]">
+              <div className="flex h-72 items-center justify-center bg-surface-1">
                 <Image
                   src={g.src}
                   alt={`${w.title} — ${g.label}`}
@@ -218,15 +221,15 @@ export default async function WorkflowDetail({
       <div className="mt-10 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2 min-w-0">
           {w.longDescription && (
-            <p className="whitespace-pre-line leading-relaxed text-zinc-300">{w.longDescription}</p>
+            <p className="whitespace-pre-line leading-relaxed text-body">{w.longDescription}</p>
           )}
 
           {w.benefits.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">Key benefits</h2>
+              <h2 className="text-lg font-semibold text-ink">Key benefits</h2>
               <ul className="mt-3 space-y-2">
                 {w.benefits.map((b, i) => (
-                  <li key={i} className="flex gap-2 text-zinc-300">
+                  <li key={i} className="flex gap-2 text-body">
                     <span className="mt-1 text-emerald-400">&#10003;</span>
                     <span>{b}</span>
                   </li>
@@ -237,10 +240,10 @@ export default async function WorkflowDetail({
 
           {w.useCases.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">Use cases</h2>
+              <h2 className="text-lg font-semibold text-ink">Use cases</h2>
               <ul className="mt-3 space-y-2">
                 {w.useCases.map((b, i) => (
-                  <li key={i} className="flex gap-2 text-zinc-300">
+                  <li key={i} className="flex gap-2 text-body">
                     <span className="mt-1 text-violet-400">&rarr;</span>
                     <span>{b}</span>
                   </li>
@@ -251,7 +254,7 @@ export default async function WorkflowDetail({
 
           {w.platforms.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">Integrations</h2>
+              <h2 className="text-lg font-semibold text-ink">Integrations</h2>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {w.platforms.map((p) => (
                   <span key={p} className="chip px-2 py-1 text-xs">{p}</span>
@@ -265,11 +268,11 @@ export default async function WorkflowDetail({
 
           {graph && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">
+              <h2 className="text-lg font-semibold text-ink">
                 Workflow preview{" "}
-                <span className="text-sm font-normal text-zinc-500">({graph.nodes.length} nodes)</span>
+                <span className="text-sm font-normal text-faint">({graph.nodes.length} nodes)</span>
               </h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-faint">
                 The template&apos;s actual node layout and connections. Node parameters and credential
                 slots unlock with the download.
               </p>
@@ -281,10 +284,10 @@ export default async function WorkflowDetail({
 
           {preview && preview.nodeTypes.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">
-                What&apos;s inside <span className="text-sm font-normal text-zinc-500">({preview.nodeCount} nodes)</span>
+              <h2 className="text-lg font-semibold text-ink">
+                What&apos;s inside <span className="text-sm font-normal text-faint">({preview.nodeCount} nodes)</span>
               </h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-faint">
                 A look at the node types this workflow uses. No purchase required &mdash; full parameters and
                 credentials are yours after you buy.
               </p>
@@ -297,7 +300,7 @@ export default async function WorkflowDetail({
           )}
 
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-zinc-100">From download to running in 3 steps</h2>
+            <h2 className="text-lg font-semibold text-ink">From download to running in 3 steps</h2>
             <ol className="mt-3 space-y-3">
               {[
                 ["Import", "In n8n, open Workflows → menu → “Import from File” and pick the downloaded JSON."],
@@ -309,8 +312,8 @@ export default async function WorkflowDetail({
                     {i + 1}
                   </span>
                   <div>
-                    <span className="font-medium text-zinc-100">{t}.</span>{" "}
-                    <span className="text-sm text-zinc-400">{d}</span>
+                    <span className="font-medium text-ink">{t}.</span>{" "}
+                    <span className="text-sm text-muted">{d}</span>
                   </div>
                 </li>
               ))}
@@ -319,9 +322,9 @@ export default async function WorkflowDetail({
 
           {reviews.count > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-zinc-100">
+              <h2 className="text-lg font-semibold text-ink">
                 Customer reviews{" "}
-                <span className="text-sm font-normal text-zinc-500">
+                <span className="text-sm font-normal text-faint">
                   {reviews.average} / 5 &middot; {reviews.count} verified{" "}
                   {reviews.count === 1 ? "buyer" : "buyers"}
                 </span>
@@ -334,18 +337,18 @@ export default async function WorkflowDetail({
                         {"★".repeat(r.rating)}
                         <span className="text-zinc-700">{"★".repeat(5 - r.rating)}</span>
                       </span>
-                      <span className="text-sm text-zinc-300">{r.authorLabel}</span>
+                      <span className="text-sm text-body">{r.authorLabel}</span>
                       <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-300">
                         Verified buyer
                       </span>
                       {r.createdAt && (
-                        <span className="text-xs text-zinc-600">
+                        <span className="text-xs text-faint">
                           {new Date(r.createdAt).toLocaleDateString("en-IN")}
                         </span>
                       )}
                     </div>
-                    {r.title && <div className="mt-2 text-sm font-medium text-zinc-100">{r.title}</div>}
-                    <p className="mt-1 text-sm leading-relaxed text-zinc-400">{r.body}</p>
+                    {r.title && <div className="mt-2 text-sm font-medium text-ink">{r.title}</div>}
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{r.body}</p>
                   </div>
                 ))}
               </div>
@@ -354,21 +357,21 @@ export default async function WorkflowDetail({
 
           <div className="card mt-8 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-semibold text-zinc-100">What you&apos;ll learn</h2>
+              <h2 className="text-lg font-semibold text-ink">What you&apos;ll learn</h2>
               <span className="rounded bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
                 {learning.band} level
               </span>
             </div>
-            <p className="mt-2 text-sm text-zinc-400">{learning.bandNote}</p>
+            <p className="mt-2 text-sm text-muted">{learning.bandNote}</p>
             <ul className="mt-3 space-y-2">
               {learning.skills.map((s) => (
-                <li key={s} className="flex gap-2 text-sm text-zinc-300">
+                <li key={s} className="flex gap-2 text-sm text-body">
                   <span className="text-violet-400">&#8226;</span>
                   <span>{s}</span>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 border-t border-zinc-800/80 pt-3 text-sm text-zinc-400">
+            <p className="mt-4 border-t border-hairline pt-3 text-sm text-muted">
               Every node carries its own documentation on the canvas, plus notes explaining why the
               architecture was built this way, a credential setup guide, troubleshooting, and three
               practice exercises. Sample data comes pinned to the trigger, so you can hit Execute and
@@ -377,20 +380,20 @@ export default async function WorkflowDetail({
           </div>
 
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-zinc-100">Common questions</h2>
+            <h2 className="text-lg font-semibold text-ink">Common questions</h2>
             <div className="mt-3 space-y-2">
               {productFaqs.map(([q, a]) => (
                 <details key={q} className="card group rounded-xl px-4 py-3">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-zinc-200 marker:content-none group-open:text-white">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-body marker:content-none group-open:text-white">
                     {q}
                     <span
                       aria-hidden="true"
-                      className="shrink-0 text-zinc-500 transition-transform duration-200 group-open:rotate-45"
+                      className="shrink-0 text-faint transition-transform duration-200 group-open:rotate-45"
                     >
                       +
                     </span>
                   </summary>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{a}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{a}</p>
                 </details>
               ))}
             </div>
@@ -417,7 +420,7 @@ export default async function WorkflowDetail({
                 // Point-of-purchase reassurance next to the buy button. Contained
                 // rather than cover-cropped: this slot holds a single sticky note
                 // whose text is the whole point of showing it.
-                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800/80 bg-[#0a0a10]">
+                <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-surface-1">
                   <Image
                     src={shots.capabilities}
                     alt={`${w.title} — ${SHOWCASE_SLOT_LABELS.capabilities}`}
@@ -429,14 +432,14 @@ export default async function WorkflowDetail({
                 </div>
               )}
             </div>
-            <ul className="mt-5 space-y-2 text-sm text-zinc-400">
+            <ul className="mt-5 space-y-2 text-sm text-muted">
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Instant download after payment</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Ready-to-import n8n JSON file</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Original template, yours to use &amp; adapt</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Secure, time-limited download link</li>
             </ul>
             {!w.free && (
-              <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-zinc-300">
+              <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-body">
                 <span className="font-semibold text-emerald-300">7-day guarantee.</span>{" "}If it won&apos;t
                 import or isn&apos;t as described, we fix it or refund you.{" "}
                 <Link href="/refund" className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300">
@@ -449,19 +452,19 @@ export default async function WorkflowDetail({
           {upsell && (
             <Link href={`/bundles/${upsell.slug}`} className="card-hover block rounded-2xl border border-violet-500/30 bg-violet-500/[0.06] p-5 hover:border-violet-500/60">
               <div className="text-xs font-semibold uppercase tracking-wide text-violet-300">Save with a bundle</div>
-              <div className="mt-1 text-sm text-zinc-300">
-                Get all <b className="text-zinc-100">{upsell.count}</b>{" "}
+              <div className="mt-1 text-sm text-body">
+                Get all <b className="text-ink">{upsell.count}</b>{" "}
                 {upsell.type === "subcategory" ? upsell.subcategory : upsell.category} templates for{" "}
-                <b className="text-zinc-100">{inr(upsell.price)}</b>{" "}
-                <span className="text-zinc-500 line-through">{inr(upsell.mrp)}</span>
+                <b className="text-ink">{inr(upsell.price)}</b>{" "}
+                <span className="text-faint line-through">{inr(upsell.mrp)}</span>
               </div>
               <div className="mt-2 text-sm font-medium text-violet-400">View bundle &rarr;</div>
             </Link>
           )}
 
           <Link href="/custom" className="card card-hover block p-5">
-            <h3 className="text-sm font-semibold text-zinc-200">Need a variation of this?</h3>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h3 className="text-sm font-semibold text-body">Need a variation of this?</h3>
+            <p className="mt-1 text-sm text-muted">
               Different apps, extra steps, your exact process - we build custom workflows to order.
             </p>
             <span className="mt-2 inline-block text-sm font-medium text-violet-400">
@@ -470,7 +473,7 @@ export default async function WorkflowDetail({
           </Link>
 
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-zinc-200">At a glance</h3>
+            <h3 className="text-sm font-semibold text-body">At a glance</h3>
             <dl className="mt-3 space-y-2 text-sm">
               <Row k="Industry" v={w.industry} />
               <Row k="Category" v={w.category} />
@@ -486,7 +489,7 @@ export default async function WorkflowDetail({
 
       {rel.length > 0 && (
         <div className="mt-14">
-          <h2 className="text-xl font-semibold text-zinc-100">Related templates</h2>
+          <h2 className="text-xl font-semibold text-ink">Related templates</h2>
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {rel.map((r) => (
               <WorkflowCard key={r.id} w={r} />
@@ -497,7 +500,7 @@ export default async function WorkflowDetail({
 
       <RecentlyViewedStrip excludeRoute={w.route} />
 
-      <div className="card mt-12 rounded-xl p-4 text-xs text-zinc-500">
+      <div className="card mt-12 rounded-xl p-4 text-xs text-faint">
         Original n8n workflow template created and owned by WorkflowCrate. After purchase you receive the
         ready-to-import JSON file and a license to use and adapt it in your own projects.
       </div>

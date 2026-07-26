@@ -76,10 +76,10 @@ export default async function PracticeBundleDetail({
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
       <JsonLd data={courseJsonLd} />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
+      <nav className="text-xs text-faint">
+        <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/practice-bundles" className="hover:text-zinc-300">Practice bundles</Link>
+        <Link href="/practice-bundles" className="hover:text-body">Practice bundles</Link>
       </nav>
 
       <div className={`relative mt-4 h-40 overflow-hidden rounded-2xl bg-gradient-to-br ${b.gradient}`}>
@@ -95,31 +95,31 @@ export default async function PracticeBundleDetail({
 
       <div className="mt-6 grid gap-10 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
-          <h1 className="text-3xl font-bold text-zinc-50">{b.name}</h1>
-          <p className="mt-2 text-lg text-zinc-400">{b.tagline}</p>
+          <h1 className="text-3xl font-bold text-ink">{b.name}</h1>
+          <p className="mt-2 text-lg text-muted">{b.tagline}</p>
 
           <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="card rounded-xl p-3">
-              <dt className="text-xs text-zinc-500">Audience</dt>
-              <dd className="mt-1 text-sm text-zinc-200">{b.audience}</dd>
+              <dt className="text-xs text-faint">Audience</dt>
+              <dd className="mt-1 text-sm text-body">{b.audience}</dd>
             </div>
             <div className="card rounded-xl p-3">
-              <dt className="text-xs text-zinc-500">Skill level</dt>
-              <dd className="mt-1 text-sm text-zinc-200">{b.skillLevel}</dd>
+              <dt className="text-xs text-faint">Skill level</dt>
+              <dd className="mt-1 text-sm text-body">{b.skillLevel}</dd>
             </div>
             <div className="card rounded-xl p-3 sm:col-span-2">
-              <dt className="text-xs text-zinc-500">Learning outcome</dt>
-              <dd className="mt-1 text-sm text-zinc-200">{b.learningOutcome}</dd>
+              <dt className="text-xs text-faint">Learning outcome</dt>
+              <dd className="mt-1 text-sm text-body">{b.learningOutcome}</dd>
             </div>
           </dl>
 
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-zinc-100">Difficulty progression</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h2 className="text-lg font-semibold text-ink">Difficulty progression</h2>
+            <p className="mt-1 text-sm text-muted">
               Templates are ordered simple &rarr; complex. Node counts and architecture are pulled
               directly from the real catalog &mdash; nothing here is padded.
             </p>
-            <div className="mt-4 flex overflow-hidden rounded-lg border border-zinc-800/80">
+            <div className="mt-4 flex overflow-hidden rounded-lg border border-hairline">
               {BAND_ORDER.filter((band) => bandCounts[band] > 0).map((band) => (
                 <div
                   key={band}
@@ -127,15 +127,15 @@ export default async function PracticeBundleDetail({
                   style={{ width: `${(bandCounts[band] / members.length) * 100}%` }}
                 >
                   <Badge tone={bandTone(band)}>{band}</Badge>
-                  <span className="text-xs text-zinc-500">{bandCounts[band]}</span>
+                  <span className="text-xs text-faint">{bandCounts[band]}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="mt-10">
-            <h2 className="text-lg font-semibold text-zinc-100">
-              Curriculum <span className="text-sm font-normal text-zinc-500">({fmt(members.length)} templates, in order)</span>
+            <h2 className="text-lg font-semibold text-ink">
+              Curriculum <span className="text-sm font-normal text-faint">({fmt(members.length)} templates, in order)</span>
             </h2>
             <ol className="mt-4 space-y-1.5">
               {members.map((m, i) => (
@@ -144,12 +144,12 @@ export default async function PracticeBundleDetail({
                     href={`/workflows/${m.route}`}
                     className="group flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2.5 transition-colors hover:border-violet-500/50 hover:bg-white/[0.05]"
                   >
-                    <span className="w-7 shrink-0 text-right text-xs tabular-nums text-zinc-600">{i + 1}</span>
+                    <span className="w-7 shrink-0 text-right text-xs tabular-nums text-faint">{i + 1}</span>
                     <Badge tone={bandTone(bandFor(m))}>{bandFor(m)}</Badge>
-                    <span className="min-w-0 flex-1 truncate text-sm text-zinc-300 group-hover:text-zinc-100">
+                    <span className="min-w-0 flex-1 truncate text-sm text-body group-hover:text-ink">
                       {m.title}
                     </span>
-                    <span className="shrink-0 text-xs tabular-nums text-zinc-500">{m.totalNodes} nodes</span>
+                    <span className="shrink-0 text-xs tabular-nums text-faint">{m.totalNodes} nodes</span>
                   </Link>
                 </li>
               ))}
@@ -160,7 +160,7 @@ export default async function PracticeBundleDetail({
         <aside className="space-y-6">
           <div className="card-raised p-5">
             <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="lg" />
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-faint">
               {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
             </p>
             <div className="mt-4">
@@ -174,7 +174,7 @@ export default async function PracticeBundleDetail({
             <div className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm font-medium text-emerald-300">
               About {inr(Math.max(1, Math.round(b.price / b.count)))} per template
             </div>
-            <p className="mt-4 text-xs text-zinc-500">{b.sellingPosition}</p>
+            <p className="mt-4 text-xs text-faint">{b.sellingPosition}</p>
           </div>
           <Link
             href="/practice-bundles"

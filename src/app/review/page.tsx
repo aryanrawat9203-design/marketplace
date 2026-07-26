@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 export default function ReviewPage() {
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-semibold text-zinc-100">How was your template?</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <h1 className="text-2xl font-semibold text-ink">How was your template?</h1>
+      <p className="mt-1 text-sm text-faint">
         Reviews come only from verified buyers via emailed links, and are checked before they
         appear on the site.
       </p>
-      <Suspense fallback={<div className="mt-10 text-sm text-zinc-500">Loading&hellip;</div>}>
+      <Suspense fallback={<div className="mt-10 text-sm text-faint">Loading&hellip;</div>}>
         <ReviewForm />
       </Suspense>
     </div>

@@ -22,8 +22,8 @@ export default function CollectionsPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
       <p className="eyebrow">Hand-assembled packs</p>
-      <h1 className="mt-2.5 text-2xl font-semibold text-zinc-50 sm:text-3xl">Curated collections</h1>
-      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-500">
+      <h1 className="mt-2.5 text-2xl font-semibold text-ink sm:text-3xl">Curated collections</h1>
+      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-faint">
         Opinionated starting points, assembled from the catalog&apos;s highest-demand templates.
         One click adds the whole pack to your cart - one payment, one ZIP.
       </p>
@@ -39,14 +39,14 @@ export default function CollectionsPage() {
               >
                 {c.name.charAt(0)}
               </div>
-              <h2 className="mt-4 font-sans font-semibold text-zinc-100 group-hover:text-white">{c.name}</h2>
-              <p className="mt-1 flex-1 text-sm leading-relaxed text-zinc-400">{c.tagline}</p>
+              <h2 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{c.name}</h2>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-muted">{c.tagline}</p>
               <div className="mt-4 flex items-baseline justify-between border-t border-white/[0.06] pt-3">
-                <span className="font-mono text-xs text-zinc-500">{stats.count} templates</span>
+                <span className="font-mono text-xs text-faint">{stats.count} templates</span>
                 <span className="text-sm">
-                  <b className="font-display tracking-tight text-zinc-100">{inr(stats.price)}</b>{" "}
+                  <b className="font-display tracking-tight text-ink">{inr(stats.price)}</b>{" "}
                   {stats.mrp > stats.price && (
-                    <span className="text-xs text-zinc-500 line-through">{inr(stats.mrp)}</span>
+                    <span className="text-xs text-faint line-through">{inr(stats.mrp)}</span>
                   )}
                 </span>
               </div>

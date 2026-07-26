@@ -142,8 +142,8 @@ export default function ScreenshotUploadClient() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-zinc-100">Template screenshots</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <h1 className="text-2xl font-semibold text-ink">Template screenshots</h1>
+      <p className="mt-1 text-sm text-faint">
         Search a template, then attach its named screenshots. Fields are independent - upload just
         the ones you have, and the homepage gallery renders whichever are filled.
       </p>
@@ -156,18 +156,18 @@ export default function ScreenshotUploadClient() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by template title or route..."
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none"
+          className="w-full rounded-xl border border-hairline-strong bg-surface-2 px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-violet-500 focus:outline-none"
         />
         {results.length > 0 && (
-          <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+          <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-hairline-strong bg-surface-2 shadow-xl">
             {results.map((r) => (
               <li key={r.route}>
                 <button
                   onClick={() => select(r)}
-                  className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-zinc-800"
+                  className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-white/[0.06]"
                 >
-                  <span className="text-sm text-zinc-100">{r.title}</span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-sm text-ink">{r.title}</span>
+                  <span className="text-xs text-faint">
                     {r.route}
                     {r.category ? ` · ${r.category}` : ""}
                   </span>
@@ -181,10 +181,10 @@ export default function ScreenshotUploadClient() {
       {error && <p className="mt-4 text-sm text-amber-300">{error}</p>}
 
       {selected && (
-        <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+        <div className="mt-6 rounded-2xl border border-hairline bg-surface-2/60 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-zinc-100">{selected.title}</div>
+              <div className="text-sm font-medium text-ink">{selected.title}</div>
               <a
                 href={`/workflows/${selected.route}`}
                 target="_blank"
@@ -196,7 +196,7 @@ export default function ScreenshotUploadClient() {
             </div>
             <button
               onClick={() => setSelected(null)}
-              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+              className="rounded-lg border border-hairline-strong px-3 py-1.5 text-sm text-body hover:bg-white/[0.06]"
             >
               Done
             </button>
@@ -207,14 +207,14 @@ export default function ScreenshotUploadClient() {
               const url = screenshots[slot.key];
               const busy = busySlot === slot.key;
               return (
-                <div key={slot.key} className="rounded-xl border border-zinc-800/80 p-3">
-                  <div className="text-sm font-medium text-zinc-200">{slot.label}</div>
-                  <div className="mt-0.5 text-xs text-zinc-500">{slot.hint}</div>
+                <div key={slot.key} className="rounded-xl border border-hairline p-3">
+                  <div className="text-sm font-medium text-body">{slot.label}</div>
+                  <div className="mt-0.5 text-xs text-faint">{slot.hint}</div>
                   {url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={url} alt="" className="mt-2 aspect-video w-full rounded-lg object-cover" />
                   )}
-                  <label className="mt-2 flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-zinc-700 px-3 py-2 text-xs text-zinc-400 hover:border-violet-500 hover:text-violet-300">
+                  <label className="mt-2 flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-hairline-strong px-3 py-2 text-xs text-muted hover:border-violet-500 hover:text-violet-300">
                     {busy ? "Uploading..." : url ? "Replace image" : "Upload image"}
                     <input
                       type="file"

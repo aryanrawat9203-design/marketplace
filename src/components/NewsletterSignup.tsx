@@ -45,9 +45,12 @@ export default function NewsletterSignup() {
           if (state === "error") setState("idle");
         }}
         placeholder="you@email.com"
-        className="h-11 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+        // `min-h-11`, not `h-11`: the wrapper is `flex-col` until `sm`, so on
+        // mobile `flex-1` resolves to `flex-basis: 0` on the *vertical* axis
+        // and overrides a plain `height`, collapsing the field to 20px.
+        className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-ink placeholder-faint outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
       />
-      <button type="submit" className="btn-primary h-11 shrink-0 px-5 text-sm">
+      <button type="submit" className="btn-primary btn-md shrink-0">
         Get free templates
       </button>
       {state === "error" && (

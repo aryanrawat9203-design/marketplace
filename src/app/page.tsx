@@ -171,17 +171,17 @@ export default async function Home() {
         />
         <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
-            <span className="anim-rise inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs text-zinc-300">
+            <span className="anim-rise inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs text-body">
               <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
               </span>
               <span>{fmt(taxo.total)} original templates &middot; launch pricing live</span>
             </span>
-            <h1 className="anim-rise anim-d1 mt-6 text-4xl font-bold tracking-tight text-zinc-50 sm:text-6xl sm:leading-[1.06]">
+            <h1 className="anim-rise anim-d1 mt-6 text-4xl font-bold tracking-tight text-ink sm:text-6xl sm:leading-[1.06]">
               Ready-to-use <span className="gradient-text">n8n workflows</span>, built to sell
             </h1>
-            <p className="anim-rise anim-d2 mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-zinc-400">
+            <p className="anim-rise anim-d2 mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
               Buy original, ready-to-import automation templates across {taxo.industries.length} industries
               and {taxo.categories.length} categories. Download instantly, or grab a whole category in one bundle.
             </p>
@@ -191,18 +191,18 @@ export default async function Home() {
               </Suspense>
             </div>
             <div className="anim-rise anim-d3 mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/workflows" className="btn-primary px-6 py-3">
+              <Link href="/workflows" className="btn-primary btn-lg">
                 Browse all templates
               </Link>
-              <Link href="/bundles" className="btn-secondary px-6 py-3">
+              <Link href="/bundles" className="btn-secondary btn-lg">
                 View bundles &amp; pricing
               </Link>
             </div>
             <div className="anim-rise anim-d4 mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] sm:grid-cols-4">
               {stats.map(([v, label]) => (
-                <div key={label} className="bg-[#0a0a10] px-4 py-3.5">
-                  <div className="font-display text-xl font-semibold tracking-tight text-zinc-50">{v}</div>
-                  <div className="mt-0.5 text-xs text-zinc-500">{label}</div>
+                <div key={label} className="bg-surface-1 px-4 py-3.5">
+                  <div className="font-display text-xl font-semibold tracking-tight text-ink">{v}</div>
+                  <div className="mt-0.5 text-xs text-faint">{label}</div>
                 </div>
               ))}
             </div>
@@ -225,7 +225,7 @@ export default async function Home() {
             <div className="mt-7 grid gap-4">
               <div className="card overflow-hidden">
                 <div className="grid lg:grid-cols-[7fr_5fr]">
-                  <div className="flex items-center justify-center border-b border-white/[0.06] bg-[#0a0a10] lg:border-b-0 lg:border-r">
+                  <div className="flex items-center justify-center border-b border-white/[0.06] bg-surface-1 lg:border-b-0 lg:border-r">
                     <Image
                       src={featured.src}
                       alt={featured.title}
@@ -236,9 +236,9 @@ export default async function Home() {
                     />
                   </div>
                   <div className="flex flex-col justify-center p-6 sm:p-8">
-                    <h3 className="text-lg font-semibold text-zinc-50">{featured.title}</h3>
-                    <p className="mt-2 leading-relaxed text-zinc-400">{featured.desc}</p>
-                    <p className="mt-4 text-sm leading-relaxed text-zinc-500">
+                    <h3 className="text-lg font-semibold text-ink">{featured.title}</h3>
+                    <p className="mt-2 leading-relaxed text-muted">{featured.desc}</p>
+                    <p className="mt-4 text-sm leading-relaxed text-faint">
                       Every template page shows the real node graph, the full node list, and
                       plain-English docs before you pay a rupee.
                     </p>
@@ -251,7 +251,7 @@ export default async function Home() {
               <div className="gap-4 sm:columns-2 lg:columns-3">
                 {restShowcase.map((c) => (
                   <div key={c.slot} className="card card-hover mb-4 break-inside-avoid overflow-hidden">
-                    <div className="border-b border-white/[0.06] bg-[#0a0a10]">
+                    <div className="border-b border-white/[0.06] bg-surface-1">
                       <Image
                         src={c.src}
                         alt={c.title}
@@ -262,8 +262,8 @@ export default async function Home() {
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-sans text-sm font-semibold text-zinc-100">{c.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-zinc-400">{c.desc}</p>
+                      <h3 className="font-sans text-sm font-semibold text-ink">{c.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-muted">{c.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -275,7 +275,7 @@ export default async function Home() {
 
       {/* ------------------------------------------------ free samples */}
       {samples.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <SectionHeader
             eyebrow="No card, no signup"
             title="Try it free"
@@ -292,35 +292,41 @@ export default async function Home() {
 
       {/* ------------------------------------------------ flagship bundles */}
       {full && life && (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <Reveal>
-            <div className="grid gap-4 md:grid-cols-2">
+            <SectionHeader
+              eyebrow="Best value"
+              title="Buy the whole library"
+              description="Every template we've made, in one download - or lifetime access to everything we make next."
+              action={{ href: "/bundles", label: "Compare all plans" }}
+            />
+            <div className="mt-7 grid gap-4 md:grid-cols-2">
               {[full, life].map((b, i) => (
                 <Link
                   key={b.slug}
                   href={`/bundles/${b.slug}`}
                   className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${b.gradient} p-[1px] card-hover`}
                 >
-                  <div className="relative h-full rounded-[15px] bg-[#0b0b12] p-6 sm:p-7">
+                  <div className="relative h-full rounded-[15px] bg-surface-1 p-6 sm:p-7">
                     <div
                       aria-hidden="true"
                       className={`pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-gradient-to-br ${b.gradient} opacity-[0.13] blur-3xl`}
                     />
                     <div className="relative">
                       <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-xl font-semibold text-zinc-50">{b.name}</h2>
+                        <h3 className="text-xl font-semibold text-ink">{b.name}</h3>
                         <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
                           {b.off}% off
                         </span>
                       </div>
-                      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{b.tagline}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-muted">{b.tagline}</p>
                       <div className="mt-5 flex items-baseline gap-2.5">
-                        <span className="font-display text-3xl font-bold tracking-tight text-zinc-50">
+                        <span className="font-display text-3xl font-bold tracking-tight text-ink">
                           {inr(b.price)}
                         </span>
-                        <span className="text-zinc-500 line-through">{inr(b.mrp)}</span>
+                        <span className="text-faint line-through">{inr(b.mrp)}</span>
                       </div>
-                      <div className="mt-1.5 text-xs text-zinc-500">
+                      <div className="mt-1.5 text-xs text-faint">
                         {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
                       </div>
                       <div className="link-arrow mt-5">
@@ -355,13 +361,13 @@ export default async function Home() {
                 >
                   {c.name.charAt(0)}
                 </div>
-                <h3 className="mt-4 font-sans font-semibold text-zinc-100 group-hover:text-white">{c.name}</h3>
-                <p className="mt-1 flex-1 text-xs leading-relaxed text-zinc-500">{c.tagline}</p>
+                <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{c.name}</h3>
+                <p className="mt-1 flex-1 text-xs leading-relaxed text-faint">{c.tagline}</p>
                 <div className="mt-4 flex items-baseline justify-between border-t border-white/[0.06] pt-3">
-                  <span className="font-display text-sm font-bold tracking-tight text-zinc-100">
+                  <span className="font-display text-sm font-bold tracking-tight text-ink">
                     {inr(stats.price)}
                   </span>
-                  <span className="text-xs text-zinc-500">{stats.count} templates</span>
+                  <span className="text-xs text-faint">{stats.count} templates</span>
                 </div>
               </Link>
             );
@@ -383,8 +389,8 @@ export default async function Home() {
               href={`/workflows?category=${encodeURIComponent(c.name)}`}
               className="card card-hover group p-4"
             >
-              <div className="text-sm font-medium text-zinc-200 group-hover:text-white">{c.name}</div>
-              <div className="mt-1 font-mono text-xs text-zinc-500">{fmt(c.count)} templates</div>
+              <div className="text-sm font-medium text-body group-hover:text-white">{c.name}</div>
+              <div className="mt-1 font-mono text-xs text-faint">{fmt(c.count)} templates</div>
             </Link>
           ))}
         </div>
@@ -403,9 +409,9 @@ export default async function Home() {
             <Link
               key={p.name}
               href={`/integrations/${integrationSlug(p.name)}`}
-              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
             >
-              {p.name} <span className="text-zinc-500">({fmt(p.count)})</span>
+              {p.name} <span className="text-faint">({fmt(p.count)})</span>
             </Link>
           ))}
         </div>
@@ -446,8 +452,8 @@ export default async function Home() {
                   {b.off}% off
                 </span>
               </div>
-              <h3 className="mt-4 font-sans font-semibold text-zinc-100 group-hover:text-white">{b.category}</h3>
-              <p className="mt-1 font-mono text-xs text-zinc-500">{fmt(b.count)} templates</p>
+              <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
+              <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
               <div className="mt-4 border-t border-white/[0.06] pt-3">
                 <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="sm" />
               </div>
@@ -468,8 +474,8 @@ export default async function Home() {
                 <div className="grid h-10 w-10 place-items-center rounded-xl border border-violet-500/25 bg-violet-500/10 text-violet-300">
                   <WhyIcon path={item.icon} />
                 </div>
-                <h3 className="mt-4 font-sans font-medium text-zinc-100">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">{item.desc}</p>
+                <h3 className="mt-4 font-sans font-medium text-ink">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -477,7 +483,7 @@ export default async function Home() {
       </section>
 
       {/* ------------------------------------------------ custom CTA */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl border border-violet-500/25 p-8 sm:p-10">
             <div
@@ -490,13 +496,13 @@ export default async function Home() {
             />
             <div className="relative flex flex-wrap items-center justify-between gap-6">
               <div className="max-w-xl">
-                <h2 className="text-2xl font-semibold text-zinc-50">Can&apos;t find the exact workflow?</h2>
-                <p className="mt-2 leading-relaxed text-zinc-400">
+                <h2 className="text-2xl font-semibold text-ink">Can&apos;t find the exact workflow?</h2>
+                <p className="mt-2 leading-relaxed text-muted">
                   We build custom n8n workflows to order - describe it, get a fixed quote, pay only if
                   you go ahead.
                 </p>
               </div>
-              <Link href="/custom" className="btn-primary px-6 py-3">
+              <Link href="/custom" className="btn-primary btn-lg">
                 Request a custom build
               </Link>
             </div>
@@ -515,11 +521,11 @@ export default async function Home() {
             />
             {steps.map(([n, t, d]) => (
               <div key={n} className="relative">
-                <div className="grid h-9 w-9 place-items-center rounded-full border border-violet-500/30 bg-[#0b0b12] font-display text-sm font-semibold text-violet-300 shadow-[0_0_0_6px_#07070c]">
+                <div className="grid h-9 w-9 place-items-center rounded-full border border-violet-500/30 bg-surface-1 font-display text-sm font-semibold text-violet-300 shadow-[0_0_0_6px_var(--color-surface-1)]">
                   {n}
                 </div>
-                <h3 className="mt-4 font-sans font-medium text-zinc-100">{t}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">{d}</p>
+                <h3 className="mt-4 font-sans font-medium text-ink">{t}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{d}</p>
               </div>
             ))}
           </div>

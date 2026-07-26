@@ -113,13 +113,13 @@ export default function CartPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <p className="eyebrow">Checkout</p>
-      <h1 className="mt-2.5 text-2xl font-semibold text-zinc-50 sm:text-3xl">Your cart</h1>
+      <h1 className="mt-2.5 text-2xl font-semibold text-ink sm:text-3xl">Your cart</h1>
 
       {count === 0 ? (
         <div className="card mt-10 p-10 text-center">
           <div
             aria-hidden="true"
-            className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-zinc-500"
+            className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-faint"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="21" r="1" />
@@ -127,11 +127,11 @@ export default function CartPage() {
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
           </div>
-          <p className="mt-4 text-zinc-300">Your cart is empty.</p>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-4 text-body">Your cart is empty.</p>
+          <p className="mt-2 text-sm text-faint">
             Add templates as you browse, then pay for everything in one go.
           </p>
-          <Link href="/workflows" className="btn-primary mt-6 px-5 py-2.5">
+          <Link href="/workflows" className="btn-primary btn-md mt-6 ">
             Browse templates
           </Link>
         </div>
@@ -146,16 +146,16 @@ export default function CartPage() {
                 <div className="min-w-0">
                   <Link
                     href={l.kind === "workflow" ? `/workflows/${l.key}` : `/bundles/${l.key}`}
-                    className="line-clamp-1 font-medium text-zinc-100 transition-colors hover:text-white"
+                    className="line-clamp-1 font-medium text-ink transition-colors hover:text-white"
                   >
                     {l.name}
                   </Link>
                   <div className="mt-1 flex items-baseline gap-2 text-sm">
-                    <span className="font-display font-semibold tracking-tight text-zinc-50">{inr(l.price)}</span>
+                    <span className="font-display font-semibold tracking-tight text-ink">{inr(l.price)}</span>
                     {l.mrp > l.price && (
-                      <span className="text-xs text-zinc-500 line-through">{inr(l.mrp)}</span>
+                      <span className="text-xs text-faint line-through">{inr(l.mrp)}</span>
                     )}
-                    <span className="text-xs text-zinc-600">
+                    <span className="text-xs text-faint">
                       {l.kind === "bundle" ? "Bundle" : "Template"}
                     </span>
                   </div>
@@ -163,7 +163,7 @@ export default function CartPage() {
                 <button
                   onClick={() => remove(l.kind, l.key)}
                   aria-label={`Remove ${l.name} from cart`}
-                  className="btn-secondary shrink-0 rounded-lg px-3 py-1.5 text-sm text-zinc-400 hover:text-zinc-200"
+                  className="btn-secondary btn-sm shrink-0 text-muted hover:text-body"
                 >
                   Remove
                 </button>
@@ -173,29 +173,29 @@ export default function CartPage() {
 
           <aside>
             <div className="card-raised p-5">
-              <h2 className="text-sm font-semibold text-zinc-200">Order summary</h2>
+              <h2 className="text-sm font-semibold text-body">Order summary</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-zinc-500">
+                  <dt className="text-faint">
                     {count} item{count > 1 ? "s" : ""}
                   </dt>
-                  <dd className="text-zinc-300">{inr(totalPrice)}</dd>
+                  <dd className="text-body">{inr(totalPrice)}</dd>
                 </div>
                 {totalMrp > totalPrice && (
                   <div className="flex justify-between">
-                    <dt className="text-zinc-500">You save</dt>
+                    <dt className="text-faint">You save</dt>
                     <dd className="text-emerald-400">{inr(totalMrp - totalPrice)}</dd>
                   </div>
                 )}
                 {promo && (
                   <div className="flex justify-between">
-                    <dt className="text-zinc-500">Promo ({promo.code})</dt>
+                    <dt className="text-faint">Promo ({promo.code})</dt>
                     <dd className="text-emerald-400">-{inr(totalPrice - discountedTotal)}</dd>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-white/[0.08] pt-2 text-base">
-                  <dt className="font-medium text-zinc-200">Total</dt>
-                  <dd className="font-display font-semibold tracking-tight text-zinc-50">{inr(discountedTotal)}</dd>
+                  <dt className="font-medium text-body">Total</dt>
+                  <dd className="font-display font-semibold tracking-tight text-ink">{inr(discountedTotal)}</dd>
                 </div>
               </dl>
 
@@ -203,12 +203,12 @@ export default function CartPage() {
                 <PromoCodeField onApplied={setPromo} />
               </div>
 
-              <button onClick={checkout} disabled={loading} className="btn-primary mt-4 w-full px-6 py-3">
+              <button onClick={checkout} disabled={loading} className="btn-primary btn-lg mt-4 w-full ">
                 {loading ? "Please wait..." : `Checkout ${inr(discountedTotal)}`}
               </button>
               {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
               <TrustStrip />
-              <p className="mt-3 text-center text-xs text-zinc-600">
+              <p className="mt-3 text-center text-xs text-faint">
                 One payment, one ZIP with every template inside.
               </p>
             </div>

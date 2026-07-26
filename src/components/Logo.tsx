@@ -48,7 +48,7 @@ export default function Logo({ markClassName = "h-8 w-8" }: { markClassName?: st
   return (
     <span className="inline-flex items-center gap-2.5">
       <LogoMark className={markClassName} />
-      <span className="font-display text-[17px] font-semibold tracking-tight text-zinc-50">
+      <span className="font-display text-[17px] font-semibold tracking-tight text-ink">
         Workflow<span className="text-violet-400">Crate</span>
       </span>
     </span>

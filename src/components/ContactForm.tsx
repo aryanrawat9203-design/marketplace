@@ -54,7 +54,7 @@ export default function ContactForm() {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <div>
-        <label htmlFor="name" className="block text-sm text-zinc-400">
+        <label htmlFor="name" className="block text-sm text-muted">
           Name
         </label>
         <input
@@ -62,11 +62,11 @@ export default function ContactForm() {
           name="name"
           type="text"
           autoComplete="name"
-          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
       </div>
       <div>
-        <label htmlFor="email" className="block text-sm text-zinc-400">
+        <label htmlFor="email" className="block text-sm text-muted">
           Email
         </label>
         <input
@@ -75,11 +75,11 @@ export default function ContactForm() {
           type="email"
           required
           autoComplete="email"
-          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
       </div>
       <div>
-        <label htmlFor="message" className="block text-sm text-zinc-400">
+        <label htmlFor="message" className="block text-sm text-muted">
           Message
         </label>
         <textarea
@@ -87,14 +87,14 @@ export default function ContactForm() {
           name="message"
           required
           rows={5}
-          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
       </div>
       {errorMsg && <p className="text-sm text-amber-300">{errorMsg}</p>}
       <button
         type="submit"
         disabled={status === "sending"}
-        className="btn-primary px-6 py-3"
+        className="btn-primary btn-lg"
       >
         {status === "sending" ? "Sending..." : "Send message"}
       </button>

@@ -36,8 +36,8 @@ export default function ReviewForm() {
   if (invalid || !token) {
     return (
       <div className="card mt-10 p-8 text-center">
-        <p className="text-zinc-300">This review link is invalid or has expired.</p>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="text-body">This review link is invalid or has expired.</p>
+        <p className="mt-2 text-sm text-faint">
           Review links arrive in your order-confirmation email and stay valid for 90 days.{" "}
           <Link href="/contact" className="text-violet-400 hover:text-violet-300">
             Contact us
@@ -52,12 +52,12 @@ export default function ReviewForm() {
     return (
       <div className="mt-10 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-8 text-center">
         <p className="font-medium text-emerald-300">Thank you! Your review was submitted.</p>
-        <p className="mt-2 text-sm text-zinc-400">
+        <p className="mt-2 text-sm text-muted">
           It will appear on the site once it clears a quick moderation check.
         </p>
         <Link
           href="/workflows"
-          className="btn-primary mt-5 px-5 py-2.5"
+          className="btn-primary btn-md mt-5 "
         >
           Keep browsing
         </Link>
@@ -101,13 +101,13 @@ export default function ReviewForm() {
   return (
     <form onSubmit={submit} className="mt-8 space-y-5">
       {itemTitle && (
-        <div className="card rounded-xl px-4 py-3 text-sm text-zinc-300">
-          Reviewing: <span className="font-medium text-zinc-100">{itemTitle}</span>
+        <div className="card rounded-xl px-4 py-3 text-sm text-body">
+          Reviewing: <span className="font-medium text-ink">{itemTitle}</span>
         </div>
       )}
 
       <fieldset>
-        <legend className="text-sm font-medium text-zinc-200">Your rating</legend>
+        <legend className="text-sm font-medium text-body">Your rating</legend>
         <div className="mt-2 flex gap-1" onMouseLeave={() => setHover(0)}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
@@ -126,8 +126,8 @@ export default function ReviewForm() {
       </fieldset>
 
       <div>
-        <label htmlFor="review-name" className="text-sm font-medium text-zinc-200">
-          Display name <span className="font-normal text-zinc-500">(optional)</span>
+        <label htmlFor="review-name" className="text-sm font-medium text-body">
+          Display name <span className="font-normal text-faint">(optional)</span>
         </label>
         <input
           id="review-name"
@@ -135,13 +135,13 @@ export default function ReviewForm() {
           onChange={(e) => setAuthorName(e.target.value)}
           maxLength={60}
           placeholder="e.g. Priya S."
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-ink placeholder-faint outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
       <div>
-        <label htmlFor="review-title" className="text-sm font-medium text-zinc-200">
-          Headline <span className="font-normal text-zinc-500">(optional)</span>
+        <label htmlFor="review-title" className="text-sm font-medium text-body">
+          Headline <span className="font-normal text-faint">(optional)</span>
         </label>
         <input
           id="review-title"
@@ -149,12 +149,12 @@ export default function ReviewForm() {
           onChange={(e) => setTitle(e.target.value)}
           maxLength={120}
           placeholder="Sums it up in one line"
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-ink placeholder-faint outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
       <div>
-        <label htmlFor="review-body" className="text-sm font-medium text-zinc-200">
+        <label htmlFor="review-body" className="text-sm font-medium text-body">
           Your review
         </label>
         <textarea
@@ -166,7 +166,7 @@ export default function ReviewForm() {
           maxLength={2000}
           rows={5}
           placeholder="Did it import cleanly? Save you time? What did you use it for?"
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-ink placeholder-faint outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
 
@@ -175,7 +175,7 @@ export default function ReviewForm() {
       <button
         type="submit"
         disabled={state === "sending"}
-        className="btn-primary px-6 py-3"
+        className="btn-primary btn-lg"
       >
         {state === "sending" ? "Submitting..." : "Submit review"}
       </button>

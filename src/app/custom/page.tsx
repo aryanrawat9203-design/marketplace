@@ -56,10 +56,10 @@ export default function CustomPage() {
       <JsonLd data={faqJsonLd} />
 
       <div className="max-w-2xl">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-50">
+        <h1 className="text-3xl font-bold tracking-tight text-ink">
           Need a workflow we <span className="gradient-text">don&apos;t have?</span>
         </h1>
-        <p className="mt-3 text-lg text-zinc-400">
+        <p className="mt-3 text-lg text-muted">
           We built the 10,500 templates in this store - we can build yours. Describe the automation
           and get a fixed quote, no payment upfront.
         </p>
@@ -71,15 +71,15 @@ export default function CustomPage() {
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-violet-500/15 font-semibold text-violet-300">
               {i + 1}
             </div>
-            <h2 className="mt-3 font-medium text-zinc-100">{t}</h2>
-            <p className="mt-1 text-sm text-zinc-400">{d}</p>
+            <h2 className="mt-3 font-medium text-ink">{t}</h2>
+            <p className="mt-1 text-sm text-muted">{d}</p>
           </div>
         ))}
       </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h2 className="text-xl font-semibold text-zinc-100">Tell us what to build</h2>
+          <h2 className="text-xl font-semibold text-ink">Tell us what to build</h2>
           <div className="mt-4">
             <CustomRequestForm />
           </div>
@@ -87,19 +87,19 @@ export default function CustomPage() {
 
         <aside className="space-y-4">
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-zinc-200">Common questions</h2>
+            <h2 className="text-sm font-semibold text-body">Common questions</h2>
             <div className="mt-3 space-y-2">
               {faqs.map(([q, a]) => (
                 <details key={q} className="group rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-                  <summary className="cursor-pointer list-none text-sm font-medium text-zinc-200 marker:content-none group-open:text-white">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-body marker:content-none group-open:text-white">
                     {q}
                   </summary>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{a}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{a}</p>
                 </details>
               ))}
             </div>
           </div>
-          <div className="card p-5 text-sm text-zinc-400">
+          <div className="card p-5 text-sm text-muted">
             Not sure yet? Something close might already exist -{" "}
             <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
               search the catalog

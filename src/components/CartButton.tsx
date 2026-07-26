@@ -11,7 +11,7 @@ export default function CartButton() {
     <Link
       href="/cart"
       aria-label={`Cart, ${count} item${count > 1 ? "s" : ""}`}
-      className="relative rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-200 transition-colors hover:bg-white/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      className="relative rounded-lg border border-white/10 bg-white/[0.04] p-2 text-body transition-colors hover:bg-white/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
     >
       <svg
         aria-hidden="true"

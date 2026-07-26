@@ -68,7 +68,7 @@ export default function PromoCodeField({
         <span className="text-emerald-300">
           Promo <span className="font-semibold">{applied.code}</span>{" "}- {applied.discountPercent}% off
         </span>
-        <button type="button" onClick={clearPromo} className="text-xs text-zinc-400 hover:text-zinc-200">
+        <button type="button" onClick={clearPromo} className="text-xs text-muted hover:text-body">
           Remove
         </button>
       </div>
@@ -95,13 +95,13 @@ export default function PromoCodeField({
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Promo code"
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink placeholder:text-faint transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
         <button
           type="button"
           onClick={apply}
           disabled={loading || !code.trim()}
-          className="btn-secondary shrink-0 rounded-lg px-3 py-2 text-sm"
+          className="btn-secondary btn-sm shrink-0 "
         >
           {loading ? "..." : "Apply"}
         </button>

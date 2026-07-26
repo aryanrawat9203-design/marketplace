@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { queryCatalog, getTaxonomy } from "@/lib/catalog";
+import { queryCatalog, getTaxonomy, type IndexItem } from "@/lib/catalog";
 import WorkflowCard from "@/components/WorkflowCard";
+import PageHeader from "@/components/PageHeader";
+import { WorkflowCardSkeletons, LoadingAnnouncement } from "@/components/Skeleton";
 import { FilterBar, PageJump } from "@/components/Controls";
 import { buildQuery } from "@/lib/url";
 import JsonLd from "@/components/JsonLd";
@@ -12,6 +14,30 @@ export const metadata: Metadata = { title: "Browse templates" };
 
 type SP = { [k: string]: string | string[] | undefined };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+const GRID = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+function ResultsGrid({ items }: { items: IndexItem[] }) {
+  return (
+    <div className={GRID}>
+      {items.map((w) => (
+        <WorkflowCard key={w.id} w={w} />
+      ))}
+    </div>
+  );
+}
+
+/** Same grid, same card box model — so nothing shifts when results land. */
+function GridFallback({ count }: { count: number }) {
+  return (
+    <>
+      <LoadingAnnouncement label="Loading templates" />
+      <div className={GRID}>
+        <WorkflowCardSkeletons count={count} />
+      </div>
+    </>
+  );
+}
 
 export default async function WorkflowsPage({
   searchParams,
@@ -61,14 +87,22 @@ export default async function WorkflowsPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
-      <p className="eyebrow">Template catalog</p>
-      <h1 className="mt-2.5 text-2xl font-semibold text-zinc-50 sm:text-3xl">{heading}</h1>
-      <p className="mt-1.5 text-sm text-zinc-500">
-        {total.toLocaleString("en-IN")} templates &middot;{" "}
-        <Link href="/workflows?tier=Free" className="text-violet-400 transition-colors hover:text-violet-300">
-          browse free samples
-        </Link>
-      </p>
+      <PageHeader
+        eyebrow="Template catalog"
+        title={heading}
+        size="md"
+        description={
+          <>
+            {total.toLocaleString("en-IN")} templates &middot;{" "}
+            <Link
+              href="/workflows?tier=Free"
+              className="text-violet-400 transition-colors hover:text-violet-300"
+            >
+              browse free samples
+            </Link>
+          </>
+        }
+      />
 
       <div className="mt-6">
         <Suspense fallback={<div className="h-10" />}>
@@ -78,28 +112,37 @@ export default async function WorkflowsPage({
 
       {items.length === 0 ? (
         <div className="mx-auto mt-16 max-w-md text-center">
-          <p className="text-zinc-400">
+          <p className="text-muted">
             No templates match these filters.{" "}
             <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
               Clear filters
             </Link>
           </p>
           <div className="mt-6 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
-            <h2 className="font-semibold text-zinc-100">Can&apos;t find it? We&apos;ll build it.</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h2 className="font-semibold text-ink">Can&apos;t find it? We&apos;ll build it.</h2>
+            <p className="mt-1 text-sm text-muted">
               Describe the automation you need and get a fixed quote - built by the same team
               behind every template in this store.
             </p>
-            <Link href="/custom" className="btn-primary mt-4 px-5 py-2.5 text-sm">
+            <Link href="/custom" className="btn-primary btn-md mt-4 ">
               Request a custom workflow
             </Link>
           </div>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((w) => (
-            <WorkflowCard key={w.id} w={w} />
-          ))}
+        // Streamed rather than blocking: the heading, filter bar and pagination
+        // are ready immediately, and only the card grid waits on the screenshot
+        // lookup each WorkflowCard performs.
+        //
+        // Deliberately a local <Suspense> and not a `loading.tsx` — a loading
+        // file here would also wrap /workflows/[route], and streaming that
+        // segment would downgrade its genuine notFound() 404s to soft 404s
+        // (status 200 + noindex). On a catalog with 10,501 indexed URLs and
+        // routes that get renamed, keeping a real 404 status matters more.
+        <div className="mt-6">
+          <Suspense fallback={<GridFallback count={items.length} />}>
+            <ResultsGrid items={items} />
+          </Suspense>
         </div>
       )}
 
@@ -109,18 +152,18 @@ export default async function WorkflowsPage({
             {page > 1 && (
               <Link
                 href={`/workflows${buildQuery(current, { page: page - 1 })}`}
-                className="btn-secondary rounded-lg px-4 py-2"
+                className="btn-secondary btn-sm"
               >
                 &larr; Prev
               </Link>
             )}
-            <span className="font-mono text-xs text-zinc-500">
+            <span className="font-mono text-xs text-faint">
               Page {page} of {pages.toLocaleString("en-IN")}
             </span>
             {page < pages && (
               <Link
                 href={`/workflows${buildQuery(current, { page: page + 1 })}`}
-                className="btn-secondary rounded-lg px-4 py-2"
+                className="btn-secondary btn-sm"
               >
                 Next &rarr;
               </Link>

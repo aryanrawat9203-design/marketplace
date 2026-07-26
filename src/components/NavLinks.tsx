@@ -8,7 +8,7 @@ export type NavLink = { href: string; label: string };
 const ACTIVE_CLASS =
   "rounded-lg bg-violet-500/12 px-3 py-2 font-medium text-violet-300 ring-1 ring-inset ring-violet-500/25 transition-colors hover:bg-violet-500/20 hover:text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
 const INACTIVE_CLASS =
-  "rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.05] hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
+  "rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.05] hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
 
 // A link is "active" when the current route is that section or a page
 // within it (e.g. /workflows/[route] keeps "Browse" active), not just on an

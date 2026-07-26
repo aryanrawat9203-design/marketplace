@@ -20,7 +20,7 @@ export default function AddToCartButton({ line, block = false }: { line: CartLin
   }
 
   return (
-    <button onClick={() => add(line)} className={`btn-secondary mt-2 px-6 py-3 text-sm ${w}`}>
+    <button onClick={() => add(line)} className={`btn-secondary btn-md mt-2 ${w}`}>
       Add to cart
     </button>
   );

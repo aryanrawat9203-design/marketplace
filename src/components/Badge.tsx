@@ -6,7 +6,7 @@ const tones: Record<string, string> = {
   amber: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
   sky: "bg-sky-500/10 text-sky-300 ring-sky-500/30",
   rose: "bg-rose-500/10 text-rose-300 ring-rose-500/30",
-  zinc: "bg-zinc-500/10 text-zinc-300 ring-zinc-500/30",
+  zinc: "bg-zinc-500/10 text-body ring-zinc-500/30",
 };
 
 export function Badge({

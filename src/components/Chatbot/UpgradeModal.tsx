@@ -138,19 +138,19 @@ export default function UpgradeModal({
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-[#0c0c12] p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-hairline bg-surface-2 p-6 shadow-xl">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold text-zinc-100">You&rsquo;re out of free AI chats</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300" aria-label="Close">
+          <h2 className="text-lg font-semibold text-ink">You&rsquo;re out of free AI chats</h2>
+          <button onClick={onClose} className="text-faint hover:text-body" aria-label="Close">
             &#10005;
           </button>
         </div>
-        <p className="mt-1 text-sm text-zinc-400">Pick an option to keep chatting with the assistant.</p>
+        <p className="mt-1 text-sm text-muted">Pick an option to keep chatting with the assistant.</p>
 
         <div className="mt-5 space-y-3">
           <div className="rounded-xl border border-violet-500/40 bg-violet-500/10 p-4">
-            <p className="font-medium text-zinc-100">Unlimited AI chat</p>
-            <p className="mt-1 text-sm text-zinc-400">{inr(subPrice)}/month, cancel anytime.</p>
+            <p className="font-medium text-ink">Unlimited AI chat</p>
+            <p className="mt-1 text-sm text-muted">{inr(subPrice)}/month, cancel anytime.</p>
             <button
               onClick={subscribe}
               disabled={loading !== null}
@@ -160,13 +160,13 @@ export default function UpgradeModal({
             </button>
           </div>
 
-          <div className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4">
-            <p className="font-medium text-zinc-100">+{topupBonus} conversations</p>
-            <p className="mt-1 text-sm text-zinc-400">One-time top-up, {inr(topupPrice)}.</p>
+          <div className="rounded-xl border border-hairline-strong bg-surface-2/60 p-4">
+            <p className="font-medium text-ink">+{topupBonus} conversations</p>
+            <p className="mt-1 text-sm text-muted">One-time top-up, {inr(topupPrice)}.</p>
             <button
               onClick={topup}
               disabled={loading !== null}
-              className="mt-3 w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 font-medium text-zinc-100 hover:bg-zinc-700 disabled:opacity-60"
+              className="mt-3 w-full rounded-xl border border-hairline-strong bg-surface-3 px-4 py-2.5 font-medium text-ink hover:bg-white/[0.1] disabled:opacity-60"
             >
               {loading === "topup" ? "Please wait..." : `Top up - ${inr(topupPrice)}`}
             </button>
@@ -175,7 +175,7 @@ export default function UpgradeModal({
 
         {msg && <p className="mt-4 text-sm text-amber-300">{msg}</p>}
 
-        <button onClick={onClose} className="mt-4 w-full text-center text-xs text-zinc-500 hover:text-zinc-300">
+        <button onClick={onClose} className="mt-4 w-full text-center text-xs text-faint hover:text-body">
           Not now
         </button>
       </div>

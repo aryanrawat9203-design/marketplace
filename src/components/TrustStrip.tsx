@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function TrustStrip() {
   return (
-    <p className="mt-3 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-xs text-zinc-500">
+    <p className="mt-3 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-xs text-faint">
       <svg
         aria-hidden="true"
         width="12"
@@ -19,7 +19,7 @@ export default function TrustStrip() {
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
       Secure checkout &middot; Razorpay &middot; Instant download &middot;{" "}
-      <Link href="/refund" className="underline underline-offset-2 transition-colors hover:text-zinc-300">
+      <Link href="/refund" className="underline underline-offset-2 transition-colors hover:text-body">
         Refund policy
       </Link>
     </p>

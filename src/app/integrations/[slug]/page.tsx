@@ -118,42 +118,42 @@ export default async function IntegrationPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
+      <nav className="text-xs text-faint">
+        <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/integrations" className="hover:text-zinc-300">Integrations</Link>
+        <Link href="/integrations" className="hover:text-body">Integrations</Link>
         <span className="mx-1">/</span>
-        <span className="text-zinc-400">{integration.name}</span>
+        <span className="text-muted">{integration.name}</span>
       </nav>
 
-      <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-50">
+      <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink">
         {integration.name} <span className="gradient-text">n8n templates</span>
       </h1>
-      <p className="mt-3 max-w-2xl text-zinc-400">
+      <p className="mt-3 max-w-2xl text-muted">
         {fmt(integration.count)} original workflow templates use {integration.name}. Each one is a
         ready-to-import n8n JSON file - buy it, download it, add your {integration.name} credentials,
         and it runs.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href={browseHref} className="btn-primary px-5 py-3">
+        <Link href={browseHref} className="btn-primary btn-lg">
           Browse all {fmt(integration.count)} templates
         </Link>
-        <Link href="/bundles" className="btn-secondary px-5 py-3">
+        <Link href="/bundles" className="btn-secondary btn-lg">
           View bundles &amp; pricing
         </Link>
       </div>
 
       {topCategories.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-lg font-semibold text-zinc-100">Popular categories with {integration.name}</h2>
+          <h2 className="text-lg font-semibold text-ink">Popular categories with {integration.name}</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {topCategories.map(([name, count]) => (
               <Link
                 key={name}
                 href={`/workflows?platform=${encodeURIComponent(integration.name)}&category=${encodeURIComponent(name)}`}
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
               >
-                {name} <span className="text-zinc-500">({fmt(count)})</span>
+                {name} <span className="text-faint">({fmt(count)})</span>
               </Link>
             ))}
           </div>
@@ -162,7 +162,7 @@ export default async function IntegrationPage({
 
       <div className="mt-10">
         <div className="flex items-end justify-between">
-          <h2 className="text-lg font-semibold text-zinc-100">Most popular {integration.name} templates</h2>
+          <h2 className="text-lg font-semibold text-ink">Most popular {integration.name} templates</h2>
           <Link href={browseHref} className="link-arrow">
             View all <span className="arrow">&rarr;</span>
           </Link>
@@ -176,10 +176,10 @@ export default async function IntegrationPage({
 
       {pairsWithThis.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-lg font-semibold text-zinc-100">
+          <h2 className="text-lg font-semibold text-ink">
             Connect {integration.name} to another app
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-faint">
             Templates that wire {integration.name} up to the rest of your stack.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -189,10 +189,10 @@ export default async function IntegrationPage({
                 <Link
                   key={p.slug}
                   href={`/integrations/${p.slug}`}
-                  className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+                  className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
                 >
                   {integration.name} + {other.name}{" "}
-                  <span className="text-zinc-500">({fmt(p.count)})</span>
+                  <span className="text-faint">({fmt(p.count)})</span>
                 </Link>
               );
             })}
@@ -202,14 +202,14 @@ export default async function IntegrationPage({
 
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
-          <h2 className="font-semibold text-zinc-100">
+          <h2 className="font-semibold text-ink">
             Need a {integration.name} workflow that isn&apos;t here?
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-muted">
             Describe it and get a fixed quote - custom-built, ready to import.
           </p>
         </div>
-        <Link href="/custom" className="btn-primary px-5 py-2.5 text-sm">
+        <Link href="/custom" className="btn-primary btn-md">
           Request a custom build
         </Link>
       </div>
@@ -235,64 +235,64 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
+      <nav className="text-xs text-faint">
+        <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/integrations" className="hover:text-zinc-300">Integrations</Link>
+        <Link href="/integrations" className="hover:text-body">Integrations</Link>
         <span className="mx-1">/</span>
-        <span className="text-zinc-400">{a.name} + {b.name}</span>
+        <span className="text-muted">{a.name} + {b.name}</span>
       </nav>
 
-      <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-50">
+      <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink">
         {a.name} + {b.name} <span className="gradient-text">n8n templates</span>
       </h1>
-      <p className="mt-3 max-w-2xl text-zinc-400">
+      <p className="mt-3 max-w-2xl text-muted">
         {fmt(pair.count)} original workflow templates connect {a.name} and {b.name} in a single
         automation. Every one is a ready-to-import n8n JSON file - buy it, download it, add your{" "}
         {a.name} and {b.name} credentials, and it runs. No code, no rebuild from scratch.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href={browseHref} className="btn-primary px-5 py-3">
+        <Link href={browseHref} className="btn-primary btn-lg">
           Browse all {fmt(pair.count)} templates
         </Link>
-        <Link href="/bundles" className="btn-secondary px-5 py-3">
+        <Link href="/bundles" className="btn-secondary btn-lg">
           View bundles &amp; pricing
         </Link>
       </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card rounded-xl p-4">
-          <dt className="text-xs text-zinc-500">Templates using both</dt>
-          <dd className="mt-1 text-xl font-semibold text-zinc-100">{fmt(pair.count)}</dd>
+          <dt className="text-xs text-faint">Templates using both</dt>
+          <dd className="mt-1 text-xl font-semibold text-ink">{fmt(pair.count)}</dd>
         </div>
         <div className="card rounded-xl p-4">
-          <dt className="text-xs text-zinc-500">{a.name} templates</dt>
-          <dd className="mt-1 text-xl font-semibold text-zinc-100">{fmt(a.count)}</dd>
+          <dt className="text-xs text-faint">{a.name} templates</dt>
+          <dd className="mt-1 text-xl font-semibold text-ink">{fmt(a.count)}</dd>
         </div>
         <div className="card rounded-xl p-4">
-          <dt className="text-xs text-zinc-500">{b.name} templates</dt>
-          <dd className="mt-1 text-xl font-semibold text-zinc-100">{fmt(b.count)}</dd>
+          <dt className="text-xs text-faint">{b.name} templates</dt>
+          <dd className="mt-1 text-xl font-semibold text-ink">{fmt(b.count)}</dd>
         </div>
         <div className="card rounded-xl p-4">
-          <dt className="text-xs text-zinc-500">Setup time</dt>
-          <dd className="mt-1 text-xl font-semibold text-zinc-100">Minutes</dd>
+          <dt className="text-xs text-faint">Setup time</dt>
+          <dd className="mt-1 text-xl font-semibold text-ink">Minutes</dd>
         </div>
       </dl>
 
       {topSubcategories.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-lg font-semibold text-zinc-100">
+          <h2 className="text-lg font-semibold text-ink">
             What you can automate between {a.name} and {b.name}
           </h2>
           <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {topSubcategories.map(([name, count]) => (
               <li
                 key={name}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-zinc-300"
+                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-body"
               >
                 <span>{name}</span>
-                <span className="font-mono text-xs text-zinc-500">{fmt(count)} templates</span>
+                <span className="font-mono text-xs text-faint">{fmt(count)} templates</span>
               </li>
             ))}
           </ul>
@@ -301,15 +301,15 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
 
       {topCategories.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-lg font-semibold text-zinc-100">Browse by category</h2>
+          <h2 className="text-lg font-semibold text-ink">Browse by category</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {topCategories.map(([name, count]) => (
               <Link
                 key={name}
                 href={`${browseHref}&category=${encodeURIComponent(name)}`}
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
               >
-                {name} <span className="text-zinc-500">({fmt(count)})</span>
+                {name} <span className="text-faint">({fmt(count)})</span>
               </Link>
             ))}
           </div>
@@ -318,7 +318,7 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
 
       <div className="mt-10">
         <div className="flex items-end justify-between">
-          <h2 className="text-lg font-semibold text-zinc-100">
+          <h2 className="text-lg font-semibold text-ink">
             Most popular {a.name} + {b.name} templates
           </h2>
           <Link href={browseHref} className="link-arrow">
@@ -333,14 +333,14 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
       </div>
 
       <div className="mt-12">
-        <h2 className="text-lg font-semibold text-zinc-100">Explore each integration</h2>
+        <h2 className="text-lg font-semibold text-ink">Explore each integration</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {[a, b].map((i) => (
             <Link key={i.slug} href={`/integrations/${i.slug}`} className="card card-hover group rounded-xl p-4">
-              <div className="text-sm font-medium text-zinc-200 group-hover:text-white">
+              <div className="text-sm font-medium text-body group-hover:text-white">
                 All {i.name} templates
               </div>
-              <div className="mt-1 font-mono text-xs text-zinc-500">{fmt(i.count)} templates</div>
+              <div className="mt-1 font-mono text-xs text-faint">{fmt(i.count)} templates</div>
             </Link>
           ))}
         </div>
@@ -348,15 +348,15 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
 
       {related.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-lg font-semibold text-zinc-100">Related integrations</h2>
+          <h2 className="text-lg font-semibold text-ink">Related integrations</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {related.map((p) => (
               <Link
                 key={p.slug}
                 href={`/integrations/${p.slug}`}
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
               >
-                {p.a.name} + {p.b.name} <span className="text-zinc-500">({fmt(p.count)})</span>
+                {p.a.name} + {p.b.name} <span className="text-faint">({fmt(p.count)})</span>
               </Link>
             ))}
           </div>
@@ -365,14 +365,14 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
 
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
-          <h2 className="font-semibold text-zinc-100">
+          <h2 className="font-semibold text-ink">
             Need a specific {a.name} to {b.name} workflow?
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-muted">
             Describe it and get a fixed quote - custom-built, ready to import.
           </p>
         </div>
-        <Link href="/custom" className="btn-primary px-5 py-2.5 text-sm">
+        <Link href="/custom" className="btn-primary btn-md">
           Request a custom build
         </Link>
       </div>

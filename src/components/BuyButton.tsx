@@ -124,12 +124,18 @@ export default function BuyButton({
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className={block ? "w-full" : "inline-block"}>
-        <button onClick={buy} disabled={loading} className={`btn-primary px-6 py-3 ${w}`}>
-          {loading
-            ? "Please wait..."
-            : freeAccess
-              ? "Download (Full Access)"
-              : `Buy ${inr(discountedPrice)}${promo ? ` (was ${inr(item.price)})` : ""}`}
+        {/* The label stays put while loading and a spinner is appended, so the
+            button never changes width mid-click. `aria-busy` announces the
+            wait to assistive tech, which a text swap alone wouldn't. */}
+        <button
+          onClick={buy}
+          disabled={loading}
+          aria-busy={loading || undefined}
+          className={`btn-primary btn-lg ${loading ? "btn-loading" : ""} ${w}`}
+        >
+          {freeAccess
+            ? "Download (Full Access)"
+            : `Buy ${inr(discountedPrice)}${promo ? ` (was ${inr(item.price)})` : ""}`}
         </button>
         {!freeAccess && (
           <div className="mt-2">

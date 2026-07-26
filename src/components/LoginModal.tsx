@@ -58,31 +58,31 @@ export default function LoginModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="anim-rise w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c0c13] p-6 shadow-2xl shadow-black/60 [animation-duration:300ms]">
+      <div className="anim-rise w-full max-w-sm rounded-2xl border border-white/10 bg-surface-2 p-6 shadow-2xl shadow-black/60 [animation-duration:300ms]">
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-semibold text-zinc-100">Sign in to WorkflowCrate</h2>
+          <h2 className="text-lg font-semibold text-ink">Sign in to WorkflowCrate</h2>
           {!force && (
             <button
               onClick={onClose}
-              className="text-zinc-500 hover:text-zinc-300"
+              className="text-faint hover:text-body"
               aria-label="Close"
             >
               &#10005;
             </button>
           )}
         </div>
-        <p className="mt-1 text-sm text-zinc-400">
+        <p className="mt-1 text-sm text-muted">
           {force
             ? "Sign in to complete your purchase."
             : "Sign in for faster checkout and order history."}
         </p>
 
-        <button onClick={withGoogle} className="btn-secondary mt-5 w-full px-4 py-2.5">
+        <button onClick={withGoogle} className="btn-secondary btn-md mt-5 w-full ">
           Continue with Google
         </button>
 
-        <div className="my-4 flex items-center gap-3 text-xs text-zinc-500">
-          <div className="h-px flex-1 bg-zinc-800" /> or <div className="h-px flex-1 bg-zinc-800" />
+        <div className="my-4 flex items-center gap-3 text-xs text-faint">
+          <div className="h-px flex-1 bg-surface-3" /> or <div className="h-px flex-1 bg-surface-3" />
         </div>
 
         {sent ? (
@@ -97,9 +97,9 @@ export default function LoginModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-ink outline-none transition-colors focus:border-violet-500"
             />
-            <button type="submit" disabled={loading} className="btn-primary w-full px-4 py-2.5">
+            <button type="submit" disabled={loading} className="btn-primary btn-md w-full ">
               {loading ? "Sending..." : "Email me a sign-in link"}
             </button>
             {err && <p className="text-sm text-red-400">{err}</p>}
@@ -109,7 +109,7 @@ export default function LoginModal({
         {!force && (
           <button
             onClick={onClose}
-            className="mt-4 w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+            className="mt-4 w-full text-center text-xs text-faint hover:text-body"
           >
             Not now
           </button>

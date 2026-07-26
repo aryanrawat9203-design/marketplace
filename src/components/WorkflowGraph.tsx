@@ -18,7 +18,7 @@ export default function WorkflowGraph({ graph }: { graph: WorkflowGraphData }) {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-800/80 bg-[#0b0b11]">
+    <div className="overflow-x-auto rounded-2xl border border-hairline bg-surface-1">
       <svg
         viewBox={`0 0 ${graph.width} ${graph.height}`}
         width={graph.width}
@@ -61,7 +61,7 @@ export default function WorkflowGraph({ graph }: { graph: WorkflowGraphData }) {
         </g>
         {graph.nodes.map((n) => (
           <g key={n.id} transform={`translate(${n.x} ${n.y})`}>
-            <rect width={NW} height={NH} rx="10" fill="#15151d" stroke="#33333f" />
+            <rect width={NW} height={NH} rx="10" fill="var(--color-surface-3)" stroke="#33333f" />
             <rect x="0" y="0" width="4" height={NH} rx="2" fill={KIND_ACCENT[n.kind]} />
             <text x="14" y="24" fill="#e4e4e7" fontSize="12.5" fontWeight="600" fontFamily="var(--font-sans), sans-serif">
               {truncate(n.label, 24)}

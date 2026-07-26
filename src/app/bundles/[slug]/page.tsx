@@ -72,10 +72,10 @@ export default async function BundleDetail({
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
       <JsonLd data={productJsonLd} />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
+      <nav className="text-xs text-faint">
+        <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/bundles" className="hover:text-zinc-300">Bundles</Link>
+        <Link href="/bundles" className="hover:text-body">Bundles</Link>
       </nav>
 
       <div className={`relative mt-4 h-40 overflow-hidden rounded-2xl bg-gradient-to-br ${b.gradient}`}>
@@ -92,12 +92,12 @@ export default async function BundleDetail({
 
       <div className="mt-6 grid gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h1 className="text-3xl font-bold text-zinc-50">{b.name}</h1>
-          <p className="mt-2 text-lg text-zinc-400">{b.tagline}</p>
+          <h1 className="text-3xl font-bold text-ink">{b.name}</h1>
+          <p className="mt-2 text-lg text-muted">{b.tagline}</p>
 
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-zinc-100">What&apos;s included</h2>
-            <ul className="mt-3 space-y-2 text-zinc-300">
+            <h2 className="text-lg font-semibold text-ink">What&apos;s included</h2>
+            <ul className="mt-3 space-y-2 text-body">
               <li className="flex gap-2"><span className="mt-0.5 text-emerald-400">&#10003;</span> {fmt(b.count)} original, ready-to-import n8n templates</li>
               <li className="flex gap-2"><span className="mt-0.5 text-emerald-400">&#10003;</span> Delivered as a single ZIP, organised by category &amp; subcategory</li>
               <li className="flex gap-2"><span className="mt-0.5 text-emerald-400">&#10003;</span> License to use and adapt every template in your projects</li>
@@ -112,7 +112,7 @@ export default async function BundleDetail({
           {preview.length > 0 && (
             <div className="mt-10">
               <div className="flex items-end justify-between">
-                <h2 className="text-lg font-semibold text-zinc-100">Sample templates inside</h2>
+                <h2 className="text-lg font-semibold text-ink">Sample templates inside</h2>
                 <Link href={browseHref} className="link-arrow">
                   Browse all {fmt(b.count)} <span className="arrow">&rarr;</span>
                 </Link>
@@ -129,7 +129,7 @@ export default async function BundleDetail({
         <aside className="space-y-6">
           <div className="card-raised p-5">
             <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="lg" />
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-faint">
               {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
             </p>
             <div className="mt-4">

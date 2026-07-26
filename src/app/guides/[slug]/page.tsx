@@ -46,15 +46,15 @@ export default async function GuideDetail({
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <JsonLd data={breadcrumb} />
-      <nav className="text-xs text-zinc-500">
-        <Link href="/" className="hover:text-zinc-300">Home</Link>
+      <nav className="text-xs text-faint">
+        <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
-        <Link href="/guides" className="hover:text-zinc-300">Guides</Link>
+        <Link href="/guides" className="hover:text-body">Guides</Link>
       </nav>
 
-      <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-50">{g.title}</h1>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight text-ink">{g.title}</h1>
 
-      <div className="mt-6 space-y-4 leading-relaxed text-zinc-300">
+      <div className="mt-6 space-y-4 leading-relaxed text-body">
         {g.intro.map((p, i) => (
           <p key={i}>{p}</p>
         ))}
@@ -68,7 +68,7 @@ export default async function GuideDetail({
         </div>
       )}
 
-      <p className="mt-8 leading-relaxed text-zinc-300">{g.closing}</p>
+      <p className="mt-8 leading-relaxed text-body">{g.closing}</p>
 
       {g.category && (
         <Link

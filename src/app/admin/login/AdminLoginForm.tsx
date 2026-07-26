@@ -41,7 +41,7 @@ export default function AdminLoginForm({ next }: { next: string }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label htmlFor="admin-password" className="text-sm font-medium text-zinc-200">
+        <label htmlFor="admin-password" className="text-sm font-medium text-body">
           Password
         </label>
         <input
@@ -51,7 +51,7 @@ export default function AdminLoginForm({ next }: { next: string }) {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+          className="mt-1.5 w-full rounded-xl border border-hairline-strong bg-surface-2 px-3 py-2.5 text-sm text-ink outline-none focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         />
       </div>
       {error && <p className="text-sm text-amber-300">{error}</p>}

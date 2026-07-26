@@ -32,10 +32,10 @@ export default function PriceTag({
   const showWas = mrp > price && off > 0;
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className={`${sale[size]} text-zinc-50`}>{inr(price)}</span>
+      <span className={`${sale[size]} text-ink`}>{inr(price)}</span>
       {showWas && (
         <>
-          <span className={`${was[size]} text-zinc-500 line-through`}>{inr(mrp)}</span>
+          <span className={`${was[size]} text-faint line-through`}>{inr(mrp)}</span>
           <span
             className={`rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-300 ${
               size === "lg" ? "text-sm" : "text-[11px]"

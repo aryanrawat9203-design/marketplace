@@ -49,7 +49,7 @@ export default function OrderLookupForm() {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <div>
-        <label htmlFor="email" className="block text-sm text-zinc-400">
+        <label htmlFor="email" className="block text-sm text-muted">
           Email used at checkout
         </label>
         <input
@@ -58,11 +58,11 @@ export default function OrderLookupForm() {
           type="email"
           required
           autoComplete="email"
-          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
       </div>
       <div>
-        <label htmlFor="orderId" className="block text-sm text-zinc-400">
+        <label htmlFor="orderId" className="block text-sm text-muted">
           Razorpay order id
         </label>
         <input
@@ -71,9 +71,9 @@ export default function OrderLookupForm() {
           type="text"
           required
           placeholder="order_..."
-          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
         />
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-faint">
           Found in your Razorpay payment confirmation or the order-confirmation email.
         </p>
       </div>
@@ -81,7 +81,7 @@ export default function OrderLookupForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="btn-primary px-6 py-3"
+        className="btn-primary btn-lg"
       >
         {status === "sending" ? "Looking up..." : "Email me my download link"}
       </button>

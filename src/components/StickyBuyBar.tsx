@@ -28,13 +28,13 @@ export default function StickyBuyBar({
   if (item.free || !show) return null;
 
   return (
-    <div className="anim-rise fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#0b0b12]/95 px-4 py-3 shadow-[0_-12px_32px_rgb(0_0_0/0.5)] backdrop-blur-md [animation-duration:300ms] lg:hidden">
+    <div className="anim-rise fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-surface-2/95 px-4 py-3 shadow-[0_-12px_32px_rgb(0_0_0/0.5)] backdrop-blur-md [animation-duration:300ms] lg:hidden">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="line-clamp-1 text-sm font-medium text-zinc-200">{item.name}</div>
+          <div className="line-clamp-1 text-sm font-medium text-body">{item.name}</div>
           <div className="flex items-baseline gap-2">
-            <span className="font-display font-semibold tracking-tight text-zinc-50">{inr(item.price)}</span>
-            {mrp > item.price && <span className="text-xs text-zinc-500 line-through">{inr(mrp)}</span>}
+            <span className="font-display font-semibold tracking-tight text-ink">{inr(item.price)}</span>
+            {mrp > item.price && <span className="text-xs text-faint line-through">{inr(mrp)}</span>}
           </div>
         </div>
         <div className="shrink-0">

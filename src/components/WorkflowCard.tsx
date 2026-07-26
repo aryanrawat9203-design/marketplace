@@ -29,10 +29,10 @@ export default async function WorkflowCard({ w }: { w: IndexItem }) {
         {w.difficulty && <Badge tone={difficultyTone(w.difficulty)}>{w.difficulty}</Badge>}
         {w.tier && !w.free && <Badge tone={tierTone(w.tier)}>{w.tier}</Badge>}
       </div>
-      <h3 className="mt-3 line-clamp-2 font-sans text-base font-semibold leading-snug text-zinc-100 group-hover:text-white">
+      <h3 className="mt-3 line-clamp-2 font-sans text-base font-semibold leading-snug text-ink group-hover:text-white">
         {w.title}
       </h3>
-      {w.short && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-400">{w.short}</p>}
+      {w.short && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{w.short}</p>}
       <div className="mb-4 mt-4 flex flex-1 flex-wrap content-start items-start gap-1.5">
         {w.platforms.slice(0, 3).map((p) => (
           <span key={p} className="chip">
@@ -40,7 +40,7 @@ export default async function WorkflowCard({ w }: { w: IndexItem }) {
           </span>
         ))}
         {w.platforms.length > 3 && (
-          <span className="text-[11px] text-zinc-500">+{w.platforms.length - 3}</span>
+          <span className="text-[11px] text-faint">+{w.platforms.length - 3}</span>
         )}
       </div>
       <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">

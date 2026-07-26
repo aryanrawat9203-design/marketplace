@@ -6,7 +6,7 @@ const BUDGETS = ["Under Rs 2,000", "Rs 2,000 - 5,000", "Rs 5,000 - 15,000", "Rs 
 const TIMELINES = ["As soon as possible", "Within 1-2 weeks", "Flexible"];
 
 const inputCls =
-  "mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
+  "mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-ink placeholder-faint outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500";
 
 export default function CustomRequestForm() {
   const [name, setName] = useState("");
@@ -22,8 +22,8 @@ export default function CustomRequestForm() {
     return (
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-8 text-center">
         <p className="font-medium text-emerald-300">Request received!</p>
-        <p className="mt-2 text-sm text-zinc-400">
-          We&apos;ll reply to <span className="text-zinc-200">{email}</span>{" "}with a quote and any
+        <p className="mt-2 text-sm text-muted">
+          We&apos;ll reply to <span className="text-body">{email}</span>{" "}with a quote and any
           follow-up questions, usually within 1&ndash;2 business days.
         </p>
       </div>
@@ -67,19 +67,19 @@ export default function CustomRequestForm() {
     <form onSubmit={submit} className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="cr-name" className="text-sm font-medium text-zinc-200">
-            Name <span className="font-normal text-zinc-500">(optional)</span>
+          <label htmlFor="cr-name" className="text-sm font-medium text-body">
+            Name <span className="font-normal text-faint">(optional)</span>
           </label>
           <input id="cr-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Your name" className={inputCls} />
         </div>
         <div>
-          <label htmlFor="cr-email" className="text-sm font-medium text-zinc-200">Email</label>
+          <label htmlFor="cr-email" className="text-sm font-medium text-body">Email</label>
           <input id="cr-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className={inputCls} />
         </div>
       </div>
 
       <div>
-        <label htmlFor="cr-desc" className="text-sm font-medium text-zinc-200">What should the workflow do?</label>
+        <label htmlFor="cr-desc" className="text-sm font-medium text-body">What should the workflow do?</label>
         <textarea
           id="cr-desc"
           required
@@ -91,19 +91,19 @@ export default function CustomRequestForm() {
           placeholder="e.g. When a new order lands in Shopify, enrich the customer in HubSpot, generate an invoice PDF, and post a summary to our Slack channel..."
           className={inputCls}
         />
-        <p className="mt-1 text-xs text-zinc-600">The trigger, the steps, and the end result - as specific as you can.</p>
+        <p className="mt-1 text-xs text-faint">The trigger, the steps, and the end result - as specific as you can.</p>
       </div>
 
       <div>
-        <label htmlFor="cr-apps" className="text-sm font-medium text-zinc-200">
-          Apps &amp; tools involved <span className="font-normal text-zinc-500">(optional)</span>
+        <label htmlFor="cr-apps" className="text-sm font-medium text-body">
+          Apps &amp; tools involved <span className="font-normal text-faint">(optional)</span>
         </label>
         <input id="cr-apps" value={apps} onChange={(e) => setApps(e.target.value)} maxLength={300} placeholder="e.g. Shopify, HubSpot, Slack, OpenAI" className={inputCls} />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="cr-budget" className="text-sm font-medium text-zinc-200">Budget</label>
+          <label htmlFor="cr-budget" className="text-sm font-medium text-body">Budget</label>
           <select id="cr-budget" value={budget} onChange={(e) => setBudget(e.target.value)} className={inputCls}>
             {BUDGETS.map((b) => (
               <option key={b} value={b}>{b.replace("Rs ", "₹")}</option>
@@ -111,7 +111,7 @@ export default function CustomRequestForm() {
           </select>
         </div>
         <div>
-          <label htmlFor="cr-timeline" className="text-sm font-medium text-zinc-200">Timeline</label>
+          <label htmlFor="cr-timeline" className="text-sm font-medium text-body">Timeline</label>
           <select id="cr-timeline" value={timeline} onChange={(e) => setTimeline(e.target.value)} className={inputCls}>
             {TIMELINES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -125,11 +125,11 @@ export default function CustomRequestForm() {
       <button
         type="submit"
         disabled={state === "sending"}
-        className="btn-primary px-6 py-3"
+        className="btn-primary btn-lg"
       >
         {state === "sending" ? "Sending..." : "Request a quote"}
       </button>
-      <p className="text-xs text-zinc-600">No payment now - you get a fixed quote first, and only pay if you go ahead.</p>
+      <p className="text-xs text-faint">No payment now - you get a fixed quote first, and only pay if you go ahead.</p>
     </form>
   );
 }

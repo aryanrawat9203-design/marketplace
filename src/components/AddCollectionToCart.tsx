@@ -27,12 +27,12 @@ export default function AddCollectionToCart({ lines }: { lines: CartLine[] }) {
     <div className="flex flex-wrap items-center gap-3">
       <button
         onClick={() => remaining.forEach((l) => add(l))}
-        className="btn-primary px-6 py-3"
+        className="btn-primary btn-lg"
       >
         Add all {lines.length} to cart &middot; {inr(total)}
       </button>
       {remaining.length < lines.length && (
-        <span className="text-sm text-zinc-500">
+        <span className="text-sm text-faint">
           {lines.length - remaining.length} already in your cart
         </span>
       )}

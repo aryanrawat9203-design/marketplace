@@ -83,8 +83,8 @@ export default function ReviewModerationClient() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Review moderation</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="text-2xl font-semibold text-ink">Review moderation</h1>
+          <p className="mt-1 text-sm text-faint">
             Only approved reviews ever appear on product pages.
           </p>
           <a href="/admin/screenshots" className="mt-1 inline-block text-xs text-violet-400 hover:text-violet-300">
@@ -93,7 +93,7 @@ export default function ReviewModerationClient() {
         </div>
         <button
           onClick={signOut}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+          className="rounded-lg border border-hairline-strong px-3 py-1.5 text-sm text-body hover:bg-white/[0.06]"
         >
           Sign out
         </button>
@@ -107,7 +107,7 @@ export default function ReviewModerationClient() {
             className={`rounded-lg px-3 py-1.5 text-sm ${
               tab === t.key
                 ? "bg-violet-500/15 text-violet-300"
-                : "border border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                : "border border-hairline-strong text-muted hover:bg-white/[0.06]"
             }`}
           >
             {t.label}
@@ -117,25 +117,25 @@ export default function ReviewModerationClient() {
 
       {error && <p className="mt-4 text-sm text-amber-300">{error}</p>}
 
-      {rows === null && !error && <p className="mt-8 text-sm text-zinc-500">Loading&hellip;</p>}
+      {rows === null && !error && <p className="mt-8 text-sm text-faint">Loading&hellip;</p>}
 
       {rows && rows.length === 0 && (
-        <p className="mt-8 text-sm text-zinc-500">No {tab} reviews.</p>
+        <p className="mt-8 text-sm text-faint">No {tab} reviews.</p>
       )}
 
       {rows && rows.length > 0 && (
         <ul className="mt-6 space-y-3">
           {rows.map((r) => (
-            <li key={r.id} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+            <li key={r.id} className="rounded-2xl border border-hairline bg-surface-2/60 p-5">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span aria-label={`${r.rating} out of 5 stars`} className="text-amber-400">
                   {"★".repeat(r.rating)}
                   <span className="text-zinc-700">{"★".repeat(5 - r.rating)}</span>
                 </span>
-                <span className="text-zinc-300">{r.authorName || "(no display name)"}</span>
-                <span className="text-zinc-600">&middot;</span>
-                <span className="text-zinc-500">{r.email}</span>
-                <span className="text-zinc-600">&middot;</span>
+                <span className="text-body">{r.authorName || "(no display name)"}</span>
+                <span className="text-faint">&middot;</span>
+                <span className="text-faint">{r.email}</span>
+                <span className="text-faint">&middot;</span>
                 <a
                   href={`/workflows/${r.itemRef}`}
                   target="_blank"
@@ -145,13 +145,13 @@ export default function ReviewModerationClient() {
                   {r.itemRef}
                 </a>
                 {r.createdAt && (
-                  <span className="text-xs text-zinc-600">
+                  <span className="text-xs text-faint">
                     {new Date(r.createdAt).toLocaleDateString("en-IN")}
                   </span>
                 )}
               </div>
-              {r.title && <div className="mt-2 text-sm font-medium text-zinc-100">{r.title}</div>}
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">{r.body}</p>
+              {r.title && <div className="mt-2 text-sm font-medium text-ink">{r.title}</div>}
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted">{r.body}</p>
 
               {tab === "pending" && (
                 <div className="mt-3 flex gap-2">
@@ -165,7 +165,7 @@ export default function ReviewModerationClient() {
                   <button
                     disabled={busyId === r.id}
                     onClick={() => moderate(r.id, "rejected")}
-                    className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
+                    className="rounded-lg border border-hairline-strong px-3 py-1.5 text-sm text-body hover:bg-white/[0.06] disabled:opacity-60"
                   >
                     Reject
                   </button>

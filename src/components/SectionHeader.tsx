@@ -22,10 +22,10 @@ export default function SectionHeader({
     <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="max-w-2xl">
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <Heading className={`text-2xl font-semibold text-zinc-50 ${eyebrow ? "mt-2.5" : ""}`}>
+        <Heading className={`text-2xl font-semibold text-ink ${eyebrow ? "mt-2.5" : ""}`}>
           {title}
         </Heading>
-        {description && <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{description}</p>}
+        {description && <p className="mt-1.5 text-sm leading-relaxed text-faint">{description}</p>}
       </div>
       {action && (
         <Link href={action.href} className="link-arrow shrink-0">

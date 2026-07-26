@@ -60,18 +60,18 @@ export default async function BlogPostDetail({
         <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
               <JsonLd data={breadcrumb} />
               <JsonLd data={posting} />
-              <nav className="text-xs text-zinc-500">
-                      <Link href="/" className="hover:text-zinc-300">Home</Link>
+              <nav className="text-xs text-faint">
+                      <Link href="/" className="hover:text-body">Home</Link>
                       <span className="mx-1">/</span>
-                      <Link href="/blog" className="hover:text-zinc-300">Blog</Link>
+                      <Link href="/blog" className="hover:text-body">Blog</Link>
               </nav>
         
-              <div className="mt-4 text-xs text-zinc-500">
+              <div className="mt-4 text-xs text-faint">
                 {new Date(p.date).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}
               </div>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-50">{p.title}</h1>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">{p.title}</h1>
         
-              <div className="mt-6 space-y-4 leading-relaxed text-zinc-300">
+              <div className="mt-6 space-y-4 leading-relaxed text-body">
                 {p.body.map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
@@ -85,7 +85,7 @@ export default async function BlogPostDetail({
                   </div>
               )}
         
-              <p className="mt-8 leading-relaxed text-zinc-300">{p.closing}</p>
+              <p className="mt-8 leading-relaxed text-body">{p.closing}</p>
         
           {p.platform && (
                   <Link
@@ -97,7 +97,7 @@ export default async function BlogPostDetail({
               )}
 
           <div className="card mt-10 p-5">
-                <p className="text-sm text-zinc-300">
+                <p className="text-sm text-body">
                         Want structured practice? Our practice bundles arrange real, ready-to-import
                         templates into a beginner-to-advanced curriculum.
                 </p>
