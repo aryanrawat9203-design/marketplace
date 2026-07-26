@@ -32,6 +32,11 @@ function countBy(items: IndexItem[], key: "category" | "subcategory", limit: num
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
 
+/** Dynamic share card for an integration or pair, via the shared /api/og renderer. */
+function shareImage(title: string, count: number) {
+  return `/api/og?title=${encodeURIComponent(title)}&category=${encodeURIComponent(`${fmt(count)} n8n templates`)}`;
+}
+
 function pairBrowseHref(pair: IntegrationPair) {
   return `/workflows?platform=${encodeURIComponent(pair.a.name)}&platform2=${encodeURIComponent(pair.b.name)}`;
 }
@@ -46,20 +51,36 @@ export async function generateMetadata({
   const pair = getIntegrationPairBySlug(slug);
   if (pair) {
     const title = `${pair.a.name} + ${pair.b.name} n8n integration templates`;
+    const description = `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} and ${pair.b.name}. Buy one template or a bundle, download the JSON, add your credentials and it runs - no code required.`;
     return {
       title,
-      description: `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} and ${pair.b.name}. Buy one template or a bundle, download the JSON, add your credentials and it runs - no code required.`,
+      description,
       alternates: { canonical: `/integrations/${pair.slug}` },
-      openGraph: { title, type: "website" },
+      openGraph: {
+        title,
+        description,
+        type: "website",
+        url: `/integrations/${pair.slug}`,
+        images: [shareImage(`${pair.a.name} + ${pair.b.name}`, pair.count)],
+      },
     };
   }
 
   const integration = getIntegrationBySlug(slug);
   if (!integration) return { title: "Integration not found" };
+  const title = `${integration.name} n8n workflow templates`;
+  const description = `${fmt(integration.count)} original, ready-to-import n8n workflow templates that automate ${integration.name} - buy a single template or a bundle and download instantly.`;
   return {
-    title: `${integration.name} n8n workflow templates`,
-    description: `${fmt(integration.count)} original, ready-to-import n8n workflow templates that automate ${integration.name} - buy a single template or a bundle and download instantly.`,
+    title,
+    description,
     alternates: { canonical: `/integrations/${integration.slug}` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `/integrations/${integration.slug}`,
+      images: [shareImage(integration.name, integration.count)],
+    },
   };
 }
 
