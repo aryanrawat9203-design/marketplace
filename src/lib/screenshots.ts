@@ -46,6 +46,34 @@ export const SHOWCASE_SLOTS = [
 
 export const SCREENSHOT_SLOTS: ScreenshotSlot[] = [...SHOWCASE_SLOTS, "cardThumb"];
 
+/** What each gallery slot depicts. Used for alt text on the template page. */
+export const SHOWCASE_SLOT_LABELS: Record<(typeof SHOWCASE_SLOTS)[number], string> = {
+  overview: "full workflow overview",
+  nodeDetail: "node detail with its doc card",
+  capabilities: "error handling and retries",
+  dataQuality: "data-quality checks",
+  customize: "customization guide",
+  designDecisions: "design decisions",
+  practice: "practice exercises",
+  plainEnglish: "plain-English breakdown",
+  credentials: "credential setup",
+  troubleshooting: "troubleshooting guide",
+};
+
+/**
+ * A template's gallery images in render order, skipping empty slots. Shared by
+ * the homepage showcase and the template page so the two can't drift.
+ */
+export function orderedGallery(
+  s: Screenshots | undefined
+): { slot: (typeof SHOWCASE_SLOTS)[number]; src: string; label: string }[] {
+  if (!s) return [];
+  return SHOWCASE_SLOTS.flatMap((slot) => {
+    const src = s[slot];
+    return src ? [{ slot, src, label: SHOWCASE_SLOT_LABELS[slot] }] : [];
+  });
+}
+
 export const SCREENSHOT_BUCKET = "template-screenshots";
 const CACHE_TAG = "template-screenshots";
 

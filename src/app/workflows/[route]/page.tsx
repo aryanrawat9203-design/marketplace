@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getByRoute, related } from "@/lib/catalog";
-import { getScreenshotsForRoute } from "@/lib/screenshots";
+import { getScreenshotsForRoute, orderedGallery } from "@/lib/screenshots";
 import { bundleForCategory, bundleForSubcategory } from "@/lib/bundles";
 import { Badge, difficultyTone, tierTone } from "@/components/Badge";
 import WorkflowCard from "@/components/WorkflowCard";
@@ -70,7 +70,7 @@ export default async function WorkflowDetail({
   const graph = workflowGraphData(w.route);
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
-  const gallery = [shots?.overview, shots?.nodeDetail].filter((s): s is string => Boolean(s));
+  const gallery = orderedGallery(shots);
   const learning = learningFor(w);
 
   const productFaqs: [string, string][] = [
@@ -131,7 +131,7 @@ export default async function WorkflowDetail({
       availability: "https://schema.org/InStock",
       url: `${baseUrl()}/workflows/${w.route}`,
     },
-    ...(gallery.length > 0 ? { image: gallery } : {}),
+    ...(gallery.length > 0 ? { image: gallery.map((g) => g.src) } : {}),
     // Only real, moderated buyer reviews ever reach this markup.
     ...(reviews.count > 0
       ? {
@@ -192,18 +192,24 @@ export default async function WorkflowDetail({
       {w.subtitle && <p className="mt-2 text-lg text-zinc-400">{w.subtitle}</p>}
 
       {gallery.length > 0 && (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {gallery.map((src, i) => (
-            <div key={src} className="card overflow-hidden">
-              <Image
-                src={src}
-                alt={i === 0 ? `${w.title} — workflow overview` : `${w.title} — key node detail`}
-                width={960}
-                height={540}
-                className="w-full object-cover"
-                unoptimized
-                priority={i === 0}
-              />
+        // object-contain in a letterbox, never object-cover: these are
+        // text-heavy canvas and doc-card screenshots whose aspect ranges from
+        // ultra-wide to portrait, and cropping them to a 16:9 box cut the
+        // content off - which defeats the point of showing them at all.
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {gallery.map((g, i) => (
+            <div key={g.slot} className="card overflow-hidden">
+              <div className="flex h-72 items-center justify-center bg-[#0a0a10]">
+                <Image
+                  src={g.src}
+                  alt={`${w.title} — ${g.label}`}
+                  width={960}
+                  height={540}
+                  className="max-h-full w-auto max-w-full object-contain"
+                  unoptimized
+                  priority={i === 0}
+                />
+              </div>
             </div>
           ))}
         </div>

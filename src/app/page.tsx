@@ -72,8 +72,8 @@ const SHOWCASE_COPY: Record<
     h: 516,
   },
   nodeDetail: {
-    title: "Key logic, explained",
-    desc: "Zoom into the node that matters most. Each one documents what it does and what runs next.",
+    title: "Every node documented",
+    desc: "Each node carries its own doc card - what it does, and which step runs next.",
     w: 255,
     h: 311,
   },
