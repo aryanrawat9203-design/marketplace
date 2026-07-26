@@ -27,6 +27,7 @@ export default async function WorkflowsPage({
     difficulty: str(sp.difficulty),
     tier: str(sp.tier),
     platform: str(sp.platform),
+    platform2: str(sp.platform2),
     sort: str(sp.sort),
     page: Number(str(sp.page) ?? "1") || 1,
   };
@@ -41,6 +42,7 @@ export default async function WorkflowsPage({
     difficulty: filters.difficulty ?? "",
     tier: filters.tier ?? "",
     platform: filters.platform ?? "",
+    platform2: filters.platform2 ?? "",
     sort: filters.sort ?? "",
   };
 
