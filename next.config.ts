@@ -33,7 +33,14 @@ const nextConfig: NextConfig = {
     "/workflows/[route]": ["./src/data/**"],
     "/bundles": ["./src/data/**"],
     "/bundles/[slug]": ["./src/data/**"],
+    // Sitemaps read the catalog at request time. The dynamic workflow sitemap
+    // is emitted as /workflows/sitemap/[__metadata_id__]; both spellings are
+    // listed so the data is traced whichever key the build matches.
     "/sitemap.xml": ["./src/data/**"],
+    "/robots.txt": ["./src/data/**"],
+    "/integrations/sitemap.xml": ["./src/data/**"],
+    "/workflows/sitemap.xml": ["./src/data/**"],
+    "/workflows/sitemap/[__metadata_id__]": ["./src/data/**"],
     "/api/download": ["./src/data/**", "./product-files/**"],
     "/api/checkout": ["./src/data/**"],
     "/api/verify": ["./src/data/**"],
