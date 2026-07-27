@@ -1,12 +1,20 @@
 import type { MetadataRoute } from "next";
-import { getIndex } from "@/lib/catalog";
 import { getBundles } from "@/lib/bundles";
-import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
 import { getCollections } from "@/lib/collections";
 import { guides } from "@/lib/guides";
 import { posts } from "@/lib/blog";
 import { baseUrl } from "@/lib/site";
 
+/**
+ * Core sitemap: hubs, bundles, collections and editorial.
+ *
+ * The two large sections live in their own documents so no single sitemap has
+ * to be built and streamed in one request, and so Search Console reports
+ * indexing coverage per section:
+ *   /integrations/sitemap.xml    - integrations and integration pairs
+ *   /workflows/sitemap/<n>.xml   - the template catalog, in chunks
+ * All of them are advertised in robots.txt.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = baseUrl();
   const now = new Date();
@@ -42,22 +50,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  const integrations: MetadataRoute.Sitemap = getIntegrations()
-    .slice(0, 150)
-    .map((i) => ({
-      url: `${base}/integrations/${i.slug}`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    }));
-
-  const integrationPairs: MetadataRoute.Sitemap = getIntegrationPairs().map((p) => ({
-    url: `${base}/integrations/${p.slug}`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
-
   const collections: MetadataRoute.Sitemap = getCollections().map((c) => ({
     url: `${base}/collections/${c.slug}`,
     lastModified: now,
@@ -72,28 +64,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-    const blogPages: MetadataRoute.Sitemap = posts.map((bp) => ({
-          url: `${base}/blog/${bp.slug}`,
-          lastModified: now,
-          changeFrequency: "monthly",
-          priority: 0.6,
-    }));
-
-  const workflows: MetadataRoute.Sitemap = getIndex().map((w) => ({
-    url: `${base}/workflows/${w.route}`,
+  const blogPages: MetadataRoute.Sitemap = posts.map((bp) => ({
+    url: `${base}/blog/${bp.slug}`,
     lastModified: now,
     changeFrequency: "monthly",
-    priority: 0.5,
+    priority: 0.6,
   }));
 
-  return [
-    ...staticPages,
-    ...bundles,
-    ...collections,
-    ...integrations,
-    ...integrationPairs,
-    ...guidePages,
-    ...blogPages,
-    ...workflows,
-  ];
+  return [...staticPages, ...bundles, ...collections, ...guidePages, ...blogPages];
 }
