@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordLead } from "@/lib/leads";
+import { sendStarterPack } from "@/lib/email";
+import { starterPackItems } from "@/lib/starter-pack";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { baseUrl } from "@/lib/site";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +22,19 @@ export async function POST(req: NextRequest) {
     .catch(() => ({}) as { email?: string; source?: string });
 
   if (email && EMAIL_RE.test(email)) {
-    await recordLead(email, source || "free-download");
+    const { isNew } = await recordLead(email, source || "free-download");
+
+    // The signup form promises free templates in your inbox - this is what
+    // keeps that promise. Only on first capture, and never fatal.
+    if (isNew) {
+      const base = baseUrl();
+      await sendStarterPack({
+        to: email,
+        packUrl: `${base}/api/starter-pack`,
+        packPageUrl: `${base}/free`,
+        count: starterPackItems().length,
+      }).catch(() => false);
+    }
   }
 
   return NextResponse.json({ ok: true });
