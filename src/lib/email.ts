@@ -224,3 +224,73 @@ export async function sendContactMessage(m: ContactMessage): Promise<boolean> {
     return false;
   }
 }
+
+export type StarterPackEmail = {
+  to: string;
+  /** Absolute URL that streams the free-template ZIP. */
+  packUrl: string;
+  /** Absolute URL of the starter-pack landing page. */
+  packPageUrl: string;
+  count: number;
+};
+
+/**
+ * The welcome email for a captured lead. Until this existed the signup form
+ * promised "free templates in your inbox" and then sent nothing, so the site
+ * was collecting addresses against a promise it never kept.
+ *
+ * Never throws: a failed send must not break the signup response.
+ */
+export async function sendStarterPack(p: StarterPackEmail): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.ORDERS_FROM_EMAIL;
+  if (!apiKey || !from) return false;
+
+  const subject = `Your ${p.count} free n8n workflow templates`;
+
+  const html =
+    '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">' +
+    "<h2>Here are your free templates</h2>" +
+    "<p>Thanks for joining. Your starter pack is " +
+    p.count +
+    " original n8n workflows as ready-to-import JSON, ordered from beginner to expert " +
+    "so you can work through them in sequence.</p>" +
+    '<p style="margin:24px 0">' +
+    '<a href="' +
+    p.packUrl +
+    '" style="background:#5B3AF0;color:#fff;padding:12px 22px;border-radius:10px;' +
+    'text-decoration:none;font-weight:600;display:inline-block">Download the starter pack</a>' +
+    "</p>" +
+    "<p><strong>How to use them:</strong> unzip, then in n8n choose " +
+    "<em>Workflows &rarr; Import from File</em>. Add your own credentials for the apps each " +
+    "workflow touches and it runs - there is nothing to configure beyond that.</p>" +
+    '<p>You can also browse the pack online at <a href="' +
+    p.packPageUrl +
+    '">' +
+    esc(p.packPageUrl) +
+    "</a>.</p>" +
+    '<p style="color:#666;font-size:13px">We send new free templates and occasional bundle ' +
+    "deals - nothing else. Reply to this email if you get stuck on any of them.</p>" +
+    "</div>";
+
+  const text =
+    "Here are your free templates\n\n" +
+    "Thanks for joining. Your starter pack is " +
+    p.count +
+    " original n8n workflows as ready-to-import JSON, ordered beginner to expert.\n\n" +
+    "Download: " +
+    p.packUrl +
+    "\n\nHow to use them: unzip, then in n8n choose Workflows > Import from File. Add your own " +
+    "credentials for the apps each workflow touches and it runs.\n\n" +
+    "Browse the pack online: " +
+    p.packPageUrl +
+    "\n\nReply to this email if you get stuck on any of them.";
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({ from, to: p.to, subject, html, text });
+    return !error;
+  } catch {
+    return false;
+  }
+}

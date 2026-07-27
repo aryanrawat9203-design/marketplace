@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { getByRoute } from "./catalog";
 import { getBundle, bundleMembersDetail, bandFor, type Bundle } from "./bundles";
 import { createZip, type ZipEntry } from "./zip";
+import { starterPackItems, STARTER_PACK_FILENAME } from "./starter-pack";
 import type { DetailItem } from "./catalog";
 
 export type Kind = "workflow" | "bundle";
@@ -186,6 +187,26 @@ function practiceEntryName(index: number, total: number, w: DetailItem): string 
   const ext = path.extname(w.workflowFile) || ".json";
   const safeTitle = w.title.replace(/[\\/:*?"<>|]/g, "-").trim();
   return `${num} - ${band} - ${safeTitle}${ext}`;
+}
+
+/**
+ * Every free template as one ZIP. Deliberately separate from bundleDownload:
+ * this path is reachable without a purchase, so it must never consult - or be
+ * able to widen - entitlements. It only ever reads templates the catalog has
+ * already marked free.
+ */
+export function starterPackDownload(): { filename: string; body: Buffer } | null {
+  const entries: ZipEntry[] = [];
+  starterPackItems().forEach((item, i) => {
+    const w = getByRoute(item.route);
+    if (!w?.free || !w.workflowFile) return;
+    const fp = path.join(PRODUCT_ROOT, w.workflowFile);
+    if (!fs.existsSync(fp)) return;
+    const n = String(i + 1).padStart(2, "0");
+    entries.push({ name: `${n}-${path.basename(w.workflowFile)}`, data: readWorkflowFile(fp) });
+  });
+  if (entries.length === 0) return null;
+  return { filename: STARTER_PACK_FILENAME, body: createZip(entries) };
 }
 
 export function bundleDownload(slug: string): { filename: string; body: Buffer } | null {
