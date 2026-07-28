@@ -7,6 +7,7 @@ import { getCollections, collectionStats } from "@/lib/collections";
 import { getShowcaseScreenshots, SHOWCASE_SLOTS } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
 import HeroGraph from "@/components/HeroGraph";
+import TrustStrip from "@/components/TrustStrip";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 import { SearchBar } from "@/components/Controls";
@@ -204,6 +205,9 @@ export default async function Home() {
                 View bundles &amp; pricing
               </Link>
             </div>
+            <div className="anim-rise anim-d3">
+              <TrustStrip />
+            </div>
             <div className="anim-rise anim-d4 mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] sm:grid-cols-4">
               {stats.map(([v, label]) => (
                 <div key={label} className="bg-surface-1 px-4 py-3.5">
@@ -319,6 +323,14 @@ export default async function Home() {
                       className={`pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-gradient-to-br ${b.gradient} opacity-[0.13] blur-3xl`}
                     />
                     <div className="relative">
+                      {i === 0 && (
+                        <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-violet-200">
+                          <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l2.6 6.3L21 9l-5 4.3L17.5 20 12 16.5 6.5 20 8 13.3 3 9l6.4-.7z" />
+                          </svg>
+                          Best value
+                        </span>
+                      )}
                       <div className="flex items-center justify-between gap-3">
                         <h3 className="text-xl font-semibold text-ink">{b.name}</h3>
                         <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
