@@ -5,6 +5,7 @@ import { guides } from "@/lib/guides";
 export const metadata: Metadata = {
   title: "Guides",
   description: "Guides for choosing, importing, and getting the most out of n8n workflow templates.",
+  alternates: { canonical: "/guides" },
 };
 
 export default function GuidesIndexPage() {

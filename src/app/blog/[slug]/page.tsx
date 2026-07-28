@@ -20,7 +20,7 @@ export async function generateMetadata({
     const { slug } = await params;
     const p = getPost(slug);
     if (!p) return { title: "Post not found" };
-    return { title: p.title, description: p.description };
+    return { title: p.title, description: p.description, alternates: { canonical: `/blog/${slug}` } };
 }
 
 export default async function BlogPostDetail({

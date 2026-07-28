@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Get a custom n8n workflow built",
   description:
     "Can't find the exact automation you need? Describe it and get a fixed quote - we build custom, ready-to-import n8n workflows on the same quality bar as our 10,500-template catalog.",
+  alternates: { canonical: "/custom" },
 };
 
 const faqs: [string, string][] = [

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Curated collections",
   description:
     "Hand-assembled packs of the most in-demand n8n workflow templates - agency starter kits, lead gen pipelines, inbox automation and more. Add a whole collection to your cart in one click.",
+  alternates: { canonical: "/collections" },
 };
 
 export default function CollectionsPage() {

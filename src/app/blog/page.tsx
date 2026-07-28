@@ -5,6 +5,7 @@ import { posts } from "@/lib/blog";
 export const metadata: Metadata = {
     title: "Blog",
     description: "Practical n8n automation patterns, workflow breakdowns, and what is new from WorkflowCrate.",
+    alternates: { canonical: "/blog" },
 };
 
 export default function BlogIndexPage() {

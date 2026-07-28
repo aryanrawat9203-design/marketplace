@@ -10,7 +10,12 @@ import { buildQuery } from "@/lib/url";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Browse templates" };
+export const metadata: Metadata = {
+  title: "Browse templates",
+  // Consolidates every filter/sort/page query-string variant onto the base
+  // browse URL; the individual template pages carry their own canonicals.
+  alternates: { canonical: "/workflows" },
+};
 
 type SP = { [k: string]: string | string[] | undefined };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

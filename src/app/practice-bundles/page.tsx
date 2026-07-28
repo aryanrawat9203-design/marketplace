@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "n8n workflow templates for practice — structured practice bundles",
   description:
     "Practice n8n with ready-to-import workflow templates arranged as a real curriculum — from your first simple automation to production-grade, enterprise architecture. Sold as bundles only.",
+  alternates: { canonical: "/practice-bundles" },
 };
 
 const fmt = (n: number) => n.toLocaleString("en-IN");

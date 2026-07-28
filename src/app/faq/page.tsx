@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PageShell from "@/components/PageShell";
 import JsonLd from "@/components/JsonLd";
 
-export const metadata: Metadata = { title: "FAQ" };
+export const metadata: Metadata = { title: "FAQ", alternates: { canonical: "/faq" } };
 
 const faqs: [string, string][] = [
   [

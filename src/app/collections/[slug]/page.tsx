@@ -26,6 +26,7 @@ export async function generateMetadata({
   return {
     title: `${c.name} - curated n8n templates`,
     description: `${c.tagline} ${collectionStats(c).count} ready-to-import n8n workflow templates, added to your cart in one click.`,
+    alternates: { canonical: `/collections/${c.slug}` },
   };
 }
 

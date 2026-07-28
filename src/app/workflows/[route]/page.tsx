@@ -41,6 +41,7 @@ export async function generateMetadata({
   return {
     title: w.title,
     description: w.shortDescription ?? w.description ?? undefined,
+    alternates: { canonical: `/workflows/${w.route}` },
     openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article", images: [shareImage] },
   };
 }

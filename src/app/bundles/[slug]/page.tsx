@@ -25,7 +25,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const b = getBundle(slug);
-  return b ? { title: b.name, description: b.tagline } : { title: "Bundle not found" };
+  return b
+    ? { title: b.name, description: b.tagline, alternates: { canonical: `/bundles/${b.slug}` } }
+    : { title: "Bundle not found" };
 }
 
 const fmt = (n: number) => n.toLocaleString("en-IN");

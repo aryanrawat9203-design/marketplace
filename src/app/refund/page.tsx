@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import PageShell from "@/components/PageShell";
 
-export const metadata: Metadata = { title: "Refund Policy" };
+export const metadata: Metadata = { title: "Refund Policy", alternates: { canonical: "/refund" } };
 
 export default function RefundPage() {
   return (

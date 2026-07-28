@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Browse n8n templates by integration",
   description:
     "Find ready-to-import n8n workflow templates for the apps you already use - Gmail, Slack, Google Sheets, OpenAI, Telegram, Notion and hundreds more.",
+  alternates: { canonical: "/integrations" },
 };
 
 export default function IntegrationsPage() {
