@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -17,6 +18,12 @@ import JsonLd from "@/components/JsonLd";
 import { inr } from "@/lib/pricing";
 import { integrationSlug } from "@/lib/slug";
 import { baseUrl, SITE_NAME } from "@/lib/site";
+
+// Root canonical so query-string variants (utm_*, cache-busters, ?ref=) all
+// consolidate to the bare homepage rather than splitting ranking signals.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 function WhyIcon({ path }: { path: string }) {
   return (
