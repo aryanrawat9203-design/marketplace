@@ -80,6 +80,9 @@ export default function BundlesPage() {
                   <p className="mt-1.5 text-xs text-faint">
                     {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
                   </p>
+                  <p className="mt-2 text-xs font-medium text-emerald-300">
+                    You save {inr(b.mrp - b.price)} at launch pricing
+                  </p>
                   <span className="link-arrow mt-5">
                     View bundle <span className="arrow">&rarr;</span>
                   </span>

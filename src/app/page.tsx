@@ -6,6 +6,7 @@ import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import { getCollections, collectionStats } from "@/lib/collections";
 import { getShowcaseScreenshots, SHOWCASE_SLOTS } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
+import HeroGraph from "@/components/HeroGraph";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
 import { SearchBar } from "@/components/Controls";
@@ -169,6 +170,11 @@ export default async function Home() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-dot-grid [mask-image:radial-gradient(ellipse_65%_65%_at_50%_30%,black,transparent)]"
         />
+        {/* Signature visual: an ambient n8n-style automation graph framing the
+            copy. Hidden on narrow screens where the gutters it lives in vanish. */}
+        <div className="pointer-events-none absolute inset-0 hidden lg:block">
+          <HeroGraph />
+        </div>
         <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pt-24">
           <div className="mx-auto max-w-3xl text-center">
             <span className="anim-rise inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs text-body">
@@ -328,6 +334,9 @@ export default async function Home() {
                       </div>
                       <div className="mt-1.5 text-xs text-faint">
                         {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
+                      </div>
+                      <div className="mt-2 text-xs font-medium text-emerald-300">
+                        You save {inr(b.mrp - b.price)} at launch pricing
                       </div>
                       <div className="link-arrow mt-5">
                         {i === 0 ? "Get the full library" : "Get lifetime access"}{" "}
