@@ -210,9 +210,10 @@ export default async function Home() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-dot-grid [mask-image:radial-gradient(ellipse_65%_65%_at_50%_30%,black,transparent)]"
         />
-        {/* Signature visual: an ambient n8n-style automation graph framing the
-            copy. Hidden on narrow screens where the gutters it lives in vanish. */}
-        <div className="pointer-events-none absolute inset-0 hidden lg:block">
+        {/* Signature visual: an ambient n8n-style automation graph. Labelled
+            node cards frame the copy on desktop; a fainter node-and-wire network
+            stands in on mobile/tablet, where the side gutters vanish. */}
+        <div className="pointer-events-none absolute inset-0">
           <HeroGraph />
         </div>
         <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pt-24">

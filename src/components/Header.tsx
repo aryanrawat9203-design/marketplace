@@ -27,15 +27,15 @@ export default function Header() {
       >
         <Logo />
       </Link>
-      <nav className="ml-2 hidden items-center gap-0.5 text-sm text-muted md:flex">
+      <nav className="ml-2 hidden items-center gap-0.5 text-sm text-muted lg:flex">
         <NavLinks links={navLinks} />
       </nav>
-      <div className="ml-auto hidden w-full max-w-xs md:block">
+      <div className="ml-auto hidden w-full max-w-xs lg:block">
         <Suspense fallback={<div className="h-10" />}>
           <SearchBar compact />
         </Suspense>
       </div>
-      <div className="ml-auto md:ml-0">
+      <div className="ml-auto lg:ml-0">
         <MobileMenu links={navLinks} />
       </div>
       <CartButton />
