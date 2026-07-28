@@ -47,10 +47,16 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <a
+          href="#content"
+          className="sr-only rounded-lg font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-surface-2 focus:px-4 focus:py-2 focus:text-sm focus:text-ink focus:shadow-lg focus:outline focus:outline-2 focus:outline-violet-500"
+        >
+          Skip to content
+        </a>
         <AuthProvider>
           <CartProvider>
             <Header />
-            <main className="flex-1">{children}</main>
+            <main id="content" className="flex-1">{children}</main>
             <Footer />
           </CartProvider>
           <ChatWidget />

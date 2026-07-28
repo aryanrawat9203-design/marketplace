@@ -13,8 +13,10 @@ import Reveal from "@/components/Reveal";
 import { SearchBar } from "@/components/Controls";
 import PriceTag from "@/components/PriceTag";
 import { RecentlyViewedStrip } from "@/components/RecentlyViewed";
+import JsonLd from "@/components/JsonLd";
 import { inr } from "@/lib/pricing";
 import { integrationSlug } from "@/lib/slug";
+import { baseUrl, SITE_NAME } from "@/lib/site";
 
 function WhyIcon({ path }: { path: string }) {
   return (
@@ -163,8 +165,38 @@ export default async function Home() {
     ["3", "Download & import", "Get the ready-to-import n8n JSON instantly - add your credentials and go."],
   ];
 
+  // Structured data: the Organization gives Google a name+logo for the brand,
+  // and the WebSite SearchAction advertises the on-site search so results can
+  // earn a sitelinks search box. Both point at real, existing routes.
+  const base = baseUrl();
+  const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: base,
+    logo: `${base}/icon`,
+    description:
+      "Original, ready-to-import n8n workflow templates - single templates, category bundles, or the full library.",
+  };
+  const siteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: base,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${base}/workflows?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <>
+      <JsonLd data={orgJsonLd} />
+      <JsonLd data={siteJsonLd} />
       {/* ------------------------------------------------ hero */}
       <section className="relative overflow-hidden">
         <div
@@ -286,17 +318,19 @@ export default async function Home() {
       {/* ------------------------------------------------ free samples */}
       {samples.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-          <SectionHeader
-            eyebrow="No card, no signup"
-            title="Try it free"
-            description="Genuinely free templates &mdash; import one and see the quality for yourself."
-            action={{ href: "/workflows?tier=Free", label: "All free templates" }}
-          />
-          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {samples.map((w) => (
-              <WorkflowCard key={w.id} w={w} />
-            ))}
-          </div>
+          <Reveal>
+            <SectionHeader
+              eyebrow="No card, no signup"
+              title="Try it free"
+              description="Genuinely free templates &mdash; import one and see the quality for yourself."
+              action={{ href: "/workflows?tier=Free", label: "All free templates" }}
+            />
+            <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {samples.map((w) => (
+                <WorkflowCard key={w.id} w={w} />
+              ))}
+            </div>
+          </Reveal>
         </section>
       )}
 
@@ -365,122 +399,132 @@ export default async function Home() {
 
       {/* ------------------------------------------------ collections */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="Hand-assembled"
-          title="Curated collections"
-          description="Themed starter packs - add a whole collection to your cart in one click."
-          action={{ href: "/collections", label: "All collections" }}
-        />
-        <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {getCollections().slice(0, 4).map((c) => {
-            const stats = collectionStats(c);
-            return (
-              <Link key={c.slug} href={`/collections/${c.slug}`} className="card card-hover group flex flex-col p-5">
-                <div
-                  aria-hidden="true"
-                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${c.gradient} font-display text-sm font-bold text-white shadow-lg`}
-                >
-                  {c.name.charAt(0)}
-                </div>
-                <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{c.name}</h3>
-                <p className="mt-1 flex-1 text-xs leading-relaxed text-faint">{c.tagline}</p>
-                <div className="mt-4 flex items-baseline justify-between border-t border-white/[0.06] pt-3">
-                  <span className="font-display text-sm font-bold tracking-tight text-ink">
-                    {inr(stats.price)}
-                  </span>
-                  <span className="text-xs text-faint">{stats.count} templates</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <Reveal>
+          <SectionHeader
+            eyebrow="Hand-assembled"
+            title="Curated collections"
+            description="Themed starter packs - add a whole collection to your cart in one click."
+            action={{ href: "/collections", label: "All collections" }}
+          />
+          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {getCollections().slice(0, 4).map((c) => {
+              const stats = collectionStats(c);
+              return (
+                <Link key={c.slug} href={`/collections/${c.slug}`} className="card card-hover group flex flex-col p-5">
+                  <div
+                    aria-hidden="true"
+                    className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${c.gradient} font-display text-sm font-bold text-white shadow-lg`}
+                  >
+                    {c.name.charAt(0)}
+                  </div>
+                  <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{c.name}</h3>
+                  <p className="mt-1 flex-1 text-xs leading-relaxed text-faint">{c.tagline}</p>
+                  <div className="mt-4 flex items-baseline justify-between border-t border-white/[0.06] pt-3">
+                    <span className="font-display text-sm font-bold tracking-tight text-ink">
+                      {inr(stats.price)}
+                    </span>
+                    <span className="text-xs text-faint">{stats.count} templates</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </Reveal>
       </section>
 
       {/* ------------------------------------------------ categories */}
       <section id="categories" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="Browse the catalog"
-          title="Shop by category"
-          action={{ href: "/bundles", label: "All category bundles" }}
-        />
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {taxo.categories.map((c) => (
-            <Link
-              key={c.name}
-              href={`/workflows?category=${encodeURIComponent(c.name)}`}
-              className="card card-hover group p-4"
-            >
-              <div className="text-sm font-medium text-body group-hover:text-white">{c.name}</div>
-              <div className="mt-1 font-mono text-xs text-faint">{fmt(c.count)} templates</div>
-            </Link>
-          ))}
-        </div>
+        <Reveal>
+          <SectionHeader
+            eyebrow="Browse the catalog"
+            title="Shop by category"
+            action={{ href: "/bundles", label: "All category bundles" }}
+          />
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {taxo.categories.map((c) => (
+              <Link
+                key={c.name}
+                href={`/workflows?category=${encodeURIComponent(c.name)}`}
+                className="card card-hover group p-4"
+              >
+                <div className="text-sm font-medium text-body group-hover:text-white">{c.name}</div>
+                <div className="mt-1 font-mono text-xs text-faint">{fmt(c.count)} templates</div>
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* ------------------------------------------------ integrations */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="Your stack"
-          title="Browse by integration"
-          description="Start from the apps you already use."
-          action={{ href: "/integrations", label: "All integrations" }}
-        />
-        <div className="mt-6 flex flex-wrap gap-2">
-          {taxo.platformsTop.slice(0, 18).map((p) => (
-            <Link
-              key={p.name}
-              href={`/integrations/${integrationSlug(p.name)}`}
-              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
-            >
-              {p.name} <span className="text-faint">({fmt(p.count)})</span>
-            </Link>
-          ))}
-        </div>
+        <Reveal>
+          <SectionHeader
+            eyebrow="Your stack"
+            title="Browse by integration"
+            description="Start from the apps you already use."
+            action={{ href: "/integrations", label: "All integrations" }}
+          />
+          <div className="mt-6 flex flex-wrap gap-2">
+            {taxo.platformsTop.slice(0, 18).map((p) => (
+              <Link
+                key={p.name}
+                href={`/integrations/${integrationSlug(p.name)}`}
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+              >
+                {p.name} <span className="text-faint">({fmt(p.count)})</span>
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* ------------------------------------------------ popular templates */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="Trending"
-          title="Most popular templates"
-          action={{ href: "/workflows?sort=demand", label: "More" }}
-        />
-        <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {trending.map((w) => (
-            <WorkflowCard key={w.id} w={w} />
-          ))}
-        </div>
+        <Reveal>
+          <SectionHeader
+            eyebrow="Trending"
+            title="Most popular templates"
+            action={{ href: "/workflows?sort=demand", label: "More" }}
+          />
+          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {trending.map((w) => (
+              <WorkflowCard key={w.id} w={w} />
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* ------------------------------------------------ popular bundles */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="Buy in bulk"
-          title="Popular bundles"
-          action={{ href: "/bundles", label: "View all" }}
-        />
-        <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {topCats.map((b) => (
-            <Link key={b.slug} href={`/bundles/${b.slug}`} className="card card-hover group flex flex-col p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div
-                  aria-hidden="true"
-                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
-                >
-                  {b.category?.charAt(0)}
+        <Reveal>
+          <SectionHeader
+            eyebrow="Buy in bulk"
+            title="Popular bundles"
+            action={{ href: "/bundles", label: "View all" }}
+          />
+          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {topCats.map((b) => (
+              <Link key={b.slug} href={`/bundles/${b.slug}`} className="card card-hover group flex flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    aria-hidden="true"
+                    className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
+                  >
+                    {b.category?.charAt(0)}
+                  </div>
+                  <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+                    {b.off}% off
+                  </span>
                 </div>
-                <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
-                  {b.off}% off
-                </span>
-              </div>
-              <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
-              <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
-              <div className="mt-4 border-t border-white/[0.06] pt-3">
-                <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="sm" />
-              </div>
-            </Link>
-          ))}
-        </div>
+                <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
+                <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
+                <div className="mt-4 border-t border-white/[0.06] pt-3">
+                  <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="sm" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       <RecentlyViewedStrip />
