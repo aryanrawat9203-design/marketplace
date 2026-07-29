@@ -71,7 +71,8 @@ export default function StarterPackForm() {
       )}
       {state === "sent" && (
         <p className="mt-2 text-sm text-emerald-400">
-          Download starting - a copy is on its way to your inbox too.
+          Download starting - check your inbox for a copy, and your spam folder if it&apos;s
+          not there in a minute.
         </p>
       )}
     </div>
