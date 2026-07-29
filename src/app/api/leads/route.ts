@@ -22,14 +22,17 @@ export async function POST(req: NextRequest) {
     .catch(() => ({}) as { email?: string; source?: string });
 
   if (email && EMAIL_RE.test(email)) {
-    const { isNew } = await recordLead(email, source || "free-download");
+    const { shouldSendPack, email: normalized } = await recordLead(
+      email,
+      source || "free-download",
+    );
 
     // The signup form promises free templates in your inbox - this is what
-    // keeps that promise. Only on first capture, and never fatal.
-    if (isNew) {
+    // keeps that promise. Honoured on every genuine request, never fatal.
+    if (shouldSendPack) {
       const base = baseUrl();
       await sendStarterPack({
-        to: email,
+        to: normalized,
         packUrl: `${base}/api/starter-pack`,
         packPageUrl: `${base}/free`,
         count: starterPackItems().length,
