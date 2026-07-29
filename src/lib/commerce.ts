@@ -33,6 +33,22 @@ function readWorkflowFile(fp: string): Buffer {
   }
 }
 
+// Product files keep their original on-disk names, some of which still name a
+// tool the workflow no longer claims - titles were rebuilt from the real node
+// graphs, the 10k filenames were not. Downloads are user-facing, so name them
+// from the truthful title instead of the stale basename.
+function downloadSafeTitle(w: DetailItem): string {
+  return w.title.replace(/[\\/:*?"<>|]/g, "-").trim();
+}
+// Zip entry leaf: keep the numeric id prefix (extraction order + uniqueness)
+// but swap in the truthful title.
+function truthfulLeaf(w: DetailItem): string {
+  const base = path.basename(w.workflowFile);
+  const ext = path.extname(base) || ".json";
+  const prefix = base.match(/^\d+[_-]/)?.[0] ?? "";
+  return `${prefix}${downloadSafeTitle(w)}${ext}`;
+}
+
 export function getPurchasable(kind: Kind, key: string): Purchasable | undefined {
   if (kind === "workflow") {
     const w = getByRoute(key);
@@ -49,7 +65,7 @@ export function workflowDownload(route: string): { filename: string; body: Buffe
   if (!w?.workflowFile) return null;
   const fp = path.join(PRODUCT_ROOT, w.workflowFile);
   if (!fs.existsSync(fp)) return null;
-  return { filename: path.basename(w.workflowFile), body: readWorkflowFile(fp) };
+  return { filename: `${downloadSafeTitle(w)}.json`, body: readWorkflowFile(fp) };
 }
 
 function friendlyNodeType(type: string): string {
@@ -185,8 +201,7 @@ function practiceEntryName(index: number, total: number, w: DetailItem): string 
   const num = String(index + 1).padStart(Math.max(pad, 2), "0");
   const band = bandFor(w);
   const ext = path.extname(w.workflowFile) || ".json";
-  const safeTitle = w.title.replace(/[\\/:*?"<>|]/g, "-").trim();
-  return `${num} - ${band} - ${safeTitle}${ext}`;
+  return `${num} - ${band} - ${downloadSafeTitle(w)}${ext}`;
 }
 
 /**
@@ -203,7 +218,7 @@ export function starterPackDownload(): { filename: string; body: Buffer } | null
     const fp = path.join(PRODUCT_ROOT, w.workflowFile);
     if (!fs.existsSync(fp)) return;
     const n = String(i + 1).padStart(2, "0");
-    entries.push({ name: `${n}-${path.basename(w.workflowFile)}`, data: readWorkflowFile(fp) });
+    entries.push({ name: `${n}-${downloadSafeTitle(w)}.json`, data: readWorkflowFile(fp) });
   });
   if (entries.length === 0) return null;
   return { filename: STARTER_PACK_FILENAME, body: createZip(entries) };
@@ -218,7 +233,10 @@ export function bundleDownload(slug: string): { filename: string; body: Buffer }
     if (!w.workflowFile) return;
     const fp = path.join(PRODUCT_ROOT, w.workflowFile);
     if (!fs.existsSync(fp)) return;
-    const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
+    const name =
+      b.type === "practice"
+        ? practiceEntryName(i, members.length, w)
+        : `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
     entries.push({ name, data: readWorkflowFile(fp) });
   });
   if (entries.length === 0) return null;
@@ -241,7 +259,8 @@ export function cartZip(
       if (!w?.workflowFile) continue;
       const fp = path.join(PRODUCT_ROOT, w.workflowFile);
       if (fs.existsSync(fp) && !entries.has(w.workflowFile)) {
-        entries.set(w.workflowFile, { name: w.workflowFile, data: readWorkflowFile(fp) });
+        const name = `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
+        entries.set(w.workflowFile, { name, data: readWorkflowFile(fp) });
       }
     } else {
       const b = getBundle(item.key);
@@ -251,7 +270,10 @@ export function cartZip(
         if (!w.workflowFile || entries.has(w.workflowFile)) return;
         const fp = path.join(PRODUCT_ROOT, w.workflowFile);
         if (fs.existsSync(fp)) {
-          const name = b.type === "practice" ? practiceEntryName(i, members.length, w) : w.workflowFile;
+          const name =
+            b.type === "practice"
+              ? practiceEntryName(i, members.length, w)
+              : `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
           entries.set(w.workflowFile, { name, data: readWorkflowFile(fp) });
         }
       });
