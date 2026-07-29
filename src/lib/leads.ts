@@ -15,9 +15,13 @@ function normalizeEmail(email: string): string {
  * an explicit request for the pack, so a repeat request is honoured rather
  * than silently dropped - someone who never received the first copy will just
  * ask again, and answering that with nothing is what makes the form look
- * broken. Matches the route's IP rate-limit window.
+ * broken.
+ *
+ * Kept to two minutes on purpose: the route already rate-limits by IP, so this
+ * only needs to absorb a double-click. Anything longer creates a window where
+ * a real person asks again and appears to be ignored.
  */
-const RESEND_COOLDOWN_MS = 10 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 
 export type LeadResult = { shouldSendPack: boolean; email: string };
 
