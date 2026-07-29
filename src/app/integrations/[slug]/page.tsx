@@ -51,8 +51,11 @@ export async function generateMetadata({
 
   const pair = getIntegrationPairBySlug(slug);
   if (pair) {
-    const title = `${pair.a.name} + ${pair.b.name} n8n integration templates`;
-    const description = `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} and ${pair.b.name}. Buy one template or a bundle, download the JSON, add your credentials and it runs - no code required.`;
+    // Search Console shows the demand arrives as "connect x to y" / "x to y"
+    // far more than "x + y", and at better positions - so the title leads with
+    // the directional phrasing and the body covers both directions.
+    const title = `${pair.a.name} to ${pair.b.name}: ${fmt(pair.count)} n8n integration templates`;
+    const description = `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Download the JSON, add your credentials and it runs - no code required.`;
     return {
       title,
       description,
@@ -250,12 +253,12 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
       </nav>
 
       <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink">
-        {a.name} + {b.name} <span className="gradient-text">n8n templates</span>
+        Connect {a.name} to {b.name} <span className="gradient-text">with n8n</span>
       </h1>
       <p className="mt-3 max-w-2xl text-muted">
-        {fmt(pair.count)} original workflow templates connect {a.name} and {b.name} in a single
-        automation. Every one is a ready-to-import n8n JSON file - buy it, download it, add your{" "}
-        {a.name} and {b.name} credentials, and it runs. No code, no rebuild from scratch.
+        {fmt(pair.count)} original workflow templates move data between {a.name} and {b.name} -
+        in either direction. Every one is a ready-to-import n8n JSON file: buy it, download it, add
+        your {a.name} and {b.name} credentials, and it runs. No code, no rebuild from scratch.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">
@@ -339,6 +342,37 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
             <WorkflowCard key={w.id} w={w} />
           ))}
         </div>
+      </div>
+
+      <div className="mt-12">
+        <h2 className="text-lg font-semibold text-ink">
+          How to connect {a.name} to {b.name}
+        </h2>
+        <p className="mt-1.5 text-sm text-muted">
+          The same three steps work for every template here, and for sending data the other way -
+          {" "}{b.name} to {a.name} - as well.
+        </p>
+        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              h: `1. Pick a ${a.name} to ${b.name} template`,
+              p: `Choose the workflow that matches what you need to happen, then download its JSON.`,
+            },
+            {
+              h: "2. Import it into n8n",
+              p: "In n8n choose Workflows \u2192 Import from File and select the downloaded file.",
+            },
+            {
+              h: `3. Add your credentials`,
+              p: `Connect your ${a.name} and ${b.name} accounts in n8n. That is the whole setup - then run it.`,
+            },
+          ].map((step) => (
+            <li key={step.h} className="card p-5">
+              <h3 className="font-semibold text-ink">{step.h}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{step.p}</p>
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="mt-12">
