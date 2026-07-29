@@ -21,9 +21,15 @@ export async function POST(req: NextRequest) {
     .json()
     .catch(() => ({}) as { email?: string; source?: string });
 
-  if (email && EMAIL_RE.test(email)) {
+  // Trim before validating, not after: pasted addresses routinely carry a
+  // trailing space, and EMAIL_RE rejects leading/trailing whitespace outright.
+  // Without this the request is dropped on the floor while still answering
+  // "ok", so the form claims to have signed you up and nothing happens.
+  const candidate = typeof email === "string" ? email.trim() : "";
+
+  if (candidate && EMAIL_RE.test(candidate)) {
     const { shouldSendPack, email: normalized } = await recordLead(
-      email,
+      candidate,
       source || "free-download",
     );
 
