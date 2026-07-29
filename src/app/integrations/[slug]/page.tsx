@@ -13,6 +13,7 @@ import {
 import WorkflowCard from "@/components/WorkflowCard";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { starterPackItems } from "@/lib/starter-pack";
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -101,6 +102,7 @@ export default async function IntegrationPage({
   const integration = getIntegrationBySlug(slug);
   if (!integration) notFound();
 
+  const freeCount = starterPackItems().length;
   const matching = getIndex().filter((w) => w.platforms.includes(integration.name));
   const top = [...matching].sort((a, b) => (b.demand ?? 0) - (a.demand ?? 0)).slice(0, 12);
   const topCategories = countBy(matching, "category", 8);
@@ -142,6 +144,9 @@ export default async function IntegrationPage({
           View bundles &amp; pricing
         </Link>
       </div>
+      <p className="mt-3 text-sm text-muted">
+        New to n8n? <Link href="/free" className="text-violet-400 transition-colors hover:text-violet-300">Start with {freeCount} free templates</Link> - no account needed.
+      </p>
 
       {topCategories.length > 0 && (
         <div className="mt-10">
@@ -219,6 +224,7 @@ export default async function IntegrationPage({
 
 function PairPage({ pair }: { pair: IntegrationPair }) {
   const { a, b } = pair;
+  const freeCount = starterPackItems().length;
   const matching = pairMatches(pair);
   const top = [...matching].sort((x, y) => (y.demand ?? 0) - (x.demand ?? 0)).slice(0, 12);
   const topCategories = countBy(matching, "category", 8);
@@ -260,6 +266,9 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
           View bundles &amp; pricing
         </Link>
       </div>
+      <p className="mt-3 text-sm text-muted">
+        New to n8n? <Link href="/free" className="text-violet-400 transition-colors hover:text-violet-300">Start with {freeCount} free templates</Link> - no account needed.
+      </p>
 
       <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card rounded-xl p-4">
