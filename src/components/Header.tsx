@@ -9,6 +9,7 @@ import Logo from "./Logo";
 import HeaderShell from "./HeaderShell";
 
 const navLinks = [
+  { href: "/free", label: "Free" },
   { href: "/workflows", label: "Browse" },
   { href: "/collections", label: "Collections" },
   { href: "/integrations", label: "Integrations" },

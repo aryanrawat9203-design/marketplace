@@ -4,7 +4,7 @@ import Logo from "./Logo";
 
 const shopLinks = [
   { href: "/workflows", label: "All templates" },
-  { href: "/workflows?tier=Free", label: "Free templates" },
+  { href: "/free", label: "Free templates" },
   { href: "/collections", label: "Curated collections" },
   { href: "/integrations", label: "By integration" },
   { href: "/bundles", label: "Bundles & pricing" },
