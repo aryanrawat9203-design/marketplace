@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { baseUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Browse n8n templates by integration",
@@ -20,10 +21,23 @@ export default function IntegrationsPage() {
     { name: "Home", path: "/" },
     { name: "Integrations", path: "/integrations" },
   ]);
+  const base = baseUrl();
+  const itemList = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "n8n templates by integration",
+    itemListElement: integrations.map((i, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      url: `${base}/integrations/${i.slug}`,
+      name: i.name,
+    })),
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
+      <JsonLd data={itemList} />
       <p className="eyebrow">Your stack</p>
       <h1 className="mt-2.5 text-2xl font-semibold text-ink sm:text-3xl">Browse by integration</h1>
       <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-faint">

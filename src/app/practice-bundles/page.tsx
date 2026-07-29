@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { practiceBundles } from "@/lib/bundles";
 import { inr } from "@/lib/pricing";
+import Reveal from "@/components/Reveal";
 
 export const metadata: Metadata = {
   title: "n8n workflow templates for practice — structured practice bundles",
@@ -73,63 +74,67 @@ export default function PracticeBundlesPage() {
       </section>
 
       <section className="mt-14">
-        <h2 className="text-xl font-semibold text-ink">Specialization packs</h2>
-        <p className="mt-1 text-sm text-muted">
-          Already comfortable with the basics? Go deep on one high-demand niche instead of the full
-          generalist ladder.
-        </p>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {specBundles.map((b) => (
-            <Link
-              key={b.slug}
-              href={`/practice-bundles/${b.slug}`}
-              className="card card-hover group flex flex-col overflow-hidden"
-            >
-              <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
-              <div className="flex flex-1 flex-col p-5">
-                <h3 className="font-sans font-semibold text-ink group-hover:text-white">{b.name}</h3>
-                <p className="mt-1 text-xs text-faint">{b.audience}</p>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{b.tagline}</p>
-                <p className="mt-3 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
-                <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
-                  <span className="font-display text-xl font-bold tracking-tight text-ink">{inr(b.price)}</span>
-                  <span className="text-sm text-faint line-through">{inr(b.mrp)}</span>
-                  <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
-                    {b.off}% off
-                  </span>
+        <Reveal>
+          <h2 className="text-xl font-semibold text-ink">Specialization packs</h2>
+          <p className="mt-1 text-sm text-muted">
+            Already comfortable with the basics? Go deep on one high-demand niche instead of the full
+            generalist ladder.
+          </p>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {specBundles.map((b) => (
+              <Link
+                key={b.slug}
+                href={`/practice-bundles/${b.slug}`}
+                className="card card-hover group flex flex-col overflow-hidden"
+              >
+                <div className={`h-1 bg-gradient-to-r ${b.gradient}`} />
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="font-sans font-semibold text-ink group-hover:text-white">{b.name}</h3>
+                  <p className="mt-1 text-xs text-faint">{b.audience}</p>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{b.tagline}</p>
+                  <p className="mt-3 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
+                  <div className="mt-3 flex items-baseline gap-2 border-t border-white/[0.06] pt-3">
+                    <span className="font-display text-xl font-bold tracking-tight text-ink">{inr(b.price)}</span>
+                    <span className="text-sm text-faint line-through">{inr(b.mrp)}</span>
+                    <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+                      {b.off}% off
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {flagshipBundle && (
         <section className="mt-14">
-          <Link
-            href={`/practice-bundles/${flagshipBundle.slug}`}
-            className={`group block overflow-hidden rounded-2xl bg-gradient-to-br ${flagshipBundle.gradient} p-[1px] card-hover`}
-          >
-            <div className="flex flex-col items-start justify-between gap-4 rounded-[15px] bg-surface-1 p-6 sm:flex-row sm:items-center sm:p-7">
-              <div>
-                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                  {flagshipBundle.off}% off
-                </span>
-                <h2 className="mt-3 text-xl font-semibold text-ink">{flagshipBundle.name}</h2>
-                <p className="mt-1 text-sm text-muted">{flagshipBundle.tagline}</p>
-                <p className="mt-2 text-xs text-faint">
-                  {fmt(flagshipBundle.count)} templates &middot; individually worth {inr(flagshipBundle.individualValue)}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="font-display text-3xl font-bold tracking-tight text-ink">{inr(flagshipBundle.price)}</div>
-                  <div className="text-sm text-faint line-through">{inr(flagshipBundle.mrp)}</div>
+          <Reveal>
+            <Link
+              href={`/practice-bundles/${flagshipBundle.slug}`}
+              className={`group block overflow-hidden rounded-2xl bg-gradient-to-br ${flagshipBundle.gradient} p-[1px] card-hover`}
+            >
+              <div className="flex flex-col items-start justify-between gap-4 rounded-[15px] bg-surface-1 p-6 sm:flex-row sm:items-center sm:p-7">
+                <div>
+                  <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                    {flagshipBundle.off}% off
+                  </span>
+                  <h2 className="mt-3 text-xl font-semibold text-ink">{flagshipBundle.name}</h2>
+                  <p className="mt-1 text-sm text-muted">{flagshipBundle.tagline}</p>
+                  <p className="mt-2 text-xs text-faint">
+                    {fmt(flagshipBundle.count)} templates &middot; individually worth {inr(flagshipBundle.individualValue)}
+                  </p>
                 </div>
-                <span className="btn-primary btn-sm">View bundle</span>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="font-display text-3xl font-bold tracking-tight text-ink">{inr(flagshipBundle.price)}</div>
+                    <div className="text-sm text-faint line-through">{inr(flagshipBundle.mrp)}</div>
+                  </div>
+                  <span className="btn-primary btn-sm">View bundle</span>
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </Reveal>
         </section>
       )}
 

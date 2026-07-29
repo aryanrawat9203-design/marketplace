@@ -4,6 +4,7 @@ import { getCollections, collectionStats } from "@/lib/collections";
 import { inr } from "@/lib/pricing";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { baseUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Curated collections",
@@ -18,10 +19,23 @@ export default function CollectionsPage() {
     { name: "Home", path: "/" },
     { name: "Collections", path: "/collections" },
   ]);
+  const base = baseUrl();
+  const itemList = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Curated collections",
+    itemListElement: collections.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${base}/collections/${c.slug}`,
+      name: c.name,
+    })),
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
+      <JsonLd data={itemList} />
       <p className="eyebrow">Hand-assembled packs</p>
       <h1 className="mt-2.5 text-2xl font-semibold text-ink sm:text-3xl">Curated collections</h1>
       <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-faint">

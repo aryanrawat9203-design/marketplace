@@ -8,6 +8,7 @@ import AddCollectionToCart from "@/components/AddCollectionToCart";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import JsonLd from "@/components/JsonLd";
+import Reveal from "@/components/Reveal";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
 
@@ -130,7 +131,7 @@ export default async function CollectionPage({
         </Link>
       )}
 
-      <div className="mt-10">
+      <Reveal className="mt-10">
         <h2 className="text-xl font-semibold text-ink">What&apos;s in this collection</h2>
         <p className="mt-1 text-sm text-faint">
           Selected from the catalog&apos;s highest-demand templates in this area. Every one is also
@@ -141,7 +142,7 @@ export default async function CollectionPage({
             <WorkflowCard key={w.id} w={w} />
           ))}
         </div>
-      </div>
+      </Reveal>
 
       <div className="card mt-12 flex flex-wrap items-center justify-between gap-4 p-6">
         <div>
