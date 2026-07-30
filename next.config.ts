@@ -24,39 +24,30 @@ const cspHeader = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-// Integration and pair pages retired when platforms were rebuilt from the
-// actual workflow node graphs. Asana / Trello / YouTube had no connector node
-// anywhere in the catalog, and 23 pairs fell below MIN_PAIR_TEMPLATES once the
-// phantom claims were removed. These URLs are already indexed and in the
-// sitemaps, so 308 them to the closest surviving page (the higher-inventory
-// half of a dead pair, or the integrations hub) instead of 404ing.
+// Integration and pair pages that still have no live page, 308'd to the
+// closest surviving page (a live constituent of a dead pair, or the hub) so
+// the already-indexed URLs don't 404.
+//
+// Two things shrank this list from its original 26 entries:
+//  - Asana and Trello now have real connector nodes and hand-built templates,
+//    so their single-integration pages are live again.
+//  - MIN_PAIR_TEMPLATES dropped from 10 to 3, so every pair backed by >=3 real
+//    templates now renders. 15 pairs the earlier cleanup had retired at the
+//    old threshold came back (Shopify, Google Calendar and Trello/Asana pairs),
+//    and a config redirect would shadow those live pages - so they're removed.
+//
+// What remains is genuinely dead: YouTube still has no connector node anywhere
+// in the catalog, and the listed pairs have zero templates that use both tools.
 const retiredIntegrationRedirects = [
-  { from: "asana", to: "/integrations" },
-  { from: "trello", to: "/integrations" },
   { from: "youtube", to: "/integrations" },
-  { from: "asana-and-discord", to: "/integrations/discord" },
   { from: "asana-and-google-calendar", to: "/integrations/google-calendar" },
   { from: "asana-and-outlook", to: "/integrations/outlook" },
   { from: "asana-and-twilio", to: "/integrations/twilio" },
-  { from: "discord-and-google-calendar", to: "/integrations/discord" },
   { from: "discord-and-jira", to: "/integrations/discord" },
-  { from: "discord-and-shopify", to: "/integrations/discord" },
-  { from: "discord-and-trello", to: "/integrations/discord" },
-  { from: "gmail-and-shopify", to: "/integrations/gmail" },
   { from: "google-calendar-and-jira", to: "/integrations/google-calendar" },
-  { from: "google-calendar-and-microsoft-teams", to: "/integrations/microsoft-teams" },
-  { from: "google-calendar-and-telegram", to: "/integrations/telegram" },
   { from: "google-calendar-and-trello", to: "/integrations/google-calendar" },
-  { from: "google-calendar-and-twilio", to: "/integrations/twilio" },
-  { from: "google-drive-and-shopify", to: "/integrations/google-drive" },
   { from: "google-drive-and-youtube", to: "/integrations/google-drive" },
   { from: "http-rest-api-and-youtube", to: "/integrations/http-rest-api" },
-  { from: "jira-and-microsoft-teams", to: "/integrations/microsoft-teams" },
-  { from: "microsoft-teams-and-shopify", to: "/integrations/microsoft-teams" },
-  { from: "mysql-and-shopify", to: "/integrations/mysql" },
-  { from: "outlook-and-shopify", to: "/integrations/outlook" },
-  { from: "postgresql-and-shopify", to: "/integrations/postgresql" },
-  { from: "shopify-and-twilio", to: "/integrations/twilio" },
 ];
 
 const nextConfig: NextConfig = {

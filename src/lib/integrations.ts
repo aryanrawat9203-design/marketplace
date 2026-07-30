@@ -19,9 +19,15 @@ export { integrationSlug, pairSlug, isPairSlug };
 
 /**
  * Below this a pair page would be too thin to be useful (and to rank), so the
- * route 404s instead. 10 keeps ~110 pages, each with real inventory behind it.
+ * route 404s instead. The threshold was 10 back when platform data was
+ * unreliable and thin pages were often bogus. Now that platforms are derived
+ * from the real node graphs, a pair backed by 3 genuine templates plus the
+ * how-to content is legitimate - and lets us serve measured search demand
+ * (e.g. Trello+Discord, Asana+Discord) that we otherwise 404 on. Dropping
+ * 10 -> 3 takes the catalog from 108 pair pages to 129 (all recognisable
+ * tool pairs with 3+ real templates behind them).
  */
-export const MIN_PAIR_TEMPLATES = 10;
+export const MIN_PAIR_TEMPLATES = 3;
 
 const g = globalThis as unknown as {
   __integrations?: Integration[];
