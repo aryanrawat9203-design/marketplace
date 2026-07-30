@@ -32,9 +32,10 @@ const cspHeader = [
 //  - Asana and Trello now have real connector nodes and hand-built templates,
 //    so their single-integration pages are live again.
 //  - MIN_PAIR_TEMPLATES dropped from 10 to 3, so every pair backed by >=3 real
-//    templates now renders. 15 pairs the earlier cleanup had retired at the
-//    old threshold came back (Shopify, Google Calendar and Trello/Asana pairs),
-//    and a config redirect would shadow those live pages - so they're removed.
+//    templates now renders. 16 pairs the earlier cleanup had retired at the
+//    old threshold came back (Shopify, Google Calendar, Trello/Asana and
+//    Discord/Jira pairs), and a config redirect would shadow those live pages -
+//    so they're removed.
 //
 // What remains is genuinely dead: YouTube still has no connector node anywhere
 // in the catalog, and the listed pairs have zero templates that use both tools.
@@ -43,7 +44,6 @@ const retiredIntegrationRedirects = [
   { from: "asana-and-google-calendar", to: "/integrations/google-calendar" },
   { from: "asana-and-outlook", to: "/integrations/outlook" },
   { from: "asana-and-twilio", to: "/integrations/twilio" },
-  { from: "discord-and-jira", to: "/integrations/discord" },
   { from: "google-calendar-and-jira", to: "/integrations/google-calendar" },
   { from: "google-calendar-and-trello", to: "/integrations/google-calendar" },
   { from: "google-drive-and-youtube", to: "/integrations/google-drive" },
