@@ -92,6 +92,7 @@ const g = globalThis as unknown as {
   __catalog?: DetailItem[];
   __taxo?: Taxonomy;
   __byRoute?: Map<string, DetailItem>;
+  __aliases?: Record<string, string>;
 };
 
 export function getIndex(): IndexItem[] {
@@ -106,9 +107,26 @@ export function getTaxonomy(): Taxonomy {
   if (!g.__taxo) g.__taxo = readJson<Taxonomy>("taxonomy.json");
   return g.__taxo;
 }
+// Historical route slugs that named a tool the template does not actually use.
+// The catalog's truthfulness rebuild corrected `title` and `platforms` from the
+// real node graphs but left `route` frozen, so a slice of URLs contradicted
+// their own page. Renaming the route alone would 404 already-indexed URLs and
+// break the download links on past orders (both resolve through getByRoute),
+// so every rename is recorded here: lookups still succeed on the old slug,
+// while the page 301s to the corrected one.
+export function routeAliases(): Record<string, string> {
+  if (!g.__aliases) g.__aliases = readJson<Record<string, string>>("route-aliases.json");
+  return g.__aliases;
+}
+
+/** The current slug for a route, following one alias hop. */
+export function canonicalRoute(route: string): string {
+  return routeAliases()[route] ?? route;
+}
+
 export function getByRoute(route: string): DetailItem | undefined {
   if (!g.__byRoute) g.__byRoute = new Map(getCatalog().map((w) => [w.route, w]));
-  return g.__byRoute.get(route);
+  return g.__byRoute.get(route) ?? g.__byRoute.get(canonicalRoute(route));
 }
 
 export type Filters = {

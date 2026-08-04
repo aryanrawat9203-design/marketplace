@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getByRoute, related } from "@/lib/catalog";
+import { canonicalRoute, getByRoute, related } from "@/lib/catalog";
 import { getScreenshotsForRoute, orderedGallery, SHOWCASE_SLOT_LABELS } from "@/lib/screenshots";
 import { bundleForCategory, bundleForSubcategory } from "@/lib/bundles";
 import { Badge, difficultyTone, tierTone } from "@/components/Badge";
@@ -30,7 +30,7 @@ export async function generateMetadata({
   params: Promise<{ route: string }>;
 }): Promise<Metadata> {
   const { route } = await params;
-  const w = getByRoute(route);
+  const w = getByRoute(canonicalRoute(route));
   if (!w) return { title: "Template not found" };
   const preview = previewWorkflow(w.route);
   const shots = await getScreenshotsForRoute(w.route);
@@ -62,6 +62,10 @@ export default async function WorkflowDetail({
   params: Promise<{ route: string }>;
 }) {
   const { route } = await params;
+  // Corrected slug: send the stale URL to the real one before rendering, so the
+  // indexed link keeps its equity instead of serving duplicate content.
+  const canonical = canonicalRoute(route);
+  if (canonical !== route) permanentRedirect(`/workflows/${canonical}`);
   const w = getByRoute(route);
   if (!w) notFound();
   const rel = related(w, 4);
