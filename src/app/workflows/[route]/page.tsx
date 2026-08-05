@@ -18,6 +18,7 @@ import { learningFor } from "@/lib/learning";
 import WorkflowGraph from "@/components/WorkflowGraph";
 import AddToCartButton from "@/components/AddToCartButton";
 import StickyBuyBar from "@/components/StickyBuyBar";
+import TrackView from "@/components/TrackView";
 import { RecentlyViewedTracker, RecentlyViewedStrip } from "@/components/RecentlyViewed";
 import JsonLd from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/PageHeader";
@@ -406,6 +407,7 @@ export default async function WorkflowDetail({
         </div>
 
         <aside className="space-y-6">
+          <TrackView item={w.route} kind="workflow" price={w.price} />
           <div className="card-raised p-5">
             <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
             <div className="mt-4">
