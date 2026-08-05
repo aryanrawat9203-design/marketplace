@@ -212,6 +212,21 @@ export function patternOf(longDescription: string | null | undefined): string | 
   return m ? m[1] : null;
 }
 
+// A 2026-08-05 sample import-test found these five patterns' named node-type
+// promise (Wait, Switch, memory) frequently absent from the actual node
+// graph, since these skills are inferred from the pattern name in
+// longDescription rather than the real nodes[] array. Until the catalog
+// carries real per-template node data (tracked separately), these fall back
+// to the generic DEFAULT_SKILLS instead of asserting a specific technique
+// the file may not contain - see the compliance note in WorkPacket 3.
+const UNVERIFIED_PATTERNS = new Set([
+  "Chatbot Responder",
+  "Approval Workflow",
+  "Drip Sequence",
+  "Webhook Pipeline",
+  "AI Agent",
+]);
+
 export function learningFor(item: {
   tier: string | null;
   totalNodes: number;
@@ -219,6 +234,7 @@ export function learningFor(item: {
 }): LearningInfo {
   const band = bandFor(item);
   const pattern = patternOf(item.longDescription);
-  const skills = (pattern && PATTERN_SKILLS[pattern]) || DEFAULT_SKILLS;
+  const verified = pattern && !UNVERIFIED_PATTERNS.has(pattern) ? PATTERN_SKILLS[pattern] : undefined;
+  const skills = verified || DEFAULT_SKILLS;
   return { band, bandNote: BAND_NOTE[band], skills };
 }
