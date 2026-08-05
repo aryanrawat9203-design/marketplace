@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Script from "next/script";
+import { track } from "@vercel/analytics";
 import { useCart } from "@/components/CartProvider";
 import { useAuth } from "@/components/AuthProvider";
 import TrustStrip from "@/components/TrustStrip";
@@ -25,7 +26,7 @@ export default function CartPage() {
 
   async function checkout() {
     if (!session) {
-      openLogin({ force: true });
+      openLogin({ force: true, trigger: "cart" });
       return;
     }
     setLoading(true);
@@ -41,7 +42,7 @@ export default function CartPage() {
         }),
       });
       if (res.status === 401) {
-        openLogin({ force: true });
+        openLogin({ force: true, trigger: "cart" });
         return;
       }
       if (res.status === 503) {
@@ -101,6 +102,7 @@ export default function CartPage() {
           }
         },
       });
+      track("begin_checkout", { item: `cart:${items.length}`, price: discountedTotal, kind: "cart" });
       rzp.open();
     } catch {
       setMsg("Something went wrong. Please try again.");
