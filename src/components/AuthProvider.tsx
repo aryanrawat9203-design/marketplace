@@ -6,17 +6,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { track } from "@vercel/analytics";
 import { createClient } from "@/lib/supabase/client";
 import LoginModal from "./LoginModal";
+
+export type LoginTrigger = "buy" | "cart" | "chat" | "account" | "header" | "prompt";
 
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  openLogin: (opts?: { force?: boolean }) => void;
+  openLogin: (opts?: { force?: boolean; trigger?: LoginTrigger }) => void;
   closeLogin: () => void;
   signOut: () => Promise<void>;
 };
@@ -39,14 +43,25 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(!!supabase);
   const [modalOpen, setModalOpen] = useState(false);
   const [force, setForce] = useState(false);
+  const [trigger, setTrigger] = useState<LoginTrigger>("prompt");
+  const signedInRef = useRef(false);
 
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
+      signedInRef.current = !!data.session;
       setSession(data.session);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      // Only a real signed-out -> signed-in transition counts as a completed
+      // login. SIGNED_IN also fires on session restore and token refresh, and
+      // a ref (not state) is used so a re-render can never replay the event.
+      if (!signedInRef.current && s) {
+        const method = s.user?.app_metadata?.provider === "google" ? "google" : "email";
+        track("login_completed", { method });
+      }
+      signedInRef.current = !!s;
       setSession(s);
       if (s) {
         setModalOpen(false);
@@ -80,8 +95,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => clearTimeout(first);
   }, [loading, session]);
 
-  const openLogin = useCallback((opts?: { force?: boolean }) => {
+  const openLogin = useCallback((opts?: { force?: boolean; trigger?: LoginTrigger }) => {
     setForce(!!opts?.force);
+    setTrigger(opts?.trigger ?? "prompt");
     setModalOpen(true);
   }, []);
 
@@ -106,7 +122,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }}
     >
       {children}
-      <LoginModal open={modalOpen} onClose={closeLogin} force={force} />
+      <LoginModal open={modalOpen} onClose={closeLogin} force={force} trigger={trigger} />
     </AuthContext.Provider>
   );
 }

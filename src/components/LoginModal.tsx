@@ -1,21 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { track } from "@vercel/analytics";
 import { createClient } from "@/lib/supabase/client";
+import type { LoginTrigger } from "./AuthProvider";
 
 export default function LoginModal({
   open,
   onClose,
   force = false,
+  trigger = "prompt",
 }: {
   open: boolean;
   onClose: () => void;
   force?: boolean;
+  trigger?: LoginTrigger;
 }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // The blocking variant is the one that can cost a sale, so it is the one
+  // worth counting against the logins that actually complete.
+  useEffect(() => {
+    if (open && force) track("login_modal_shown", { trigger });
+  }, [open, force, trigger]);
 
   if (!open) return null;
 

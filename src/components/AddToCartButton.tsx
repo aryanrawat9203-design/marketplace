@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { track } from "@vercel/analytics";
 import { useCart, type CartLine } from "./CartProvider";
 
 /** Secondary action next to Buy: queue the item for a combined checkout. */
@@ -20,7 +21,13 @@ export default function AddToCartButton({ line, block = false }: { line: CartLin
   }
 
   return (
-    <button onClick={() => add(line)} className={`btn-secondary btn-md mt-2 ${w}`}>
+    <button
+      onClick={() => {
+        track("add_to_cart", { item: line.key, kind: line.kind });
+        add(line);
+      }}
+      className={`btn-secondary btn-md mt-2 ${w}`}
+    >
       Add to cart
     </button>
   );

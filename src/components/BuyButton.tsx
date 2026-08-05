@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Script from "next/script";
+import { track } from "@vercel/analytics";
 import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
 import { useAuth } from "./AuthProvider";
@@ -43,7 +44,7 @@ export default function BuyButton({
 
   async function buy() {
     if (requireLogin && !session) {
-      openLogin({ force: true });
+      openLogin({ force: true, trigger: "buy" });
       return;
     }
     setLoading(true);
@@ -62,7 +63,7 @@ export default function BuyButton({
         }),
       });
       if (res.status === 401) {
-        openLogin({ force: true });
+        openLogin({ force: true, trigger: "buy" });
         return;
       }
       if (res.status === 503) {
@@ -112,6 +113,7 @@ export default function BuyButton({
           else setMsg("Payment verification failed. If money was deducted, please contact support.");
         },
       });
+      track("begin_checkout", { item: item.key, price: discountedPrice, kind: item.kind });
       rzp.open();
     } catch {
       setMsg("Something went wrong. Please try again.");

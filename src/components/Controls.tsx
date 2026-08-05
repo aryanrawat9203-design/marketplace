@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { integrationSlug } from "@/lib/slug";
 
 type SuggestPayload = {
@@ -117,6 +118,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          track("search", { query: q.trim().slice(0, 100) });
           if (active >= 0 && rows[active]) go(rows[active].href);
           else go(`/workflows?q=${encodeURIComponent(q)}`);
         }}
@@ -149,7 +151,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
               setActive(-1);
             }
           }}
-          placeholder="Search 10,500+ templates..."
+          placeholder="Search 10,524 templates..."
           className={`w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 text-ink placeholder-faint outline-none transition-colors focus-visible:border-violet-500/70 focus-visible:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 ${
             compact ? "h-10 pr-9 text-sm" : "h-12 pr-3"
           }`}

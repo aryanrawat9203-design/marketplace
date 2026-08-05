@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@vercel/analytics";
 
 export type AppliedPromo = { code: string; discountPercent: number };
 
@@ -38,6 +39,9 @@ export default function PromoCodeField({
         body: JSON.stringify({ code }),
       });
       const data = await res.json();
+      // Redemption counts only record completed purchases, so without this a
+      // code with zero sales is indistinguishable from a code nobody tried.
+      track("promo_attempted", { code: code.trim().toUpperCase(), result: data.ok ? "applied" : "rejected" });
       if (data.ok) {
         const promo = { code: data.code as string, discountPercent: data.discountPercent as number };
         setApplied(promo);
@@ -49,6 +53,7 @@ export default function PromoCodeField({
         setMsg(REASON_MESSAGES[data.reason as string] || "Could not apply that code.");
       }
     } catch {
+      track("promo_attempted", { code: code.trim().toUpperCase(), result: "rejected" });
       setMsg("Could not apply that code. Please try again.");
     } finally {
       setLoading(false);

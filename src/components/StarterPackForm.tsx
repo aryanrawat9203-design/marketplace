@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@vercel/analytics";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PACK_URL = "/api/starter-pack";
@@ -28,6 +29,7 @@ export default function StarterPackForm() {
       }).catch(() => {});
       setState("sent");
     }
+    track("free_pack_download", { withEmail });
     window.location.href = PACK_URL;
   }
 
