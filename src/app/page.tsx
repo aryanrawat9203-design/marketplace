@@ -167,7 +167,7 @@ export default async function Home() {
   ];
 
   const steps: [string, string, string][] = [
-    ["1", "Find the right one", "Search 10,500+ original templates by industry, tool, or use case."],
+    ["1", "Find the right one", "Search 10,524 original templates by industry, tool, or use case."],
     ["2", "Buy securely", "Pay in seconds with UPI, cards, or netbanking via Razorpay."],
     ["3", "Download & import", "Get the ready-to-import n8n JSON instantly - add your credentials and go."],
   ];
