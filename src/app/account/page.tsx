@@ -68,7 +68,7 @@ export default function AccountPage() {
         <div className="mt-10 card p-8 text-center">
           <p className="text-body">Sign in to see your purchases.</p>
           <button
-            onClick={() => openLogin({ force: true })}
+            onClick={() => openLogin({ force: true, trigger: "account" })}
             className="btn-primary btn-md mt-4 "
           >
             Sign in
