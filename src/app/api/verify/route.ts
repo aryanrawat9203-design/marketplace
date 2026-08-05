@@ -8,11 +8,27 @@ import { sendOrderConfirmation } from "@/lib/email";
 import { baseUrl } from "@/lib/site";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { requireLoginToBuy } from "@/lib/require-login";
+import { track } from "@vercel/analytics/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
+// Reporting must never be able to fail a paid order, so every path here is
+// fire-and-forget and swallows its own errors.
+function reportPurchase(item: string, kind: string, amountPaise: number) {
+  try {
+    void track("purchase", {
+      item,
+      kind,
+      value: Math.round(amountPaise) / 100,
+      currency: "INR",
+    })?.catch?.(() => {});
+  } catch {
+    /* analytics is never worth an exception on the money path */
+  }
+}
 
 // Verifies Razorpay payment signature, then issues a secure, time-limited link.
 export async function POST(req: NextRequest) {
@@ -91,6 +107,7 @@ export async function POST(req: NextRequest) {
         // A failed confirmation email must never block the download response.
       }
     }
+    reportPurchase(`cart:${cart.items.length}`, "cart", cart.amountPaise);
     return NextResponse.json({ downloadUrl: `/api/download?token=${encodeURIComponent(token)}` });
   }
 
@@ -117,5 +134,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  reportPurchase(item.key, item.kind, Math.round(item.price * 100));
   return NextResponse.json({ downloadUrl: `/api/download?token=${encodeURIComponent(token)}` });
 }
