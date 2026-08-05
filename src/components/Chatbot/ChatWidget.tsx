@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { track } from "@vercel/analytics";
 import { CHATBOT_CONFIG } from "@/lib/chatbot/config";
 import { hasFreeAccess } from "@/lib/entitlements";
 import { useAuth } from "@/components/AuthProvider";
@@ -233,7 +234,8 @@ export default function ChatWidget() {
     if (!trimmed || sending) return;
 
     if (!user || !session) {
-      openLogin({ force: true });
+      track("chat_blocked_by_login", { stage: "send" });
+      openLogin({ force: true, trigger: "chat" });
       return;
     }
 
@@ -277,7 +279,8 @@ export default function ChatWidget() {
 
       if (res.status === 401) {
         setMessages(preSendMessages);
-        openLogin({ force: true });
+        track("chat_blocked_by_login", { stage: "unauthorized" });
+        openLogin({ force: true, trigger: "chat" });
         return;
       }
       if (res.status === 402) {
@@ -530,7 +533,10 @@ export default function ChatWidget() {
           <div className="border-t border-hairline p-4 text-center">
             <p className="text-sm text-muted">Sign in to chat with the assistant.</p>
             <button
-              onClick={() => openLogin({ force: true })}
+              onClick={() => {
+                track("chat_blocked_by_login", { stage: "panel" });
+                openLogin({ force: true, trigger: "chat" });
+              }}
               className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
             >
               Sign in
