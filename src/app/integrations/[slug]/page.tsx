@@ -211,7 +211,7 @@ export default async function IntegrationPage({
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
           <h2 className="font-semibold text-ink">
-            Need a {integration.name} workflow that isn&apos;t here?
+            {`Need a ${integration.name} workflow that isn’t here?`}
           </h2>
           <p className="mt-1 text-sm text-muted">
             Describe it and get a fixed quote - custom-built, ready to import.
