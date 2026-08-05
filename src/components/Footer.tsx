@@ -129,6 +129,16 @@ export default function Footer() {
             license to use and adapt them in your own projects. Built for n8n.
           </p>
         </div>
+        <div className="mx-auto max-w-7xl px-4 pb-6 text-[11px] leading-relaxed text-faint sm:px-6">
+          <p>
+            Seller: Aryan Rawat, trading as WorkflowCrate. Customer care &amp; grievance contact: Aryan
+            Rawat &mdash;{" "}
+            <a href={`mailto:${process.env.SUPPORT_EMAIL}`} className="underline decoration-dotted">
+              {process.env.SUPPORT_EMAIL}
+            </a>
+            .
+          </p>
+        </div>
       </div>
     </footer>
   );
