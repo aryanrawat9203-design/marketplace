@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
 import { createClient } from "@/lib/supabase/client";
-import type { LoginTrigger } from "./AuthProvider";
+import { LOGIN_INTENT_KEY, type LoginTrigger } from "./AuthProvider";
+
+function markLoginStarted(method: "google" | "email") {
+  try {
+    localStorage.setItem(LOGIN_INTENT_KEY, JSON.stringify({ method, at: Date.now() }));
+  } catch {
+    /* best effort - the sign-in itself must not depend on this */
+  }
+}
 
 export default function LoginModal({
   open,
@@ -35,6 +43,7 @@ export default function LoginModal({
       setErr("Sign-in isn't configured yet.");
       return;
     }
+    markLoginStarted("google");
     const next = window.location.pathname + window.location.search;
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -63,7 +72,10 @@ export default function LoginModal({
     });
     setLoading(false);
     if (error) setErr(error.message);
-    else setSent(true);
+    else {
+      markLoginStarted("email");
+      setSent(true);
+    }
   }
 
   return (

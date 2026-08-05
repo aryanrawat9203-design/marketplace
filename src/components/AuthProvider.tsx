@@ -36,6 +36,27 @@ export function useAuth() {
 const FIRST_PROMPT_DELAY_MS = 4000;
 const PROMPT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 const PROMPT_SEEN_KEY = "wc:login-prompt-at";
+export const LOGIN_INTENT_KEY = "wc:login-started";
+const LOGIN_INTENT_TTL_MS = 30 * 60 * 1000;
+
+/** Report a login only if this browser recently started one. */
+function consumeLoginIntent() {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(LOGIN_INTENT_KEY);
+    if (raw) localStorage.removeItem(LOGIN_INTENT_KEY);
+  } catch {
+    /* storage unavailable - a login we cannot attribute is not worth counting */
+  }
+  if (!raw) return;
+  try {
+    const { method, at } = JSON.parse(raw) as { method?: string; at?: number };
+    if (!at || Date.now() - at > LOGIN_INTENT_TTL_MS) return;
+    track("login_completed", { method: method === "google" ? "google" : "email" });
+  } catch {
+    /* malformed ticket - ignore */
+  }
+}
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
@@ -54,13 +75,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      // Only a real signed-out -> signed-in transition counts as a completed
-      // login. SIGNED_IN also fires on session restore and token refresh, and
-      // a ref (not state) is used so a re-render can never replay the event.
-      if (!signedInRef.current && s) {
-        const method = s.user?.app_metadata?.provider === "google" ? "google" : "email";
-        track("login_completed", { method });
-      }
+      // A session appearing is not the same as someone logging in: it also
+      // happens on every page load, on token refresh and on tab focus. So the
+      // modal records that a login was *started*, and only that ticket - not
+      // the session itself - is what gets counted here. The ticket survives the
+      // Google redirect and a magic link opened in a different tab.
+      if (!signedInRef.current && s) consumeLoginIntent();
       signedInRef.current = !!s;
       setSession(s);
       if (s) {
