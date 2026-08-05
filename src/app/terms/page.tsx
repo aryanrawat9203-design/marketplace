@@ -5,8 +5,12 @@ export const metadata: Metadata = { title: "Terms & Conditions", alternates: { c
 
 export default function TermsPage() {
   return (
-    <PageShell title="Terms & Conditions" updated="29 June 2026">
-      <p>By using WorkflowCrate (the site), you agree to these terms. Please read them carefully.</p>
+    <PageShell title="Terms & Conditions" updated="5 August 2026">
+      <p>
+        WorkflowCrate (&quot;we&quot;, &quot;us&quot;, &quot;WorkflowCrate&quot;) is operated by{" "}
+        <strong>Aryan Rawat, trading as WorkflowCrate</strong>. By using this site, you agree to
+        these terms. Please read them carefully.
+      </p>
 
       <h2>The service</h2>
       <p>
@@ -56,14 +60,27 @@ export default function TermsPage() {
         arising from your use of the site or its products.
       </p>
 
+      <h2>Pricing and taxes</h2>
+      <p>
+        All prices are listed in Indian Rupees (INR) and are treated as inclusive of any applicable
+        taxes. GST registration status is currently being confirmed; this section will be updated with
+        a GSTIN once registration (if required) is complete.
+      </p>
+
       <h2>Governing law</h2>
-      <p>These terms are governed by the laws of India.</p>
+      <p>
+        These terms are governed by the laws of India, and courts at the seller&apos;s principal place
+        of business shall have exclusive jurisdiction over any dispute.
+      </p>
 
       <h2>Changes</h2>
       <p>We may update these terms from time to time. The date above shows the latest revision.</p>
 
       <h2>Contact</h2>
-      <p>Questions? Email {process.env.SUPPORT_EMAIL}.</p>
+      <p>
+        Questions? Email{" "}
+        <a href={`mailto:${process.env.SUPPORT_EMAIL}`}>{process.env.SUPPORT_EMAIL}</a>.
+      </p>
     </PageShell>
   );
 }
