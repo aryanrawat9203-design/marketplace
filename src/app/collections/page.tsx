@@ -59,10 +59,7 @@ export default function CollectionsPage() {
               <div className="mt-4 flex items-baseline justify-between border-t border-white/[0.06] pt-3">
                 <span className="font-mono text-xs text-faint">{stats.count} templates</span>
                 <span className="text-sm">
-                  <b className="font-display tracking-tight text-ink">{inr(stats.price)}</b>{" "}
-                  {stats.mrp > stats.price && (
-                    <span className="text-xs text-faint line-through">{inr(stats.mrp)}</span>
-                  )}
+                  <b className="font-display tracking-tight text-ink">{inr(stats.price)}</b>
                 </span>
               </div>
             </Link>
