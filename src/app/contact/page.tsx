@@ -17,6 +17,10 @@ export default function ContactPage() {
           <strong className="text-ink">Seller:</strong> Aryan Rawat, trading as WorkflowCrate.
         </p>
         <p className="mt-1">
+          <strong className="text-ink">Registered address:</strong> 13, Near Chark Hospital, Joy
+          Builders Colony, Vallabh Nagar, Ahilya Mata Colony, Indore, Madhya Pradesh 452003, India
+        </p>
+        <p className="mt-1">
           <strong className="text-ink">Customer care &amp; grievance officer:</strong> Aryan Rawat
         </p>
         <p className="mt-1">
