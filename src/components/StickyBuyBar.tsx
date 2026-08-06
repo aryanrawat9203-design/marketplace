@@ -7,11 +7,9 @@ import { inr } from "@/lib/pricing";
 /** Mobile-only bar that keeps price + Buy in reach once the buy box scrolls away. */
 export default function StickyBuyBar({
   item,
-  mrp,
   requireLogin,
 }: {
   item: BuyItem;
-  mrp: number;
   requireLogin: boolean;
 }) {
   const [show, setShow] = useState(false);
@@ -34,7 +32,6 @@ export default function StickyBuyBar({
           <div className="line-clamp-1 text-sm font-medium text-body">{item.name}</div>
           <div className="flex items-baseline gap-2">
             <span className="font-display font-semibold tracking-tight text-ink">{inr(item.price)}</span>
-            {mrp > item.price && <span className="text-xs text-faint line-through">{inr(mrp)}</span>}
           </div>
         </div>
         <div className="shrink-0">

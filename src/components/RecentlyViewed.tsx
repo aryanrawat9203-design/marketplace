@@ -9,7 +9,6 @@ type RecentItem = {
   title: string;
   category: string | null;
   price: number;
-  mrp: number;
   free: boolean;
 };
 
@@ -72,10 +71,7 @@ export function RecentlyViewedStrip({ excludeRoute }: { excludeRoute?: string })
               {r.free ? (
                 <span className="font-display font-semibold text-emerald-400">Free</span>
               ) : (
-                <>
-                  <span className="font-display font-semibold tracking-tight text-ink">{inr(r.price)}</span>
-                  {r.mrp > r.price && <span className="text-xs text-faint line-through">{inr(r.mrp)}</span>}
-                </>
+                <span className="font-display font-semibold tracking-tight text-ink">{inr(r.price)}</span>
               )}
             </div>
           </Link>

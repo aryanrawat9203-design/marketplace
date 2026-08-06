@@ -44,7 +44,7 @@ export default async function WorkflowCard({ w }: { w: IndexItem }) {
         )}
       </div>
       <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
-        <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="sm" />
+        <PriceTag price={w.price} free={w.free} size="sm" />
         <span className="shrink-0 text-sm font-medium text-violet-400 group-hover:text-violet-300">
           {w.free ? "Get" : "Buy"}{" "}
           <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">
