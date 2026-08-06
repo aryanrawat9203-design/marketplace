@@ -168,7 +168,6 @@ export default async function WorkflowDetail({
           title: w.title,
           category: w.category,
           price: w.price,
-          mrp: w.mrp,
           free: w.free,
         }}
       />
@@ -409,7 +408,7 @@ export default async function WorkflowDetail({
         <aside className="space-y-6">
           <TrackView item={w.route} kind="workflow" price={w.price} />
           <div className="card-raised p-5">
-            <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
+            <PriceTag price={w.price} free={w.free} size="lg" />
             <div className="mt-4">
               <BuyButton
                 item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
@@ -462,8 +461,7 @@ export default async function WorkflowDetail({
               <div className="mt-1 text-sm text-body">
                 Get all <b className="text-ink">{upsell.count}</b>{" "}
                 {upsell.type === "subcategory" ? upsell.subcategory : upsell.category} templates for{" "}
-                <b className="text-ink">{inr(upsell.price)}</b>{" "}
-                <span className="text-faint line-through">{inr(upsell.mrp)}</span>
+                <b className="text-ink">{inr(upsell.price)}</b>
               </div>
               <div className="mt-2 text-sm font-medium text-violet-400">View bundle &rarr;</div>
             </Link>
@@ -486,7 +484,6 @@ export default async function WorkflowDetail({
               <Row k="Category" v={w.category} />
               <Row k="Subcategory" v={w.subcategory} />
               <Row k="Setup" v={w.setup} />
-              <Row k="Est. value" v={w.estValue} />
               {w.demand != null && <Row k="Demand score" v={`${w.demand}/100`} />}
               {w.value != null && <Row k="Commercial value" v={`${w.value}/100`} />}
             </dl>
@@ -514,7 +511,6 @@ export default async function WorkflowDetail({
 
       <StickyBuyBar
         item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
-        mrp={w.mrp}
         requireLogin={requireLoginToBuy()}
       />
     </div>
