@@ -8,8 +8,9 @@ export default function PrivacyPage() {
     <PageShell title="Privacy Policy" updated="5 August 2026">
       <p>
         WorkflowCrate (&quot;we&quot;, &quot;us&quot;), operated by <strong>Aryan Rawat, trading as
-        WorkflowCrate</strong>, respects your privacy. This policy explains what information we
-        collect, how we use it, and the choices you have.
+        WorkflowCrate</strong> (13, Near Chark Hospital, Joy Builders Colony, Vallabh Nagar, Ahilya Mata
+        Colony, Indore, Madhya Pradesh 452003, India), respects your privacy. This policy explains what
+        information we collect, how we use it, and the choices you have.
       </p>
 
       <h2>Information we collect</h2>
