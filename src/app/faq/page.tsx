@@ -23,7 +23,7 @@ const faqs: [string, string][] = [
   ],
   [
     "How is pricing decided?",
-    "Each template is priced by its tier and complexity. All prices are discounted launch pricing and will rise over time, so buying now locks in the lowest price.",
+    "Each template is priced by its tier and complexity - simpler workflows cost less, higher-complexity multi-system builds cost more. It's a one-time payment per template or bundle, no subscription.",
   ],
   [
     "What payment methods do you accept?",
