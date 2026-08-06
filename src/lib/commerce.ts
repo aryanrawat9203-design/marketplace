@@ -6,6 +6,7 @@ import { getBundle, bundleMembersDetail, bandFor, type Bundle } from "./bundles"
 import { createZip, type ZipEntry } from "./zip";
 import { starterPackItems, STARTER_PACK_FILENAME } from "./starter-pack";
 import type { DetailItem } from "./catalog";
+import { capsFromTypes, type Caps } from "./node-facts";
 
 export type Kind = "workflow" | "bundle";
 
@@ -76,10 +77,16 @@ function friendlyNodeType(type: string): string {
     .trim();
 }
 
-export type WorkflowPreview = { nodeCount: number; nodeTypes: string[] };
+export type WorkflowPreview = {
+  nodeCount: number;
+  /** Display names, e.g. "Google Sheets". */
+  nodeTypes: string[];
+  /** Capability facts from the real graph - the only thing page copy may claim from. */
+  caps: Caps;
+};
 
-// Reads only node `type`/`name` fields from the shipped workflow JSON - never
-// `parameters`, so this is safe to show before purchase.
+// Reads only node `type`/`retryOnFail` fields from the shipped workflow JSON -
+// never `parameters`, so this is safe to show before purchase.
 export function previewWorkflow(route: string): WorkflowPreview | null {
   const w = getByRoute(route);
   if (!w?.workflowFile) return null;
@@ -87,14 +94,25 @@ export function previewWorkflow(route: string): WorkflowPreview | null {
   if (!fs.existsSync(fp)) return null;
 
   try {
-    const raw = JSON.parse(fs.readFileSync(fp, "utf-8")) as { nodes?: Array<{ type?: string }> };
+    const raw = JSON.parse(fs.readFileSync(fp, "utf-8")) as {
+      nodes?: Array<{ type?: string; retryOnFail?: boolean }>;
+      pinData?: Record<string, unknown>;
+    };
     // Sticky notes are canvas annotations, not workflow steps.
     const nodes = (raw.nodes ?? []).filter((n) => n.type !== "n8n-nodes-base.stickyNote");
     const types = new Set<string>();
+    const rawTypes = new Set<string>();
     for (const n of nodes) {
-      if (n.type) types.add(friendlyNodeType(n.type));
+      if (!n.type) continue;
+      types.add(friendlyNodeType(n.type));
+      rawTypes.add(n.type);
     }
-    return { nodeCount: nodes.length, nodeTypes: [...types].sort() };
+    const caps = capsFromTypes([...rawTypes], {
+      nodeCount: nodes.length,
+      retries: nodes.some((n) => n.retryOnFail === true),
+      pinData: Object.keys(raw.pinData ?? {}).length > 0,
+    });
+    return { nodeCount: nodes.length, nodeTypes: [...types].sort(), caps };
   } catch {
     return null;
   }
