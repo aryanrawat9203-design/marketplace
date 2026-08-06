@@ -69,8 +69,8 @@ export default function TermsPage() {
 
       <h2>Governing law</h2>
       <p>
-        These terms are governed by the laws of India, and courts at the seller&apos;s principal place
-        of business shall have exclusive jurisdiction over any dispute.
+        These terms are governed by the laws of India, and courts at Indore, Madhya Pradesh shall have
+        exclusive jurisdiction over any dispute.
       </p>
 
       <h2>Changes</h2>
