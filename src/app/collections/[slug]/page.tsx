@@ -88,14 +88,6 @@ export default async function CollectionPage({
 
           <div className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <span className="font-display text-2xl font-bold tracking-tight text-ink">{inr(stats.price)}</span>
-            {stats.mrp > stats.price && (
-              <>
-                <span className="text-faint line-through">{inr(stats.mrp)}</span>
-                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                  You save {inr(stats.mrp - stats.price)}
-                </span>
-              </>
-            )}
             <span className="text-sm text-faint">{stats.count} templates</span>
           </div>
 
@@ -125,8 +117,7 @@ export default async function CollectionPage({
           <span className="mt-1 block text-sm text-body">
             The full <b className="text-ink">{catBundle.category}</b>{" "}bundle has all{" "}
             <b className="text-ink">{catBundle.count.toLocaleString("en-IN")}</b>{" "}templates for{" "}
-            <b className="text-ink">{inr(catBundle.price)}</b>{" "}
-            <span className="text-faint line-through">{inr(catBundle.mrp)}</span>
+            <b className="text-ink">{inr(catBundle.price)}</b>
           </span>
         </Link>
       )}
