@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const destinations: { href: string; label: string; desc: string }[] = [
   { href: "/workflows", label: "Browse all templates", desc: "Search and filter the full catalog" },
   { href: "/workflows?tier=Free", label: "Free templates", desc: "No card, no signup — just import" },
-  { href: "/bundles", label: "Bundles & pricing", desc: "Whole categories at up to 60% off" },
+  { href: "/bundles", label: "Bundles & pricing", desc: "Whole categories in one download" },
   { href: "/collections", label: "Curated collections", desc: "Hand-assembled starter packs" },
   { href: "/integrations", label: "Browse by integration", desc: "Start from the apps you already use" },
   { href: "/custom", label: "Request a custom build", desc: "Describe it, get a fixed quote" },

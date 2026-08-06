@@ -223,7 +223,7 @@ export default async function Home() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
               </span>
-              <span>{fmt(taxo.total)} original templates &middot; launch pricing live</span>
+              <span>{fmt(taxo.total)} original templates &middot; one-time payment, yours to keep</span>
             </span>
             <h1 className="anim-rise anim-d1 mt-6 text-4xl font-bold tracking-tight text-ink sm:text-6xl sm:leading-[1.06]">
               Ready-to-use <span className="gradient-text">n8n workflows</span>, built to sell
@@ -373,24 +373,15 @@ export default async function Home() {
                           Best value
                         </span>
                       )}
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-xl font-semibold text-ink">{b.name}</h3>
-                        <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                          {b.off}% off
-                        </span>
-                      </div>
+                      <h3 className="text-xl font-semibold text-ink">{b.name}</h3>
                       <p className="mt-2 text-sm leading-relaxed text-muted">{b.tagline}</p>
                       <div className="mt-5 flex items-baseline gap-2.5">
                         <span className="font-display text-3xl font-bold tracking-tight text-ink">
                           {inr(b.price)}
                         </span>
-                        <span className="text-faint line-through">{inr(b.mrp)}</span>
                       </div>
                       <div className="mt-1.5 text-xs text-faint">
                         {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
-                      </div>
-                      <div className="mt-2 text-xs font-medium text-emerald-300">
-                        You save {inr(b.mrp - b.price)} at launch pricing
                       </div>
                       <div className="link-arrow mt-5">
                         {i === 0 ? "Get the full library" : "Get lifetime access"}{" "}
@@ -513,21 +504,16 @@ export default async function Home() {
           <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {topCats.map((b) => (
               <Link key={b.slug} href={`/bundles/${b.slug}`} className="card card-hover group flex flex-col p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div
-                    aria-hidden="true"
-                    className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
-                  >
-                    {b.category?.charAt(0)}
-                  </div>
-                  <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-300">
-                    {b.off}% off
-                  </span>
+                <div
+                  aria-hidden="true"
+                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
+                >
+                  {b.category?.charAt(0)}
                 </div>
                 <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
                 <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>
                 <div className="mt-4 border-t border-white/[0.06] pt-3">
-                  <PriceTag price={b.price} mrp={b.mrp} off={b.off} free={false} size="sm" />
+                  <PriceTag price={b.price} free={false} size="sm" />
                 </div>
               </Link>
             ))}
