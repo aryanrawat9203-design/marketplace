@@ -27,7 +27,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     q: "How is pricing decided?",
-    a: "Each template is priced by tier and complexity. Prices are discounted launch pricing and rise over time, so buying now locks in the lowest price.",
+    a: "Each template is priced by tier and complexity - simpler workflows cost less, higher-complexity multi-system builds cost more. It's a one-time payment, no subscription.",
   },
   {
     q: "What payment methods are accepted?",
