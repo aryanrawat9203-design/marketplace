@@ -131,8 +131,9 @@ export default function Footer() {
         </div>
         <div className="mx-auto max-w-7xl px-4 pb-6 text-[11px] leading-relaxed text-faint sm:px-6">
           <p>
-            Seller: Aryan Rawat, trading as WorkflowCrate. Customer care &amp; grievance contact: Aryan
-            Rawat &mdash;{" "}
+            Seller: Aryan Rawat, trading as WorkflowCrate. Registered address: 13, Near Chark Hospital,
+            Joy Builders Colony, Vallabh Nagar, Ahilya Mata Colony, Indore, Madhya Pradesh 452003, India.
+            Customer care &amp; grievance contact: Aryan Rawat &mdash;{" "}
             <a href={`mailto:${process.env.SUPPORT_EMAIL}`} className="underline decoration-dotted">
               {process.env.SUPPORT_EMAIL}
             </a>
