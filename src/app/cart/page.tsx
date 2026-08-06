@@ -12,7 +12,7 @@ import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
 
 export default function CartPage() {
-  const { items, remove, clear, count, totalPrice, totalMrp } = useCart();
+  const { items, remove, clear, count, totalPrice } = useCart();
   const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -154,9 +154,6 @@ export default function CartPage() {
                   </Link>
                   <div className="mt-1 flex items-baseline gap-2 text-sm">
                     <span className="font-display font-semibold tracking-tight text-ink">{inr(l.price)}</span>
-                    {l.mrp > l.price && (
-                      <span className="text-xs text-faint line-through">{inr(l.mrp)}</span>
-                    )}
                     <span className="text-xs text-faint">
                       {l.kind === "bundle" ? "Bundle" : "Template"}
                     </span>
@@ -183,12 +180,6 @@ export default function CartPage() {
                   </dt>
                   <dd className="text-body">{inr(totalPrice)}</dd>
                 </div>
-                {totalMrp > totalPrice && (
-                  <div className="flex justify-between">
-                    <dt className="text-faint">You save</dt>
-                    <dd className="text-emerald-400">{inr(totalMrp - totalPrice)}</dd>
-                  </div>
-                )}
                 {promo && (
                   <div className="flex justify-between">
                     <dt className="text-faint">Promo ({promo.code})</dt>
