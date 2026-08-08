@@ -1,6 +1,6 @@
 import { getIndex, type IndexItem } from "./catalog";
 
-// Curated collections: opinionated, themed starting points for a 10,501-item
+// Curated collections: opinionated, themed starting points for a 10,000+-item
 // catalog. Members are selected by rules against the live catalog (same
 // pattern as /guides) so lists never go stale, with a diversity cap so a
 // collection isn't ten near-identical variants of one workflow. Buying is

@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { fullLibrary, lifetime, categoryBundles, subcategoryBundlesFor } from "@/lib/bundles";
 import { inr } from "@/lib/pricing";
 import Reveal from "@/components/Reveal";
+import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Bundles & pricing",
   description:
-    "Buy a single template, a whole category bundle, or the full library of 10,524 original n8n workflows. Simple, discounted launch pricing.",
+    `Buy a single template, a whole category bundle, or the full library of ${TEMPLATE_COUNT_LABEL} original n8n workflows. Simple, discounted launch pricing.`,
   alternates: { canonical: "/bundles" },
 };
 

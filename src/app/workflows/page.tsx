@@ -142,7 +142,7 @@ export default async function WorkflowsPage({
         // Deliberately a local <Suspense> and not a `loading.tsx` — a loading
         // file here would also wrap /workflows/[route], and streaming that
         // segment would downgrade its genuine notFound() 404s to soft 404s
-        // (status 200 + noindex). On a catalog with 10,501 indexed URLs and
+        // (status 200 + noindex). On a catalog with 10,000+ indexed URLs and
         // routes that get renamed, keeping a real 404 status matters more.
         <div className="mt-6">
           <Suspense fallback={<GridFallback count={items.length} />}>

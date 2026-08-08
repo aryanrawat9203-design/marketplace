@@ -19,7 +19,7 @@ const destinations: { href: string; label: string; desc: string }[] = [
 ];
 
 /**
- * Catalog routes change as templates are renamed or retired, and with 10,501
+ * Catalog routes change as templates are renamed or retired, and with 10,000+
  * indexed URLs some share of traffic will always land on a stale one. This
  * page treats that as a routing problem rather than a dead end: search first,
  * then the handful of places a lost visitor actually wants.
