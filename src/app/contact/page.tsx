@@ -9,7 +9,9 @@ export default function ContactPage() {
     <PageShell title="Contact us">
       <p>
         We would love to hear from you &mdash; questions, feedback, or workflow requests are all
-        welcome. Fill in the form below and we aim to reply within 1&ndash;2 business days.
+        welcome. Email{" "}
+        <a href={`mailto:${process.env.SUPPORT_EMAIL}`}>{process.env.SUPPORT_EMAIL}</a> directly, or
+        use the form below. We aim to reply within 1&ndash;2 business days.
       </p>
       <ContactForm />
       <div className="mt-10 border-t border-hairline pt-6 text-sm text-muted">
