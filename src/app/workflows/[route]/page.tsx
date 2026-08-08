@@ -78,7 +78,7 @@ export default async function WorkflowDetail({
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = orderedGallery(shots);
-  const learning = learningFor(w);
+  const learning = learningFor(w, preview?.caps ?? null);
 
   const productFaqs: [string, string][] = [
     [
