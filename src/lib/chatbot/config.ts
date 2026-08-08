@@ -70,6 +70,19 @@ export const CHATBOT_CONFIG = {
     newConversationsPerIpPerDay: 15,
     lowBalanceThreshold: 2,
 
+    // Pre-sale questions ("does this work with my n8n version?") shouldn't
+    // require an account first - see Packet 2, Fix 2.6. A small, IP-limited
+    // anonymous allowance keeps that channel open to abuse without a DB
+    // migration; signing in still unlocks the full freemium quota above.
+    anonymous: {
+      enabled: true,
+      // New anonymous conversations a single IP may start per rolling day.
+      freeConversations: 3,
+      // Kept shorter than the signed-in cap so a real back-and-forth still
+      // nudges toward signing in rather than fully replacing an account.
+      maxMessagesPerConversation: 8,
+    },
+
     topupBonusConversations: 10,
     topupPricePaise: 2900, // Rs 29
     subscriptionPricePaise: 4900, // Rs 49/month

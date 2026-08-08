@@ -110,9 +110,7 @@ export default function PracticeBundlesPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-ink">{flagshipBundle.name}</h2>
                   <p className="mt-1 text-sm text-muted">{flagshipBundle.tagline}</p>
-                  <p className="mt-2 text-xs text-faint">
-                    {fmt(flagshipBundle.count)} templates &middot; individually worth {inr(flagshipBundle.individualValue)}
-                  </p>
+                  <p className="mt-2 text-xs text-faint">{fmt(flagshipBundle.count)} templates</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">

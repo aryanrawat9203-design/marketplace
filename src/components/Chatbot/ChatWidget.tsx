@@ -189,7 +189,10 @@ export default function ChatWidget() {
   // per-conversation cap server-side too, so never show them these hints.
   const unlimitedConversation = hasFreeAccess(user?.email);
   const conversationMessageCount = decodeConversationMessageCount(conversationToken);
-  const messagesRemaining = CHATBOT_CONFIG.limits.maxMessagesPerConversation - conversationMessageCount;
+  const maxMessagesForUi = user
+    ? CHATBOT_CONFIG.limits.maxMessagesPerConversation
+    : CHATBOT_CONFIG.limits.anonymous.maxMessagesPerConversation;
+  const messagesRemaining = maxMessagesForUi - conversationMessageCount;
   const conversationAtLimit = !unlimitedConversation && messagesRemaining <= 0 && messages.length > 0;
   const conversationNearLimit =
     !unlimitedConversation &&
@@ -233,12 +236,9 @@ export default function ChatWidget() {
     const trimmed = text.trim().slice(0, CHATBOT_CONFIG.limits.maxMessageLength);
     if (!trimmed || sending) return;
 
-    if (!user || !session) {
-      track("chat_blocked_by_login", { stage: "send" });
-      openLogin({ force: true, trigger: "chat" });
-      return;
-    }
-
+    // Anonymous visitors get a small allowance (server-enforced, IP-limited)
+    // before the assistant asks them to sign in - see Fix 2.6. Signed-in
+    // users still go through the usual freemium quota below.
     if (conversationAtLimit) {
       setLimitNotice(CHATBOT_CONFIG.conversationLimitReachedMessage);
       return;
@@ -266,7 +266,10 @@ export default function ChatWidget() {
     try {
       const res = await fetch("/api/chatbot", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           message: trimmed,
           page: pathname,
@@ -282,6 +285,15 @@ export default function ChatWidget() {
         track("chat_blocked_by_login", { stage: "unauthorized" });
         openLogin({ force: true, trigger: "chat" });
         return;
+      }
+      if (res.status === 403) {
+        setMessages(preSendMessages);
+        const data = await res.json().catch(() => null);
+        if (data?.error === "anon_limit_reached") {
+          track("chat_blocked_by_login", { stage: "anon_limit" });
+          openLogin({ force: true, trigger: "chat" });
+          return;
+        }
       }
       if (res.status === 402) {
         setMessages(preSendMessages);
@@ -529,30 +541,42 @@ export default function ChatWidget() {
           )}
         </div>
 
-        {!user ? (
+        {conversationAtLimit ? (
           <div className="border-t border-hairline p-4 text-center">
-            <p className="text-sm text-muted">Sign in to chat with the assistant.</p>
+            <p className="text-sm text-muted">
+              {user
+                ? CHATBOT_CONFIG.conversationLimitReachedMessage
+                : "You've used your free questions as a guest. Sign in for more."}
+            </p>
             <button
-              onClick={() => {
-                track("chat_blocked_by_login", { stage: "panel" });
-                openLogin({ force: true, trigger: "chat" });
-              }}
+              onClick={
+                user
+                  ? newChat
+                  : () => {
+                      track("chat_blocked_by_login", { stage: "panel" });
+                      openLogin({ force: true, trigger: "chat" });
+                    }
+              }
               className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
             >
-              Sign in
-            </button>
-          </div>
-        ) : conversationAtLimit ? (
-          <div className="border-t border-hairline p-4 text-center">
-            <p className="text-sm text-muted">{CHATBOT_CONFIG.conversationLimitReachedMessage}</p>
-            <button
-              onClick={newChat}
-              className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white hover:opacity-95"
-            >
-              Start new chat
+              {user ? "Start new chat" : "Sign in"}
             </button>
           </div>
         ) : (
+          <>
+          {!user && (
+            <p className="border-t border-hairline px-4 pt-3 text-center text-xs text-faint">
+              Chatting as a guest &mdash;{" "}
+              <button
+                type="button"
+                onClick={() => openLogin({ force: false, trigger: "chat" })}
+                className="underline hover:text-body"
+              >
+                sign in
+              </button>{" "}
+              to save your history.
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-hairline p-3">
             <input
               value={input}
@@ -573,6 +597,7 @@ export default function ChatWidget() {
               </svg>
             </button>
           </form>
+          </>
         )}
       </div>
 

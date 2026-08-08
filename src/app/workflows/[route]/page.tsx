@@ -78,7 +78,7 @@ export default async function WorkflowDetail({
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = orderedGallery(shots);
-  const learning = learningFor(w, preview?.caps ?? null);
+  const learning = learningFor(w);
 
   const productFaqs: [string, string][] = [
     [
@@ -168,6 +168,7 @@ export default async function WorkflowDetail({
           title: w.title,
           category: w.category,
           price: w.price,
+          mrp: w.mrp,
           free: w.free,
         }}
       />
@@ -408,7 +409,7 @@ export default async function WorkflowDetail({
         <aside className="space-y-6">
           <TrackView item={w.route} kind="workflow" price={w.price} />
           <div className="card-raised p-5">
-            <PriceTag price={w.price} free={w.free} size="lg" />
+            <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
             <div className="mt-4">
               <BuyButton
                 item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
@@ -484,8 +485,6 @@ export default async function WorkflowDetail({
               <Row k="Category" v={w.category} />
               <Row k="Subcategory" v={w.subcategory} />
               <Row k="Setup" v={w.setup} />
-              {w.demand != null && <Row k="Demand score" v={`${w.demand}/100`} />}
-              {w.value != null && <Row k="Commercial value" v={`${w.value}/100`} />}
             </dl>
           </div>
         </aside>
@@ -511,6 +510,7 @@ export default async function WorkflowDetail({
 
       <StickyBuyBar
         item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
+        mrp={w.mrp}
         requireLogin={requireLoginToBuy()}
       />
     </div>

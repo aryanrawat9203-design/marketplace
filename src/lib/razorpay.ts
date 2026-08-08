@@ -21,6 +21,7 @@ export type RazorpayOptions = {
   subscription_id?: string;
   handler: (r: RazorpayResponse) => void;
   theme?: { color?: string };
+  prefill?: { name?: string; email?: string; contact?: string };
 };
 
 declare global {

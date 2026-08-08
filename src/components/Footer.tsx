@@ -105,6 +105,13 @@ export default function Footer() {
             Original, ready-to-import n8n workflow templates &mdash; buy a single template or a whole
             category bundle and download instantly.
           </p>
+          <p className="mt-3 text-sm text-muted">
+            Questions? Email{" "}
+            <a href={`mailto:${process.env.SUPPORT_EMAIL}`} className="text-body hover:text-ink">
+              {process.env.SUPPORT_EMAIL}
+            </a>{" "}
+            &mdash; we reply within 1&ndash;2 business days.
+          </p>
           <ul className="mt-6 space-y-2.5">
             {trustBadges.map((b) => (
               <li key={b.label} className="flex items-center gap-2 text-xs text-faint">

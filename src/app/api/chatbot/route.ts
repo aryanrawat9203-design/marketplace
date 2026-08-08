@@ -76,11 +76,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  // The AI chat requires a signed-in account - no anonymous access. Every
-  // other gate below (conversation count, subscription, expiry) hangs off
-  // this verified user id; nothing here is trusted from the client.
+  // Signed-in users get the full freemium quota below. Logged-out visitors
+  // get a small, IP-limited anonymous allowance instead of a hard wall - see
+  // Packet 2, Fix 2.6: pre-sale questions shouldn't require an account.
   const user = await getUserFromRequest(req);
-  if (!user) {
+  const anonymous = !user;
+  const ANON_SUBJECT = "anon";
+  if (anonymous && !CHATBOT_CONFIG.limits.anonymous.enabled) {
     return NextResponse.json({ error: "auth_required" }, { status: 401 });
   }
 
@@ -98,19 +100,37 @@ export async function POST(req: NextRequest) {
   // bound to this user, never from whether the client's history array is
   // empty - a client could otherwise fabricate a non-empty history to look
   // like a "continuing" conversation and dodge the quota check forever.
-  const existingToken = tokenStr ? verifyConversationToken(tokenStr, user.id) : null;
+  const existingToken = tokenStr
+    ? verifyConversationToken(tokenStr, anonymous ? ANON_SUBJECT : user!.id)
+    : null;
+
+  const maxMsgsForCaller = anonymous
+    ? CHATBOT_CONFIG.limits.anonymous.maxMessagesPerConversation
+    : limits.maxMessagesPerConversation;
 
   let conversationId: string;
   let messageCount: number;
-  let usageStatus: ChatUsageStatus | null;
+  let usageStatus: ChatUsageStatus | null = null;
 
   if (existingToken) {
-    if (!hasFreeAccess(user.email) && existingToken.n >= limits.maxMessagesPerConversation) {
+    const atLimit = anonymous
+      ? existingToken.n >= maxMsgsForCaller
+      : !hasFreeAccess(user!.email) && existingToken.n >= maxMsgsForCaller;
+    if (atLimit) {
       return NextResponse.json({ error: "conversation_message_limit" }, { status: 409 });
     }
     conversationId = existingToken.cid;
     messageCount = existingToken.n + 1;
-    usageStatus = await getChatUsageStatus(user.id, user.email);
+    if (!anonymous) usageStatus = await getChatUsageStatus(user!.id, user!.email);
+  } else if (anonymous) {
+    // New anonymous conversation - the only gate is a per-IP daily cap
+    // (Fix 2.6). No DB usage row is created; anonymous chats aren't tracked
+    // past this in-memory bucket.
+    if (!rateLimit("chatbot-anon-newconvo:" + clientIp(req), CHATBOT_CONFIG.limits.anonymous.freeConversations, 24 * 60 * 60 * 1000)) {
+      return NextResponse.json({ error: "anon_limit_reached" }, { status: 403 });
+    }
+    conversationId = crypto.randomUUID();
+    messageCount = 1;
   } else {
     // Genuinely new conversation - blunt throwaway-account gaming with a
     // per-IP cap on top of the per-user quota enforced below.
@@ -118,7 +138,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
 
-    const result = await startChatConversation(user.id, user.email);
+    const result = await startChatConversation(user!.id, user!.email);
     if (!result) {
       return NextResponse.json({ error: "usage_unavailable" }, { status: 503 });
     }
@@ -130,7 +150,7 @@ export async function POST(req: NextRequest) {
     usageStatus = result.status;
   }
 
-  const conversationToken = signConversationToken(user.id, conversationId, messageCount);
+  const conversationToken = signConversationToken(anonymous ? ANON_SUBJECT : user!.id, conversationId, messageCount);
 
   const provider = getAIProvider();
   if (!provider) {

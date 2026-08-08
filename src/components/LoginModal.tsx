@@ -35,6 +35,15 @@ export default function LoginModal({
     if (open && force) track("login_modal_shown", { trigger });
   }, [open, force, trigger]);
 
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   async function withGoogle() {
@@ -79,24 +88,29 @@ export default function LoginModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="anim-rise w-full max-w-sm rounded-2xl border border-white/10 bg-surface-2 p-6 shadow-2xl shadow-black/60 [animation-duration:300ms]">
-        <div className="flex items-start justify-between">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="anim-rise w-full max-w-sm rounded-2xl border border-white/10 bg-surface-2 p-6 shadow-2xl shadow-black/60 [animation-duration:300ms]">
+        <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-ink">Sign in to WorkflowCrate</h2>
-          {!force && (
-            <button
-              onClick={onClose}
-              className="text-faint hover:text-body"
-              aria-label="Close"
-            >
-              &#10005;
-            </button>
-          )}
+          {/* Always escapable. A modal covering the whole viewport with no exit
+              is a conversion killer, and the blocking variant is exactly the one
+              a hesitant first-time visitor meets. */}
+          <button
+            onClick={onClose}
+            className="-m-2 shrink-0 p-2 text-faint hover:text-body"
+            aria-label="Close"
+          >
+            &#10005;
+          </button>
         </div>
-        <p className="mt-1 text-sm text-muted">
-          {force
-            ? "Sign in to complete your purchase."
-            : "Sign in for faster checkout and order history."}
+        <p className="mt-1 text-sm leading-relaxed text-muted">
+          We&rsquo;ll email your download link and receipt here, and keep your purchases in My
+          Library.
         </p>
 
         <button onClick={withGoogle} className="btn-secondary btn-md mt-5 w-full ">
@@ -128,14 +142,12 @@ export default function LoginModal({
           </form>
         )}
 
-        {!force && (
-          <button
-            onClick={onClose}
-            className="mt-4 w-full text-center text-xs text-faint hover:text-body"
-          >
-            Not now
-          </button>
-        )}
+        <button
+          onClick={onClose}
+          className="mt-4 w-full text-center text-xs text-faint hover:text-body"
+        >
+          Not now
+        </button>
       </div>
     </div>
   );

@@ -96,6 +96,9 @@ export default function BuyButton({
         description: item.name,
         order_id: data.orderId,
         theme: { color: "#7c5cff" },
+        // The site already knows this - re-asking for it inside the payment
+        // sheet, on a phone, at the exact moment of paying, is pure friction.
+        prefill: { email: session?.user?.email ?? undefined },
         handler: async (r) => {
           const v = await fetch("/api/verify", {
             method: "POST",

@@ -51,6 +51,21 @@ const retiredIntegrationRedirects = [
 ];
 
 const nextConfig: NextConfig = {
+  // Screenshots live in Supabase Storage (see src/lib/screenshots.ts), so the
+  // optimizer needs that host allowlisted to re-encode them as AVIF/WebP
+  // instead of serving the uploaded PNGs as-is (Fix 2.7).
+  images: {
+    remotePatterns: supabaseUrl
+      ? [
+          {
+            protocol: "https" as const,
+            hostname: new URL(supabaseUrl).hostname,
+            pathname: "/storage/v1/object/public/**",
+          },
+        ]
+      : [],
+    formats: ["image/avif", "image/webp"] as const,
+  },
   // Bundle catalog data + product files into the serverless functions that read
   // them from disk at runtime.
   outputFileTracingIncludes: {

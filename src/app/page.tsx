@@ -223,14 +223,14 @@ export default async function Home() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
               </span>
-              <span>{fmt(taxo.total)} original templates &middot; one-time payment, yours to keep</span>
+              <span>{fmt(taxo.total)} original templates &middot; launch pricing live</span>
             </span>
             <h1 className="anim-rise anim-d1 mt-6 text-4xl font-bold tracking-tight text-ink sm:text-6xl sm:leading-[1.06]">
-              Ready-to-use <span className="gradient-text">n8n workflows</span>, built to sell
+              See every <span className="gradient-text">node</span> before you buy
             </h1>
             <p className="anim-rise anim-d2 mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-              Buy original, ready-to-import automation templates across {taxo.industries.length} industries
-              and {taxo.categories.length} categories. Download instantly, or grab a whole category in one bundle.
+              Original n8n templates, documented well enough to learn from &mdash; not a mystery ZIP.
+              {" "}{taxo.industries.length} industries, {taxo.categories.length} categories, instant download.
             </p>
             <div className="anim-rise anim-d2 mx-auto mt-8 max-w-xl">
               <Suspense fallback={<div className="h-12" />}>
@@ -248,6 +248,39 @@ export default async function Home() {
             <div className="anim-rise anim-d3">
               <TrustStrip />
             </div>
+            {/* Proof, raised above the fold: a visitor who bounces from the
+                hero never used to see this. It's a real template page, not a
+                stock photo - the single best answer to "why pay when free
+                templates exist?" (Fix 2.7). */}
+            {showcase && showcaseItem && featured && (
+              <Link
+                href={`/workflows/${showcase.route}`}
+                className="card card-hover anim-rise anim-d3 mx-auto mt-10 block max-w-3xl overflow-hidden text-left"
+              >
+                <Image
+                  src={featured.src}
+                  alt={featured.title}
+                  width={featured.w}
+                  height={featured.h}
+                  priority
+                  sizes="(min-width: 768px) 768px, 100vw"
+                  className="h-auto w-full border-b border-white/[0.06] bg-surface-1 object-contain"
+                />
+                <div className="flex items-center justify-between gap-3 p-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">
+                      Proof, not promises
+                    </p>
+                    <p className="mt-0.5 text-sm text-body">
+                      &ldquo;{showcaseItem.title}&rdquo; &mdash; the real node graph, before you pay.
+                    </p>
+                  </div>
+                  <span className="link-arrow shrink-0 text-sm">
+                    View <span className="arrow">&rarr;</span>
+                  </span>
+                </div>
+              </Link>
+            )}
             <div className="anim-rise anim-d4 mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] sm:grid-cols-4">
               {stats.map(([v, label]) => (
                 <div key={label} className="bg-surface-1 px-4 py-3.5">
@@ -261,63 +294,41 @@ export default async function Home() {
       </section>
 
       {/* ------------------------------------------------ showcase */}
-      {showcase && showcaseItem && featured && (
+      {showcase && showcaseItem && restShowcase.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <Reveal>
             <SectionHeader
-              eyebrow="Proof, not promises"
+              eyebrow="Every detail, documented"
               title="See exactly what you get"
               description={
-                <>A real template page, not a stock photo &mdash; this is &ldquo;{showcaseItem.title}&rdquo;.</>
+                <>The rest of &ldquo;{showcaseItem.title}&rdquo; &mdash; design decisions, credentials, troubleshooting, all included.</>
               }
               action={{ href: `/workflows/${showcase.route}`, label: "View this template" }}
             />
-            <div className="mt-7 grid gap-4">
-              <div className="card overflow-hidden">
-                <div className="grid lg:grid-cols-[7fr_5fr]">
-                  <div className="flex items-center justify-center border-b border-white/[0.06] bg-surface-1 lg:border-b-0 lg:border-r">
+            {/* Masonry, not a fixed-height grid: these screenshots range from
+                wide sticky notes to tall doc cards, and letterboxing a 370x630
+                card into a short row would shrink its text past legibility.
+                Below the fold, so lazy-loaded (next/image default) rather
+                than eagerly fetched like the hero screenshot above. */}
+            <div className="mt-7 gap-4 sm:columns-2 lg:columns-3">
+              {restShowcase.map((c) => (
+                <div key={c.slot} className="card card-hover mb-4 break-inside-avoid overflow-hidden">
+                  <div className="border-b border-white/[0.06] bg-surface-1">
                     <Image
-                      src={featured.src}
-                      alt={featured.title}
-                      width={featured.w}
-                      height={featured.h}
+                      src={c.src}
+                      alt={c.title}
+                      width={c.w}
+                      height={c.h}
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                       className="h-auto w-full object-contain"
-                      unoptimized
                     />
                   </div>
-                  <div className="flex flex-col justify-center p-6 sm:p-8">
-                    <h3 className="text-lg font-semibold text-ink">{featured.title}</h3>
-                    <p className="mt-2 leading-relaxed text-muted">{featured.desc}</p>
-                    <p className="mt-4 text-sm leading-relaxed text-faint">
-                      Every template page shows the real node graph, the full node list, and
-                      plain-English docs before you pay a rupee.
-                    </p>
+                  <div className="p-4">
+                    <h3 className="font-sans text-sm font-semibold text-ink">{c.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{c.desc}</p>
                   </div>
                 </div>
-              </div>
-              {/* Masonry, not a fixed-height grid: these screenshots range from
-                  wide sticky notes to tall doc cards, and letterboxing a 370x630
-                  card into a short row would shrink its text past legibility. */}
-              <div className="gap-4 sm:columns-2 lg:columns-3">
-                {restShowcase.map((c) => (
-                  <div key={c.slot} className="card card-hover mb-4 break-inside-avoid overflow-hidden">
-                    <div className="border-b border-white/[0.06] bg-surface-1">
-                      <Image
-                        src={c.src}
-                        alt={c.title}
-                        width={c.w}
-                        height={c.h}
-                        className="h-auto w-full object-contain"
-                        unoptimized
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-sans text-sm font-semibold text-ink">{c.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-muted">{c.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </Reveal>
         </section>
@@ -380,9 +391,7 @@ export default async function Home() {
                           {inr(b.price)}
                         </span>
                       </div>
-                      <div className="mt-1.5 text-xs text-faint">
-                        {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
-                      </div>
+                      <div className="mt-1.5 text-xs text-faint">{fmt(b.count)} templates</div>
                       <div className="link-arrow mt-5">
                         {i === 0 ? "Get the full library" : "Get lifetime access"}{" "}
                         <span className="arrow">&rarr;</span>
@@ -504,11 +513,13 @@ export default async function Home() {
           <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {topCats.map((b) => (
               <Link key={b.slug} href={`/bundles/${b.slug}`} className="card card-hover group flex flex-col p-5">
-                <div
-                  aria-hidden="true"
-                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
-                >
-                  {b.category?.charAt(0)}
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    aria-hidden="true"
+                    className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
+                  >
+                    {b.category?.charAt(0)}
+                  </div>
                 </div>
                 <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
                 <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>

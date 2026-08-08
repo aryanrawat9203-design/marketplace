@@ -7,7 +7,7 @@ import Reveal from "@/components/Reveal";
 export const metadata: Metadata = {
   title: "Bundles & pricing",
   description:
-    "Buy a single template, a whole category bundle, or the full library of 10,524 original n8n workflows. Simple, transparent pricing.",
+    "Buy a single template, a whole category bundle, or the full library of 10,524 original n8n workflows. Simple, discounted launch pricing.",
   alternates: { canonical: "/bundles" },
 };
 
@@ -32,8 +32,8 @@ export default function BundlesPage() {
         <p className="eyebrow">Simple pricing</p>
         <h1 className="mt-2.5 text-3xl font-bold text-ink">Bundles &amp; pricing</h1>
         <p className="mt-2 leading-relaxed text-muted">
-          Buy one template at a time, grab an entire category, or get everything at once. One-time
-          payment, no subscriptions - the price you see is the price you pay.
+          Buy one template at a time, grab an entire category, or get everything at once. All prices
+          are launch pricing - discounted now, rising as we grow.
         </p>
       </div>
 
@@ -81,9 +81,7 @@ export default function BundlesPage() {
                   <div className="mt-5 flex items-baseline gap-2.5">
                     <span className="font-display text-3xl font-bold tracking-tight text-ink">{inr(b.price)}</span>
                   </div>
-                  <p className="mt-1.5 text-xs text-faint">
-                    {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
-                  </p>
+                  <p className="mt-1.5 text-xs text-faint">{fmt(b.count)} templates</p>
                   <span className="link-arrow mt-5">
                     View bundle <span className="arrow">&rarr;</span>
                   </span>
@@ -124,11 +122,13 @@ export default function BundlesPage() {
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cats.map((b) => (
               <Link key={b.slug} href={`/bundles/${b.slug}`} className="card card-hover group flex flex-col p-5">
-                <div
-                  aria-hidden="true"
-                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
-                >
-                  {b.category?.charAt(0)}
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    aria-hidden="true"
+                    className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br ${b.gradient} font-display text-sm font-bold text-white shadow-lg`}
+                  >
+                    {b.category?.charAt(0)}
+                  </div>
                 </div>
                 <h3 className="mt-4 font-sans font-semibold text-ink group-hover:text-white">{b.category}</h3>
                 <p className="mt-1 font-mono text-xs text-faint">{fmt(b.count)} templates</p>

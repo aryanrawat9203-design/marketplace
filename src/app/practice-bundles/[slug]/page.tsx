@@ -162,9 +162,7 @@ export default async function PracticeBundleDetail({
         <aside className="space-y-6">
           <div className="card-raised p-5">
             <PriceTag price={b.price} free={false} size="lg" />
-            <p className="mt-2 text-xs text-faint">
-              {fmt(b.count)} templates &middot; individually worth {inr(b.individualValue)}
-            </p>
+            <p className="mt-2 text-xs text-faint">{fmt(b.count)} templates</p>
             <div className="mt-4">
               <BuyButton
                 item={{ kind: "bundle", key: b.slug, name: b.name, price: b.price, free: false }}

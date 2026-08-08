@@ -10,6 +10,7 @@ export default function StickyBuyBar({
   requireLogin,
 }: {
   item: BuyItem;
+  mrp?: number;
   requireLogin: boolean;
 }) {
   const [show, setShow] = useState(false);
