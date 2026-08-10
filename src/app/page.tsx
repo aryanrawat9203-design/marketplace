@@ -8,6 +8,7 @@ import { getCollections, collectionStats } from "@/lib/collections";
 import { getShowcaseScreenshots, SHOWCASE_SLOTS } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
 import HeroGraph from "@/components/HeroGraph";
+import SectionConnector from "@/components/SectionConnector";
 import TrustStrip from "@/components/TrustStrip";
 import SectionHeader from "@/components/SectionHeader";
 import Reveal from "@/components/Reveal";
@@ -299,6 +300,8 @@ export default async function Home() {
         </div>
       </section>
 
+      <SectionConnector />
+
       {/* ------------------------------------------------ showcase */}
       {showcase && showcaseItem && restShowcase.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
@@ -368,6 +371,8 @@ export default async function Home() {
           </Reveal>
         </section>
       )}
+
+      <SectionConnector />
 
       {/* ------------------------------------------------ flagship bundles */}
       {full && life && (
@@ -479,6 +484,8 @@ export default async function Home() {
         </Reveal>
       </section>
 
+      <SectionConnector />
+
       {/* ------------------------------------------------ integrations */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <Reveal>
@@ -550,6 +557,8 @@ export default async function Home() {
 
       <RecentlyViewedStrip />
 
+      <SectionConnector />
+
       {/* ------------------------------------------------ why us */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <Reveal>
@@ -595,6 +604,8 @@ export default async function Home() {
           </div>
         </Reveal>
       </section>
+
+      <SectionConnector />
 
       {/* ------------------------------------------------ how it works */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
