@@ -104,9 +104,10 @@ export type WorkflowPreview = {
   /**
    * Tools actually wired into an AI Agent through an `ai_tool` connection.
    * Derived from the graph, never from copy - if it is listed here the node
-   * exists in the file being sold.
+   * exists in the file being sold. Keyed by node, not by type: two sub-workflow
+   * tools are two tools, and collapsing them by label undercounts the agent.
    */
-  agentTools: string[];
+  agentTools: Array<{ name: string; label: string }>;
   /** True when a memory sub-node is wired to the agent through `ai_memory`. */
   agentMemory: boolean;
   /** Capability facts from the real graph - the only thing page copy may claim from. */
@@ -144,19 +145,20 @@ export function previewWorkflow(route: string): WorkflowPreview | null {
     // A sub-node advertises what it is by the connection it makes, not by its
     // type: an app node attached to an agent is a tool too. Read the edges.
     const byName = new Map(nodes.map((n) => [n.name ?? "", n.type ?? ""]));
-    const agentTools = new Set<string>();
+    const agentTools: Array<{ name: string; label: string }> = [];
     let agentMemory = false;
     for (const [from, out] of Object.entries(raw.connections ?? {})) {
       if (out?.ai_tool) {
         const t = byName.get(from);
-        if (t) agentTools.add(toolLabel(t));
+        if (t) agentTools.push({ name: from, label: toolLabel(t) });
       }
       if (out?.ai_memory) agentMemory = true;
     }
+    agentTools.sort((a, b) => a.name.localeCompare(b.name));
     return {
       nodeCount: nodes.length,
       nodeTypes: [...types].sort(),
-      agentTools: [...agentTools].sort(),
+      agentTools,
       agentMemory,
       caps,
     };

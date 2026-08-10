@@ -313,9 +313,12 @@ export default async function WorkflowDetail({
               </p>
               <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
                 {preview.agentTools.map((t) => (
-                  <li key={t} className="flex items-center gap-2 text-sm text-ink">
-                    <span aria-hidden className="text-violet-300">&#10003;</span>
-                    {t}
+                  <li key={t.name} className="flex items-start gap-2 text-sm text-ink">
+                    <span aria-hidden className="mt-0.5 text-violet-300">&#10003;</span>
+                    <span>
+                      {t.name}
+                      <span className="text-faint"> &middot; {t.label}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
