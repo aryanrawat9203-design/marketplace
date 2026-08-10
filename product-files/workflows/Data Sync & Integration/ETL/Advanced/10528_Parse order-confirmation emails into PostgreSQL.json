@@ -1,0 +1,670 @@
+{
+  "name": "Parse order-confirmation emails into PostgreSQL",
+  "nodes": [
+    {
+      "parameters": {
+        "postProcessAction": "read",
+        "downloadAttachments": false,
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]",
+          "forceReconnect": 60
+        }
+      },
+      "id": "read-orders-mailbox-imap",
+      "name": "Read Orders Mailbox (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ ($json.subject || '').toLowerCase() }}",
+              "rightValue": "order (confirmation|confirmed)|your order|receipt for",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.textHtml || $json.html || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      },
+      "id": "confirmations-only",
+      "name": "Confirmations Only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "textHtml",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "orderRef",
+              "cssSelector": "[data-order-id], .order-number",
+              "returnValue": "text"
+            },
+            {
+              "key": "orderTotal",
+              "cssSelector": ".order-total, [data-total]",
+              "returnValue": "text"
+            },
+            {
+              "key": "currency",
+              "cssSelector": ".currency",
+              "returnValue": "text"
+            },
+            {
+              "key": "lineItems",
+              "cssSelector": ".line-item .name",
+              "returnValue": "text",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-order-fields-from-html",
+      "name": "Extract Order Fields from HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s0",
+              "name": "orderRef",
+              "value": "={{ ($json.orderRef || '').replace(/[^A-Za-z0-9-]/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "orderTotal",
+              "value": "={{ Number(($json.orderTotal || '0').replace(/[^0-9.]/g, '')) }}",
+              "type": "number"
+            },
+            {
+              "id": "s2",
+              "name": "currency",
+              "value": "={{ ($json.currency || 'INR').trim().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "itemCount",
+              "value": "={{ ($json.lineItems || []).length }}",
+              "type": "number"
+            },
+            {
+              "id": "s4",
+              "name": "receivedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalise-types-reference",
+      "name": "Normalise Types & Reference",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "v1",
+              "leftValue": "={{ $json.orderRef }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "v2",
+              "leftValue": "={{ $json.orderTotal }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        }
+      },
+      "id": "reference-and-total-valid",
+      "name": "Reference and Total Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO order_parse_failures (subject, raw_ref, raw_total, seen_at)\nVALUES ($1, $2, $3, NOW());",
+        "options": {
+          "queryReplacement": "={{ [ $('Read Orders Mailbox (IMAP)').item.json.subject, $json.orderRef, $json.orderTotal ] }}"
+        }
+      },
+      "id": "park-unparseable-confirmation",
+      "name": "Park Unparseable Confirmation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1460,
+        720
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO orders (order_ref, order_total, currency, item_count, received_at)\nVALUES ($1, $2, $3, $4, $5)\nON CONFLICT (order_ref) DO UPDATE\n  SET order_total = EXCLUDED.order_total,\n      currency    = EXCLUDED.currency,\n      item_count  = EXCLUDED.item_count;",
+        "options": {
+          "queryReplacement": "={{ [ $json.orderRef, $json.orderTotal, $json.currency, $json.itemCount, $json.receivedAt ] }}"
+        }
+      },
+      "id": "upsert-order-row",
+      "name": "Upsert Order Row",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1800,
+        420
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s0",
+              "name": "failedRef",
+              "value": "={{ $json.orderRef || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "reason",
+              "value": "={{ $json.error ? $json.error.message : 'Postgres write failed' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "capture-load-failure",
+      "name": "Capture Load Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1460,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#data-alerts",
+          "cachedResultName": "#data-alerts"
+        },
+        "text": "=🧾 Order {{ $json.failedRef }} failed to load: {{ $json.reason }}",
+        "otherOptions": {}
+      },
+      "id": "notify-data-team-on-slack",
+      "name": "Notify Data Team on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1800,
+        1320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "### Read Orders Mailbox (IMAP)\n\nReads unseen order-confirmation mail over IMAP and keeps the HTML body. Attachments are not downloaded — this parser works off the message itself.\n\nNext: Confirmations Only\n\n🔑 IMAP account",
+        "height": 250,
+        "width": 300,
+        "color": 5
+      },
+      "id": "note-read-orders-mailbox-imap",
+      "name": "Note: Read Orders Mailbox (IMAP)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -250,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Confirmations Only\n\nRequires both a confirmation-shaped subject and an HTML body. Plain-text-only mail cannot be parsed by CSS selector and is dropped here rather than failing later.\n\nNext: Extract Order Fields from HTML\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-confirmations-only",
+      "name": "Note: Confirmations Only",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        90,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Extract Order Fields from HTML\n\nCSS selectors against the confirmation template rather than regex against prose. Retailers change wording constantly but rarely change their markup classes.\n\nNext: Normalise Types & Reference\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-extract-order-fields-from-html",
+      "name": "Note: Extract Order Fields from HTML",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        430,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Normalise Types & Reference\n\nStrips currency symbols and stray whitespace, and casts the total to a real number. Everything downstream is typed from here on — the database never receives a string that should be numeric.\n\nNext: Reference and Total Valid?\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-normalise-types-reference",
+      "name": "Note: Normalise Types & Reference",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        770,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Reference and Total Valid?\n\nTwo guards before a write: a reference to key on, and a total above zero. A confirmation that parses to zero means the selectors have drifted.\n\nNext: Upsert Order Row, Park Unparseable Confirmation\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-reference-and-total-valid",
+      "name": "Note: Reference and Total Valid?",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1110,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Park Unparseable Confirmation\n\nA confirmation that fails validation is written to a failures table with its subject, so a selector drift is discoverable by SQL instead of by a missing revenue number.\n\nNext: Capture Load Failure\n\n↻ retries 3×/2s · 🔑 Postgres",
+        "height": 250,
+        "width": 300,
+        "color": 4
+      },
+      "id": "note-park-unparseable-confirmation",
+      "name": "Note: Park Unparseable Confirmation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        870
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Upsert Order Row\n\nParameterised INSERT … ON CONFLICT. The order reference is the natural key, so a re-sent confirmation updates the row instead of double-counting revenue. Values are bound, never string-concatenated.\n\nNext: Capture Load Failure\n\n↻ retries 3×/2s · 🔑 Postgres",
+        "height": 250,
+        "width": 300,
+        "color": 4
+      },
+      "id": "note-upsert-order-row",
+      "name": "Note: Upsert Order Row",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1790,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Capture Load Failure\n\nError rail: names the order reference that never reached the table, so a gap in the data has an explanation attached to it.\n\nNext: Notify Data Team on Slack\n",
+        "height": 250,
+        "width": 300,
+        "color": 3
+      },
+      "id": "note-capture-load-failure",
+      "name": "Note: Capture Load Failure",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        1470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Notify Data Team on Slack\n\nError rail: a silent load failure becomes a wrong dashboard, so it is escalated where the data team will see it.\n\n↻ retries 3×/2s · 🔑 Slack OAuth2",
+        "height": 250,
+        "width": 300,
+        "color": 3
+      },
+      "id": "note-notify-data-team-on-slack",
+      "name": "Note: Notify Data Team on Slack",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1790,
+        1470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Parse order-confirmation emails into PostgreSQL\n\n**Pattern:** Data Sync & Integration · **Level:** Advanced · **Trigger:** Email\n\n## Overview\n\nOrder-confirmation emails are parsed out of their HTML body by CSS selector, typed, validated and upserted into a PostgreSQL orders table on the order reference.\n\nIt moves through 7 working steps plus a 2-node error rail, in this order:\n\n1. Read Orders Mailbox (IMAP)\n2. Confirmations Only\n3. Extract Order Fields from HTML\n4. Normalise Types & Reference\n5. Reference and Total Valid?\n6. Park Unparseable Confirmation\n7. Upsert Order Row\n\nAnything that throws leaves the happy path at that node and goes down the red rail — Capture Load Failure — so a failure is reported rather than silently lost.\n\n## Why it exists\n\nMarketplaces and payment providers confirm orders by email long before they expose an API, and finance ends up copying totals into a spreadsheet. Parsing the confirmation directly gives you an orders table you can query, with the order reference as a natural key so re-sends cannot double-count revenue.\n\n## What you'll learn\n\nHow to parse an HTML email with the HTML node instead of brittle prose regex; why casting types in a Set node before a database write matters; how to write a parameterised INSERT … ON CONFLICT in the Postgres node so the load is idempotent; how to make parser drift visible with a failures table.\n",
+        "height": 1098,
+        "width": 480
+      },
+      "id": "doc-workflow-overview",
+      "name": "📘 Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -330,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Credentials setup\n\n**IMAP account**\nHost, port 993, SSL, mailbox user and app password. Point it at a mailbox that only receives confirmations, or narrow the subject filter.\n\n**Postgres**\nHost, port, database, user, password, and SSL mode. Create the two tables before the first run:\n\n```sql\nCREATE TABLE orders (\n  order_ref   text PRIMARY KEY,\n  order_total numeric NOT NULL,\n  currency    text,\n  item_count  int,\n  received_at timestamptz\n);\nCREATE TABLE order_parse_failures (\n  id serial PRIMARY KEY, subject text, raw_ref text, raw_total text, seen_at timestamptz\n);\n```\n_Gotcha:_ the ON CONFLICT clause needs `order_ref` to carry a primary key or unique constraint; without it Postgres raises 42P10.\n\n**Slack OAuth2**\nBot token with `chat:write`, invited to #data-alerts. Error rail only.",
+        "height": 760,
+        "width": 480,
+        "color": 5
+      },
+      "id": "doc-credentials-setup",
+      "name": "🔑 Credentials Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        190,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Troubleshooting\n\n**Every message is parked as unparseable**\nCause: the retailer's markup classes do not match the selectors.\nFix: open one raw email, find the real class names, and update **Extract Order Fields from HTML**. That is the node this template expects you to edit.\n\n**Postgres error 42P10 on conflict**\nCause: `order_ref` has no unique constraint.\nFix: add a primary key or unique index — ON CONFLICT needs one to arbitrate against.\n\n**Totals load as zero**\nCause: the currency symbol was not stripped, so `Number()` returned NaN and the guard rejected it.\nFix: widen the character class in **Normalise Types & Reference**.\n\n**Nothing arrives at all**\nCause: the IMAP search is UNSEEN and a mail client already read the mailbox.\nFix: dedicate the mailbox, or change the search criteria.\n\n**Duplicate rows**\nCause: the upsert was rewritten as a plain INSERT.\nFix: keep the ON CONFLICT clause — it is the whole reason re-sent confirmations are safe.",
+        "height": 620,
+        "width": 480,
+        "color": 3
+      },
+      "id": "doc-troubleshooting",
+      "name": "🩺 Troubleshooting",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        710,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Design decisions\n\nParsing is done with the HTML node against CSS selectors rather than regex against prose, because retailers reword their copy constantly but rarely rename their markup classes. Types are cast in a Set node before the database sees them, so the schema never has to accept a string total. The write is a single parameterised INSERT … ON CONFLICT rather than a select-then-insert, which removes a race between concurrent workers in queue mode. Validation failures go to a table, not to a log line, so drift is queryable.",
+        "height": 360,
+        "width": 480,
+        "color": 4
+      },
+      "id": "doc-design-decisions",
+      "name": "🎓 Design Decisions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1230,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Practice exercises\n\n1. Split the line items into an `order_items` child table using Split Out before the write.\n2. Add a second selector set for a second retailer and route on the sender domain with a Switch.\n3. Add a nightly query that compares yesterday's order count against the failures table and alerts if the failure share crosses 5%.",
+        "height": 360,
+        "width": 480,
+        "color": 6
+      },
+      "id": "doc-practice-exercises",
+      "name": "🧪 Practice Exercises",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1750,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🛠 Customize me\n\nThe selectors on **Extract Order Fields from HTML** are what you change for your retailer. Which mail counts as a confirmation is the subject regex on **Confirmations Only**. Table and column names live in the two SQL statements; both use bound parameters, so add fields to the array in the same order as the placeholders.",
+        "height": 260,
+        "width": 360,
+        "color": 4
+      },
+      "id": "doc-customize-me",
+      "name": "🛠 Customize me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2270,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔐 Security\n\nCredentials live in n8n's credential store and are never written into node parameters.\n\n**Least privilege for this build**\n- Postgres: a role with INSERT/UPDATE on the two tables and nothing else. It does not need DDL or access to other schemas.\n- IMAP: a mailbox account, not an admin account.\n\n**Do not log**\nOrder confirmations contain names, addresses and part of a payment method. This build deliberately stores only the reference, total, currency and item count. Never widen it to the raw HTML body — n8n saves execution data verbatim.\n\nEvery value reaching SQL is a bound parameter. Never rebuild these queries by string concatenation with `{{ }}` inside the SQL text; email bodies are attacker-controlled and that is a direct injection path.",
+        "height": 480,
+        "width": 360,
+        "color": 1
+      },
+      "id": "doc-security",
+      "name": "🔐 Security",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2670,
+        -760
+      ]
+    }
+  ],
+  "connections": {
+    "Read Orders Mailbox (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Confirmations Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmations Only": {
+      "main": [
+        [
+          {
+            "node": "Extract Order Fields from HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Order Fields from HTML": {
+      "main": [
+        [
+          {
+            "node": "Normalise Types & Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Types & Reference": {
+      "main": [
+        [
+          {
+            "node": "Reference and Total Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reference and Total Valid?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Order Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Park Unparseable Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Order Row": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Load Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Park Unparseable Confirmation": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Load Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Load Failure": {
+      "main": [
+        [
+          {
+            "node": "Notify Data Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "executionTimeout": 3600
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "pinData": {
+    "Read Orders Mailbox (IMAP)": [
+      {
+        "json": {
+          "subject": "Order confirmation #A-99120",
+          "from": "orders@shop.example",
+          "textHtml": "<div class='order-number'>A-99120</div><span class='currency'>INR</span><div class='order-total'>₹ 4,299.00</div><ul><li class='line-item'><span class='name'>Trail Runner 9</span></li><li class='line-item'><span class='name'>Merino Socks</span></li></ul>"
+        }
+      },
+      {
+        "json": {
+          "subject": "Your order has shipped",
+          "from": "orders@shop.example",
+          "textHtml": "<div>Tracking only — not a confirmation.</div>"
+        }
+      }
+    ]
+  },
+  "versionId": "p7-a4-0001",
+  "id": "wc10528"
+}

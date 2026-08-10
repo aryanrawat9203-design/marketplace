@@ -1,0 +1,685 @@
+{
+  "name": "Escalate an email thread that got no reply in 24 hours",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "-from:me -label:no-escalate"
+        }
+      },
+      "id": "watch-inbound-threads",
+      "name": "Watch Inbound Threads",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s0",
+              "name": "threadId",
+              "value": "={{ $json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "subject",
+              "value": "={{ $json.subject || '(no subject)' }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "fromEmail",
+              "value": "={{ ($json.from && $json.from.value && $json.from.value[0].address) || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "openedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "record-thread-sender",
+      "name": "Record Thread & Sender",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "dedupeValue": "={{ $json.threadId }}",
+        "options": {}
+      },
+      "id": "one-clock-per-thread",
+      "name": "One Clock Per Thread",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        440,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "id": "wait-24-hours",
+      "name": "Wait 24 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "get",
+        "threadId": "={{ $json.threadId }}",
+        "options": {
+          "returnOnlyMessages": true
+        }
+      },
+      "id": "re-read-the-thread",
+      "name": "Re-read the Thread",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        420
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const msgs = $input.item.json.messages || [];\nconst me = ($env.SUPPORT_ADDRESS || '').toLowerCase();\nconst replied = msgs.some(m => {\n  const hdrs = (m.payload && m.payload.headers) || [];\n  const from = (hdrs.find(h => h.name === 'From') || {}).value || '';\n  return me ? from.toLowerCase().includes(me) : /support|team|noreply/i.test(from);\n});\nreturn { json: { replied, messageCount: msgs.length } };"
+      },
+      "id": "count-outbound-replies",
+      "name": "Count Outbound Replies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "u1",
+              "leftValue": "={{ $json.replied }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ]
+        }
+      },
+      "id": "still-unanswered",
+      "name": "Still Unanswered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channelMessage",
+        "operation": "create",
+        "teamId": "={{ $env.TEAMS_TEAM_ID || 'YOUR_TEAM_ID' }}",
+        "channelId": "={{ $env.TEAMS_CHANNEL_ID || 'YOUR_CHANNEL_ID' }}",
+        "contentType": "html",
+        "message": "=⏰ <b>24h with no reply</b><br>From: {{ $('Record Thread & Sender').item.json.fromEmail }}<br>Subject: {{ $('Record Thread & Sender').item.json.subject }}<br>Opened: {{ $('Record Thread & Sender').item.json.openedAt }}",
+        "options": {}
+      },
+      "id": "escalate-to-the-team-channel",
+      "name": "Escalate to the Team Channel",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        2140,
+        420
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s0",
+              "name": "failedThread",
+              "value": "={{ $('Record Thread & Sender').item.json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "s1",
+              "name": "reason",
+              "value": "={{ $json.error ? $json.error.message : 'Gmail read or Teams post failed' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "capture-escalation-failure",
+      "name": "Capture Escalation Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1800,
+        1320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "SLA Escalations"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Failures",
+          "cachedResultName": "Failures"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "log-escalation-failure",
+      "name": "Log Escalation Failure",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2140,
+        1320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "### Watch Inbound Threads\n\nEvery inbound message starts a 24-hour clock. Mail you sent yourself, and anything labelled no-escalate, is excluded at the source.\n\nNext: Record Thread & Sender\n\n🔑 Gmail OAuth2",
+        "height": 250,
+        "width": 300,
+        "color": 5
+      },
+      "id": "note-watch-inbound-threads",
+      "name": "Note: Watch Inbound Threads",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -250,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Record Thread & Sender\n\nThe four facts the escalation needs. Captured before the wait, because the trigger payload is long gone by the time the workflow resumes.\n\nNext: One Clock Per Thread\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-record-thread-sender",
+      "name": "Note: Record Thread & Sender",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        90,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### One Clock Per Thread\n\nWithout this, a chatty customer sending four messages starts four 24-hour timers and gets escalated four times. One clock per conversation.\n\nNext: Wait 24 Hours\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-one-clock-per-thread",
+      "name": "Note: One Clock Per Thread",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        430,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Wait 24 Hours\n\nn8n persists the execution and resumes it a day later — no cron, no state table. This is the node that makes an SLA chaser a single workflow instead of two.\n\nNext: Re-read the Thread\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-wait-24-hours",
+      "name": "Note: Wait 24 Hours",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        770,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Re-read the Thread\n\nAsks Gmail what the thread looks like now. The answer to 'did anyone reply?' has to be fetched after the wait, not guessed from what was true yesterday.\n\nNext: Count Outbound Replies, Capture Escalation Failure\n\n↻ retries 3×/2s · 🔑 Gmail OAuth2",
+        "height": 250,
+        "width": 300,
+        "color": 4
+      },
+      "id": "note-re-read-the-thread",
+      "name": "Note: Re-read the Thread",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1110,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Count Outbound Replies\n\nWalks the thread's messages and asks whether any of them came from us. Falls back to a name heuristic when SUPPORT_ADDRESS is unset, so the template still runs unconfigured.\n\nNext: Still Unanswered?\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-count-outbound-replies",
+      "name": "Note: Count Outbound Replies",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Still Unanswered?\n\nTRUE = a full day with no reply from our side, escalate. FALSE = somebody answered, and the workflow ends quietly.\n\nNext: Escalate to the Team Channel\n",
+        "height": 250,
+        "width": 300,
+        "color": 7
+      },
+      "id": "note-still-unanswered",
+      "name": "Note: Still Unanswered?",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1790,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Escalate to the Team Channel\n\nPosts the breach into the channel where the team already works, with enough context to act without opening the mailbox first.\n\nNext: Capture Escalation Failure\n\n↻ retries 3×/2s · 🔑 Microsoft Teams OAuth2",
+        "height": 250,
+        "width": 300,
+        "color": 4
+      },
+      "id": "note-escalate-to-the-team-channel",
+      "name": "Note: Escalate to the Team Channel",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2130,
+        570
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Capture Escalation Failure\n\nError rail: a failed escalation is the one failure nobody notices, because the symptom is silence. This records the thread id so it can be checked by hand.\n\nNext: Log Escalation Failure\n",
+        "height": 250,
+        "width": 300,
+        "color": 3
+      },
+      "id": "note-capture-escalation-failure",
+      "name": "Note: Capture Escalation Failure",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1790,
+        1470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Log Escalation Failure\n\nError rail: appends the missed escalation to a sheet, giving the SLA report an honest denominator.\n\n↻ retries 3×/2s · 🔑 Google Sheets OAuth2",
+        "height": 250,
+        "width": 300,
+        "color": 3
+      },
+      "id": "note-log-escalation-failure",
+      "name": "Note: Log Escalation Failure",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2130,
+        1470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Escalate an email thread that got no reply in 24 hours\n\n**Pattern:** Customer Support Automation · **Level:** Advanced · **Trigger:** Email\n\n## Overview\n\nEach inbound email starts a 24-hour timer. When it expires the thread is re-read from Gmail, and if nobody from your side has replied it is escalated to a Microsoft Teams channel.\n\nIt moves through 8 working steps plus a 2-node error rail, in this order:\n\n1. Watch Inbound Threads\n2. Record Thread & Sender\n3. One Clock Per Thread\n4. Wait 24 Hours\n5. Re-read the Thread\n6. Count Outbound Replies\n7. Still Unanswered?\n8. Escalate to the Team Channel\n\nAnything that throws leaves the happy path at that node and goes down the red rail — Capture Escalation Failure — so a failure is reported rather than silently lost.\n\n## Why it exists\n\nReply-time SLAs are usually measured after the fact, in a monthly report, which is too late to help the customer who was ignored. Checking the thread a day later and escalating while it still matters turns the SLA into something that changes an outcome rather than a slide.\n\n## What you'll learn\n\nHow n8n's Wait node persists an execution for a day without cron or a state table; why the thread has to be re-fetched after the wait rather than trusted from the trigger payload; how to make a delayed workflow idempotent so a chatty sender does not start four timers.\n",
+        "height": 1098,
+        "width": 480
+      },
+      "id": "doc-workflow-overview",
+      "name": "📘 Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -330,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Credentials setup\n\n**Gmail OAuth2**\nGoogle Cloud console → Gmail API → OAuth client → n8n redirect URL. Needs read access to the mailbox; the thread read uses the same credential as the trigger.\n\n**Microsoft Teams OAuth2**\nAzure portal → App registration → Microsoft Graph delegated permissions `ChannelMessage.Send` and `Group.Read.All` → admin consent → client id/secret into n8n.\n_Gotcha:_ the team and channel ids are the long opaque strings from the channel's 'Get link', not the display names.\n\n**Google Sheets OAuth2**\nError rail only.\n\nSet `SUPPORT_ADDRESS` to the address your team replies from — the reply check is far more accurate with it than with the fallback heuristic.",
+        "height": 760,
+        "width": 480,
+        "color": 5
+      },
+      "id": "doc-credentials-setup",
+      "name": "🔑 Credentials Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        190,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Troubleshooting\n\n**Everything escalates, even answered threads**\nCause: `SUPPORT_ADDRESS` is unset, so the heuristic is guessing from sender names.\nFix: set the variable to the exact address your replies come from.\n\n**Nothing ever escalates**\nCause: the workflow was deactivated during the 24-hour window.\nFix: waiting executions resume only on a running instance. Check Executions for entries stuck in 'waiting'.\n\n**A single customer triggers several escalations**\nCause: the Remove Duplicates node was removed or re-keyed.\nFix: dedupe on `threadId`, not on the message id.\n\n**Teams returns 403**\nCause: admin consent was never granted for the Graph permission.\nFix: grant consent in Azure; a delegated permission without consent fails at post time, not at auth time.\n\n**The wait never ends on a self-hosted instance**\nCause: the instance restarted and `EXECUTIONS_DATA_SAVE_ON_PROGRESS` is off.\nFix: waiting executions need to be persisted to survive a restart.",
+        "height": 620,
+        "width": 480,
+        "color": 3
+      },
+      "id": "doc-troubleshooting",
+      "name": "🩺 Troubleshooting",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        710,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Design decisions\n\nThe thread is re-read from Gmail after the wait rather than tracked in a database, because Gmail already holds the authoritative answer and any local copy would drift. De-duplication happens before the Wait, not after, so a second message on the same thread is discarded before it can start a second timer. Escalation carries the original open time so the channel message states how long the breach has been running, rather than just that one exists.",
+        "height": 360,
+        "width": 480,
+        "color": 4
+      },
+      "id": "doc-design-decisions",
+      "name": "🎓 Design Decisions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1230,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Practice exercises\n\n1. Make the wait length depend on the sender's domain — four hours for enterprise, 24 for everyone else.\n2. Add a second Wait and a second escalation at 72 hours that mentions a manager.\n3. Write every escalation to a sheet, not just failures, so you can report reply-time compliance monthly.",
+        "height": 360,
+        "width": 480,
+        "color": 6
+      },
+      "id": "doc-practice-exercises",
+      "name": "🧪 Practice Exercises",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1750,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🛠 Customize me\n\nThe SLA window is the amount on **Wait 24 Hours**. Who counts as 'us' is `SUPPORT_ADDRESS`, read in **Count Outbound Replies**. The destination is `TEAMS_TEAM_ID` / `TEAMS_CHANNEL_ID` on **Escalate to the Team Channel**. Exclude conversations by applying the `no-escalate` Gmail label — the trigger query already respects it.",
+        "height": 260,
+        "width": 360,
+        "color": 4
+      },
+      "id": "doc-customize-me",
+      "name": "🛠 Customize me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2270,
+        -760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔐 Security\n\nCredentials live in n8n's credential store and are never written into node parameters.\n\n**Least privilege for this build**\n- Gmail: read plus thread metadata on the covered mailbox. No send scope is required — this workflow never writes email.\n- Teams: `ChannelMessage.Send` for the one channel, not tenant-wide mail permissions.\n\n**Do not log**\nThe escalation carries sender, subject and timestamps — never the body. A breach notice does not need the contents of the customer's message, and channel history is far more widely readable than a mailbox.\n\nWaiting executions sit in the database for a day holding whatever the Set node captured, so keep that node narrow.",
+        "height": 480,
+        "width": 360,
+        "color": 1
+      },
+      "id": "doc-security",
+      "name": "🔐 Security",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2670,
+        -760
+      ]
+    }
+  ],
+  "connections": {
+    "Watch Inbound Threads": {
+      "main": [
+        [
+          {
+            "node": "Record Thread & Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Thread & Sender": {
+      "main": [
+        [
+          {
+            "node": "One Clock Per Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One Clock Per Thread": {
+      "main": [
+        [
+          {
+            "node": "Wait 24 Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 24 Hours": {
+      "main": [
+        [
+          {
+            "node": "Re-read the Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-read the Thread": {
+      "main": [
+        [
+          {
+            "node": "Count Outbound Replies",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Capture Escalation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Outbound Replies": {
+      "main": [
+        [
+          {
+            "node": "Still Unanswered?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still Unanswered?": {
+      "main": [
+        [
+          {
+            "node": "Escalate to the Team Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate to the Team Channel": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Capture Escalation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Escalation Failure": {
+      "main": [
+        [
+          {
+            "node": "Log Escalation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": true,
+    "executionTimeout": 3600
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "pinData": {
+    "Watch Inbound Threads": [
+      {
+        "json": {
+          "id": "20b01",
+          "threadId": "th-4471",
+          "subject": "Contract review — still waiting",
+          "from": {
+            "value": [
+              {
+                "name": "Legal, Bright Co",
+                "address": "legal@brightco.example"
+              }
+            ]
+          },
+          "text": "Following up on the redlines."
+        }
+      },
+      {
+        "json": {
+          "id": "20b02",
+          "threadId": "th-4471",
+          "subject": "Re: Contract review — still waiting",
+          "from": {
+            "value": [
+              {
+                "name": "Legal, Bright Co",
+                "address": "legal@brightco.example"
+              }
+            ]
+          },
+          "text": "Bumping this."
+        }
+      }
+    ]
+  },
+  "versionId": "p7-a5-0001",
+  "id": "wc10529"
+}
