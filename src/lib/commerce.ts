@@ -77,10 +77,38 @@ function friendlyNodeType(type: string): string {
     .trim();
 }
 
+// Human labels for the tool sub-nodes an AI Agent can call. Anything not listed
+// (an app node attached as a tool, a community node) falls back to its type name.
+const TOOL_LABELS: Record<string, string> = {
+  toolCalculator: "Calculator",
+  toolCode: "Custom code",
+  toolHttpRequest: "HTTP request",
+  toolWorkflow: "Another n8n workflow",
+  toolVectorStore: "Vector store retrieval",
+  toolSerpApi: "Web search (SerpAPI)",
+  toolWikipedia: "Wikipedia",
+  toolThink: "Scratchpad reasoning",
+  toolMcp: "MCP client",
+  toolWolframAlpha: "Wolfram Alpha",
+};
+
+function toolLabel(type: string): string {
+  const short = type.replace(/^@n8n\/n8n-nodes-langchain\./, "").replace(/^n8n-nodes-base\./, "");
+  return TOOL_LABELS[short] ?? friendlyNodeType(type);
+}
+
 export type WorkflowPreview = {
   nodeCount: number;
   /** Display names, e.g. "Google Sheets". */
   nodeTypes: string[];
+  /**
+   * Tools actually wired into an AI Agent through an `ai_tool` connection.
+   * Derived from the graph, never from copy - if it is listed here the node
+   * exists in the file being sold.
+   */
+  agentTools: string[];
+  /** True when a memory sub-node is wired to the agent through `ai_memory`. */
+  agentMemory: boolean;
   /** Capability facts from the real graph - the only thing page copy may claim from. */
   caps: Caps;
 };
@@ -95,7 +123,8 @@ export function previewWorkflow(route: string): WorkflowPreview | null {
 
   try {
     const raw = JSON.parse(fs.readFileSync(fp, "utf-8")) as {
-      nodes?: Array<{ type?: string; retryOnFail?: boolean }>;
+      nodes?: Array<{ name?: string; type?: string; retryOnFail?: boolean }>;
+      connections?: Record<string, Record<string, unknown>>;
       pinData?: Record<string, unknown>;
     };
     // Sticky notes are canvas annotations, not workflow steps.
@@ -112,7 +141,25 @@ export function previewWorkflow(route: string): WorkflowPreview | null {
       retries: nodes.some((n) => n.retryOnFail === true),
       pinData: Object.keys(raw.pinData ?? {}).length > 0,
     });
-    return { nodeCount: nodes.length, nodeTypes: [...types].sort(), caps };
+    // A sub-node advertises what it is by the connection it makes, not by its
+    // type: an app node attached to an agent is a tool too. Read the edges.
+    const byName = new Map(nodes.map((n) => [n.name ?? "", n.type ?? ""]));
+    const agentTools = new Set<string>();
+    let agentMemory = false;
+    for (const [from, out] of Object.entries(raw.connections ?? {})) {
+      if (out?.ai_tool) {
+        const t = byName.get(from);
+        if (t) agentTools.add(toolLabel(t));
+      }
+      if (out?.ai_memory) agentMemory = true;
+    }
+    return {
+      nodeCount: nodes.length,
+      nodeTypes: [...types].sort(),
+      agentTools: [...agentTools].sort(),
+      agentMemory,
+      caps,
+    };
   } catch {
     return null;
   }

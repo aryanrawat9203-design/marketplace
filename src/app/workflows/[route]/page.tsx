@@ -301,6 +301,32 @@ export default async function WorkflowDetail({
             </div>
           )}
 
+          {preview && preview.agentTools.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold text-ink">
+                Agent tools included{" "}
+                <span className="text-sm font-normal text-faint">({preview.agentTools.length})</span>
+              </h2>
+              <p className="mt-1 text-sm text-faint">
+                An AI Agent is only as capable as the tools wired into it. These are read from the
+                template&apos;s own graph &mdash; every one is a real node in the file you download.
+              </p>
+              <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                {preview.agentTools.map((t) => (
+                  <li key={t} className="flex items-center gap-2 text-sm text-ink">
+                    <span aria-hidden className="text-violet-300">&#10003;</span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm text-faint">
+                {preview.agentMemory
+                  ? "Conversation memory is attached, so the agent carries earlier turns of a session."
+                  : "This agent runs without conversation memory - each run starts from the incoming request."}
+              </p>
+            </div>
+          )}
+
           <div className="mt-8">
             <h2 className="text-lg font-semibold text-ink">From download to running in 3 steps</h2>
             <ol className="mt-3 space-y-3">
