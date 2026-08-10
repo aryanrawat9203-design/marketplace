@@ -50,6 +50,16 @@ const retiredIntegrationRedirects = [
   { from: "http-rest-api-and-youtube", to: "/integrations/http-rest-api" },
 ];
 
+// Every hostname Vercel assigns the project, 308'd onto the canonical domain.
+// Add new preview aliases here rather than relying on Vercel's default, which
+// answers 307.
+const PRIMARY_ORIGIN = "https://workflowcrate.com";
+const VERCEL_HOSTS = [
+  "marketplace-orcin-seven.vercel.app",
+  "marketplace-aryan-marketplace-workflow.vercel.app",
+  "marketplace-git-main-aryan-marketplace-workflow.vercel.app",
+];
+
 const nextConfig: NextConfig = {
   // Screenshots live in Supabase Storage (see src/lib/screenshots.ts), so the
   // optimizer needs that host allowlisted to re-encode them as AVIF/WebP
@@ -105,11 +115,23 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    return retiredIntegrationRedirects.map(({ from, to }) => ({
-      source: `/integrations/${from}`,
-      destination: to,
-      permanent: true,
-    }));
+    return [
+      // Vercel gives the project three *.vercel.app hostnames. Left alone they
+      // serve the whole site a second time on a domain we do not want indexed,
+      // and Vercel's own default host redirect is a 307 (temporary), which
+      // does not consolidate ranking signals. A 308 on every path does.
+      ...VERCEL_HOSTS.map((host) => ({
+        source: "/:path*",
+        has: [{ type: "host" as const, value: host }],
+        destination: `${PRIMARY_ORIGIN}/:path*`,
+        permanent: true,
+      })),
+      ...retiredIntegrationRedirects.map(({ from, to }) => ({
+        source: `/integrations/${from}`,
+        destination: to,
+        permanent: true,
+      })),
+    ];
   },
 };
 

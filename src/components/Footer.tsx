@@ -16,6 +16,11 @@ const shopLinks = [
 const learnLinks = [
   { href: "/guides", label: "Guides" },
   { href: "/blog", label: "Blog" },
+  // Sitewide links so the editorial pages - the only pages on the site that
+  // rank on page one - are one hop from every URL, not buried under /guides.
+  { href: "/guides/why-pay-for-n8n-templates", label: "Why pay, when n8n.io is free?" },
+  { href: "/guides/n8n-vs-zapier", label: "n8n vs Zapier" },
+  { href: "/guides/n8n-vs-make", label: "n8n vs Make" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact support" },

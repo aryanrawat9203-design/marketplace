@@ -5,13 +5,25 @@ import { getScreenshotsForRoute } from "@/lib/screenshots";
 import { Badge, difficultyTone, tierTone } from "./Badge";
 import PriceTag from "./PriceTag";
 
-export default async function WorkflowCard({ w }: { w: IndexItem }) {
+/**
+ * `note` is an optional reassurance line under the title, used where the
+ * surrounding page promises something the title does not name - e.g. an
+ * integration-pair page showing a template that genuinely uses both tools but
+ * is titled after neither.
+ */
+export default async function WorkflowCard({ w, note }: { w: IndexItem; note?: string }) {
   const cardThumb = (await getScreenshotsForRoute(w.route))?.cardThumb;
   return (
     <Link
       href={`/workflows/${w.route}`}
       className="card card-hover group flex flex-col p-5"
     >
+      {/* Card thumbnails are uploaded PNGs. `unoptimized` used to ship them at
+          full size to every listing grid - twelve of them per page - which is
+          the largest avoidable payload on the site. Dropping it lets the
+          optimizer re-encode to AVIF/WebP at the size actually rendered
+          (next.config allowlists the Supabase Storage host for exactly this).
+          next/image lazy-loads by default, so only the visible cards fetch. */}
       {cardThumb && (
         <div className="-mx-5 -mt-5 mb-4 overflow-hidden rounded-t-2xl border-b border-white/[0.06]">
           <Image
@@ -19,8 +31,8 @@ export default async function WorkflowCard({ w }: { w: IndexItem }) {
             alt=""
             width={640}
             height={360}
+            sizes="(min-width: 1280px) 22vw, (min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
             className="aspect-video w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
-            unoptimized
           />
         </div>
       )}
@@ -32,6 +44,9 @@ export default async function WorkflowCard({ w }: { w: IndexItem }) {
       <h3 className="mt-3 line-clamp-2 font-sans text-base font-semibold leading-snug text-ink group-hover:text-white">
         {w.title}
       </h3>
+      {note && (
+        <p className="mt-1.5 text-xs font-medium text-emerald-300/90">{note}</p>
+      )}
       {w.short && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">{w.short}</p>}
       <div className="mb-4 mt-4 flex flex-1 flex-wrap content-start items-start gap-1.5">
         {w.platforms.slice(0, 3).map((p) => (

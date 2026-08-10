@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getIndex } from "@/lib/catalog";
-import { baseUrl } from "@/lib/site";
+import { baseUrl, CATALOG_UPDATED } from "@/lib/site";
 import { WORKFLOWS_PER_SITEMAP, workflowSitemapIds } from "@/lib/sitemaps";
 
 export async function generateSitemaps() {
@@ -14,14 +14,14 @@ export default async function sitemap({
 }): Promise<MetadataRoute.Sitemap> {
   const chunk = Number(await id) || 0;
   const base = baseUrl();
-  const now = new Date();
+  const updated = new Date(CATALOG_UPDATED);
   const start = chunk * WORKFLOWS_PER_SITEMAP;
 
   return getIndex()
     .slice(start, start + WORKFLOWS_PER_SITEMAP)
     .map((w) => ({
       url: `${base}/workflows/${w.route}`,
-      lastModified: now,
+      lastModified: updated,
       changeFrequency: "monthly" as const,
       priority: 0.5,
     }));

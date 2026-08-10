@@ -5,7 +5,7 @@ import { posts, getPost } from "@/lib/blog";
 import { queryCatalog } from "@/lib/catalog";
 import WorkflowCard from "@/components/WorkflowCard";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta, shareImage } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
 
 export function generateStaticParams() {
@@ -20,7 +20,13 @@ export async function generateMetadata({
     const { slug } = await params;
     const p = getPost(slug);
     if (!p) return { title: "Post not found" };
-    return { title: p.title, description: p.description, alternates: { canonical: `/blog/${slug}` } };
+    return pageMeta({
+        title: p.title,
+        description: p.description,
+        path: `/blog/${slug}`,
+        image: shareImage(p.title, "WorkflowCrate blog"),
+        type: "article",
+    });
 }
 
 export default async function BlogPostDetail({

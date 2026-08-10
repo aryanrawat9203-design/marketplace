@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
 
-export const metadata: Metadata = { title: "About", alternates: { canonical: "/about" } };
+export const metadata: Metadata = pageMeta({
+  title: "About",
+  description:
+    "WorkflowCrate is a solo-built library of original n8n workflow templates - who builds them, how they are made, and what happens when something breaks.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

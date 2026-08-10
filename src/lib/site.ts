@@ -17,3 +17,16 @@ export const SITE_NAME = "WorkflowCrate";
  */
 export const TEMPLATE_COUNT = 10463;
 export const TEMPLATE_COUNT_LABEL = TEMPLATE_COUNT.toLocaleString("en-US");
+
+/**
+ * When the template catalog itself last changed, as an ISO date.
+ *
+ * Sitemaps used to send `lastModified: new Date()` on every URL, so all ~10,600
+ * entries claimed to have changed on every deploy - which tells a crawler
+ * nothing and, repeated often enough, teaches it to disregard the field. This
+ * is a real date, bumped when src/data/catalog.json changes.
+ */
+export const CATALOG_UPDATED = "2026-08-10";
+
+/** Last substantive change to the hubs, policy and marketing pages. */
+export const SITE_UPDATED = "2026-08-10";

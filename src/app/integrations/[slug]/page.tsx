@@ -8,11 +8,13 @@ import {
   canonicalPairSlug,
   relatedPairs,
   pairsForIntegration,
+  pairTitleRelevance,
   type IntegrationPair,
 } from "@/lib/integrations";
+import { getPairGuide, type PairGuide } from "@/lib/pair-guides";
 import WorkflowCard from "@/components/WorkflowCard";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
 import { starterPackItems } from "@/lib/starter-pack";
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -56,36 +58,24 @@ export async function generateMetadata({
     // the directional phrasing and the body covers both directions.
     const title = `${pair.a.name} to ${pair.b.name}: ${fmt(pair.count)} n8n integration templates`;
     const description = `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Download the JSON, add your credentials and it runs - no code required.`;
-    return {
+    return pageMeta({
       title,
       description,
-      alternates: { canonical: `/integrations/${pair.slug}` },
-      openGraph: {
-        title,
-        description,
-        type: "website",
-        url: `/integrations/${pair.slug}`,
-        images: [shareImage(`${pair.a.name} + ${pair.b.name}`, pair.count)],
-      },
-    };
+      path: `/integrations/${pair.slug}`,
+      image: shareImage(`${pair.a.name} + ${pair.b.name}`, pair.count),
+    });
   }
 
   const integration = getIntegrationBySlug(slug);
   if (!integration) return { title: "Integration not found" };
   const title = `${integration.name} n8n workflow templates`;
   const description = `${fmt(integration.count)} original, ready-to-import n8n workflow templates that automate ${integration.name} - buy a single template or a bundle and download instantly.`;
-  return {
+  return pageMeta({
     title,
     description,
-    alternates: { canonical: `/integrations/${integration.slug}` },
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      url: `/integrations/${integration.slug}`,
-      images: [shareImage(integration.name, integration.count)],
-    },
-  };
+    path: `/integrations/${integration.slug}`,
+    image: shareImage(integration.name, integration.count),
+  });
 }
 
 export default async function IntegrationPage({
@@ -112,6 +102,7 @@ export default async function IntegrationPage({
 
   // Pairs this integration is half of - internal links into the new pair pages.
   const pairsWithThis = pairsForIntegration(integration.slug, 12);
+  const guide = getPairGuide(integration.slug);
 
   const browseHref = `/workflows?platform=${encodeURIComponent(integration.name)}`;
   const breadcrumb = breadcrumbJsonLd([
@@ -208,6 +199,10 @@ export default async function IntegrationPage({
         </div>
       )}
 
+      {guide && (
+        <PairTutorial guide={guide} heading={`How to use ${integration.name} with n8n`} />
+      )}
+
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
           <h2 className="font-semibold text-ink">
@@ -225,11 +220,60 @@ export default async function IntegrationPage({
   );
 }
 
+/**
+ * The hand-written tutorial for a pair (or a single integration) with real
+ * search demand. Rendered in place of the generic three-step block, which was
+ * identical across every pair page and answered none of what the query asked.
+ */
+function PairTutorial({ guide, heading }: { guide: PairGuide; heading: string }) {
+  return (
+    <section className="mt-14 border-t border-white/10 pt-10">
+      <h2 className="text-2xl font-bold tracking-tight text-ink">{heading}</h2>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-faint">Nodes you will use:</span>
+        {guide.nodes.map((n) => (
+          <span key={n} className="chip">
+            {n}
+          </span>
+        ))}
+      </div>
+      <div className="mt-8 max-w-3xl space-y-8">
+        {guide.sections.map((sec) => (
+          <div key={sec.h}>
+            <h3 className="font-sans text-lg font-semibold text-ink">{sec.h}</h3>
+            <div className="mt-2.5 space-y-3.5 leading-relaxed text-body">
+              {sec.p.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PairPage({ pair }: { pair: IntegrationPair }) {
   const { a, b } = pair;
+  const guide = getPairGuide(pair.slug);
   const freeCount = starterPackItems().length;
   const matching = pairMatches(pair);
-  const top = [...matching].sort((x, y) => (y.demand ?? 0) - (x.demand ?? 0)).slice(0, 12);
+  // Fix 6.1: rank by how well the *title* names the pair, then by demand.
+  // Every template here genuinely contains both nodes, but titles name the most
+  // prominent platforms - which are often neither - so the grid used to lead
+  // with cards reading "Telegram" and "Outlook" on the PostgreSQL + Slack page.
+  // Visitors read titles, not node graphs.
+  const top = [...matching]
+    .sort(
+      (x, y) =>
+        pairTitleRelevance(y.title, pair) - pairTitleRelevance(x.title, pair) ||
+        (y.demand ?? 0) - (x.demand ?? 0),
+    )
+    .slice(0, 12);
+  // Only reassure where the title genuinely does not say it. If most of the
+  // grid names both tools already, the line is noise.
+  const bothNamed = top.filter((w) => pairTitleRelevance(w.title, pair) === 2).length;
+  const reassure = bothNamed < 6 ? `Uses ${a.name} and ${b.name}` : undefined;
   const topCategories = countBy(matching, "category", 8);
   const topSubcategories = countBy(matching, "subcategory", 6);
   const related = relatedPairs(pair, 12);
@@ -339,11 +383,18 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {top.map((w) => (
-            <WorkflowCard key={w.id} w={w} />
+            <WorkflowCard
+              key={w.id}
+              w={w}
+              note={pairTitleRelevance(w.title, pair) === 2 ? undefined : reassure}
+            />
           ))}
         </div>
       </div>
 
+      {guide ? (
+        <PairTutorial guide={guide} heading={`How to connect ${a.name} to ${b.name}`} />
+      ) : (
       <div className="mt-12">
         <h2 className="text-lg font-semibold text-ink">
           How to connect {a.name} to {b.name}
@@ -374,6 +425,7 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
           ))}
         </ol>
       </div>
+      )}
 
       <div className="mt-12">
         <h2 className="text-lg font-semibold text-ink">Explore each integration</h2>

@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import PageShell from "@/components/PageShell";
 import JsonLd from "@/components/JsonLd";
 
-export const metadata: Metadata = { title: "FAQ", alternates: { canonical: "/faq" } };
+export const metadata: Metadata = pageMeta({
+  title: "FAQ",
+  description:
+    "Answers to the common questions about WorkflowCrate: what you are buying, how delivery works, whether templates run on self-hosted n8n, refunds, and licensing.",
+  path: "/faq",
+});
 
 const faqs: [string, string][] = [
   [

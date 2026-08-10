@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import PageShell from "@/components/PageShell";
 import ContactForm from "@/components/ContactForm";
 
-export const metadata: Metadata = { title: "Contact", alternates: { canonical: "/contact" } };
+export const metadata: Metadata = pageMeta({
+  title: "Contact",
+  description:
+    "Questions about a template, an order, or a custom n8n workflow build? Email us or use the contact form - we reply within 1-2 business days.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

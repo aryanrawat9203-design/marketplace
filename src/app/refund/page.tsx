@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import PageShell from "@/components/PageShell";
 
-export const metadata: Metadata = { title: "Refund Policy", alternates: { canonical: "/refund" } };
+export const metadata: Metadata = pageMeta({
+  title: "Refund Policy",
+  description:
+    "How refunds work on WorkflowCrate: digital downloads are final, but a faulty, non-importing, or not-as-described file is fixed or refunded within 7 days.",
+  path: "/refund",
+});
 
 export default function RefundPage() {
   return (

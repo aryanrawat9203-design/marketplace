@@ -9,8 +9,7 @@ import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
-import { baseUrl } from "@/lib/site";
+import { breadcrumbJsonLd, productOffer } from "@/lib/seo";
 
 export function generateStaticParams() {
   return getBundles()
@@ -65,13 +64,7 @@ export default async function PracticeBundleDetail({
     name: b.name,
     description: b.tagline,
     provider: { "@type": "Organization", name: "WorkflowCrate" },
-    offers: {
-      "@type": "Offer",
-      price: b.price,
-      priceCurrency: "INR",
-      availability: "https://schema.org/InStock",
-      url: `${baseUrl()}/practice-bundles/${b.slug}`,
-    },
+    offers: productOffer({ price: b.price, path: `/practice-bundles/${b.slug}` }),
   };
 
   return (

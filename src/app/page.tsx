@@ -229,9 +229,14 @@ export default async function Home() {
             <h1 className="anim-rise anim-d1 mt-6 text-4xl font-bold tracking-tight text-ink sm:text-6xl sm:leading-[1.06]">
               See every <span className="gradient-text">node</span> before you buy
             </h1>
+            {/* Fix 6.3: /free carried the sharpest line on the site - "not
+                links to someone else's repo" - on a page almost nobody reaches.
+                The free-alternative objection is the first thing a visitor
+                thinks, so it now gets answered above the fold. */}
             <p className="anim-rise anim-d2 mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-              Original n8n templates, documented well enough to learn from &mdash; not a mystery ZIP.
-              {" "}{taxo.industries.length} industries, {taxo.categories.length} categories, instant download.
+              Original, ready-to-import workflows &mdash; not links to someone else&rsquo;s repo.
+              Documented well enough to learn from, across {taxo.industries.length} industries and{" "}
+              {taxo.categories.length} categories.
             </p>
             <div className="anim-rise anim-d2 mx-auto mt-8 max-w-xl">
               <Suspense fallback={<div className="h-12" />}>
@@ -350,6 +355,16 @@ export default async function Home() {
                 <WorkflowCard key={w.id} w={w} />
               ))}
             </div>
+            <p className="mt-6 text-sm text-muted">
+              Wondering why you would pay when n8n.io gives thousands away free?{" "}
+              <Link
+                href="/guides/why-pay-for-n8n-templates"
+                className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+              >
+                We answer that honestly here
+              </Link>
+              .
+            </p>
           </Reveal>
         </section>
       )}

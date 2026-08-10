@@ -8,14 +8,16 @@ import { WorkflowCardSkeletons, LoadingAnnouncement } from "@/components/Skeleto
 import { FilterBar, PageJump } from "@/components/Controls";
 import { buildQuery } from "@/lib/url";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
+import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
 
-export const metadata: Metadata = {
+// The canonical consolidates every filter/sort/page query-string variant onto
+// the base browse URL; individual template pages carry their own canonicals.
+export const metadata: Metadata = pageMeta({
   title: "Browse templates",
-  // Consolidates every filter/sort/page query-string variant onto the base
-  // browse URL; the individual template pages carry their own canonicals.
-  alternates: { canonical: "/workflows" },
-};
+  description: `Search and filter all ${TEMPLATE_COUNT_LABEL} original n8n workflow templates by category, integration, difficulty and trigger - preview the full node graph before you buy.`,
+  path: "/workflows",
+});
 
 type SP = { [k: string]: string | string[] | undefined };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

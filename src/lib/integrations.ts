@@ -130,3 +130,20 @@ export function pairsForIntegration(slug: string, n: number): IntegrationPair[] 
     .filter((p) => p.a.slug === slug || p.b.slug === slug)
     .slice(0, n);
 }
+
+/**
+ * How well a template's *title* matches the pair the visitor searched for.
+ *
+ * Every template on a pair page genuinely contains both nodes - the filter is
+ * on the node graph, not the wording. But titles name the most *prominent*
+ * platforms, which often are not the pair, so the PostgreSQL + Slack page led
+ * with cards reading "Telegram" and "Outlook". Someone arriving from "connect
+ * slack to postgresql" reads the titles, not the node graphs, and bounces.
+ *
+ * 2 = the title names both tools, 1 = one of them, 0 = neither.
+ */
+export function pairTitleRelevance(title: string, pair: IntegrationPair): 0 | 1 | 2 {
+  const t = title.toLowerCase();
+  const hit = (name: string) => t.includes(name.toLowerCase());
+  return ((hit(pair.a.name) ? 1 : 0) + (hit(pair.b.name) ? 1 : 0)) as 0 | 1 | 2;
+}

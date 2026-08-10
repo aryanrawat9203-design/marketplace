@@ -4,7 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import WorkflowCard from "@/components/WorkflowCard";
 import StarterPackForm from "@/components/StarterPackForm";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta, shareImage } from "@/lib/seo";
 import { starterPackItems } from "@/lib/starter-pack";
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -13,20 +13,12 @@ export function generateMetadata(): Metadata {
   const count = starterPackItems().length;
   const title = `${count} free n8n workflow templates`;
   const description = `Download ${count} original, ready-to-import n8n workflow templates free - no account needed. Ordered beginner to expert so you can work through them in sequence.`;
-  return {
+  return pageMeta({
     title,
     description,
-    alternates: { canonical: "/free" },
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      url: "/free",
-      images: [
-        `/api/og?title=${encodeURIComponent(`${count} free n8n templates`)}&category=${encodeURIComponent("Free starter pack")}`,
-      ],
-    },
-  };
+    path: "/free",
+    image: shareImage(`${count} free n8n templates`, "Free starter pack"),
+  });
 }
 
 export default function FreeTemplatesPage() {
@@ -64,6 +56,17 @@ export default function FreeTemplatesPage() {
           </>
         }
       />
+
+      <p className="mt-4 text-sm text-muted">
+        Not sure why you would ever pay, when n8n.io hosts thousands free?{" "}
+        <Link
+          href="/guides/why-pay-for-n8n-templates"
+          className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+        >
+          Here is the honest answer
+        </Link>
+        , including the cases where we would tell you not to.
+      </p>
 
       <div className="mt-8 max-w-2xl">
         <StarterPackForm />

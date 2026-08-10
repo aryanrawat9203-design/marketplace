@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import PageShell from "@/components/PageShell";
 
-export const metadata: Metadata = { title: "Privacy Policy", alternates: { canonical: "/privacy" } };
+export const metadata: Metadata = pageMeta({
+  title: "Privacy Policy",
+  description:
+    "What data WorkflowCrate collects when you browse, buy, or download an n8n template, who processes it, how long it is kept, and how to have it deleted.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

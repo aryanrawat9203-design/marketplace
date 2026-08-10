@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import PageShell from "@/components/PageShell";
 
-export const metadata: Metadata = { title: "Terms & Conditions", alternates: { canonical: "/terms" } };
+export const metadata: Metadata = pageMeta({
+  title: "Terms & Conditions",
+  description:
+    "The terms you agree to when you buy or download an n8n workflow template from WorkflowCrate - licence, permitted use, payment, and liability.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

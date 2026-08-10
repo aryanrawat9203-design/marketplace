@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { Screenshots } from "./screenshots";
+import { selectFreeTier, applyFreeTier } from "./free-tier";
 
 export type IndexItem = {
   id: string;
@@ -93,15 +94,37 @@ const g = globalThis as unknown as {
   __taxo?: Taxonomy;
   __byRoute?: Map<string, DetailItem>;
   __aliases?: Record<string, string>;
+  __freeIds?: Set<string>;
 };
 
 export function getIndex(): IndexItem[] {
-  if (!g.__index) g.__index = readJson<IndexItem[]>("catalog-index.json");
-  return g.__index;
+  let index = g.__index;
+  if (!index) {
+    const items = readJson<IndexItem[]>("catalog-index.json");
+    g.__freeIds = selectFreeTier(items);
+    index = applyFreeTier(items, g.__freeIds);
+    g.__index = index;
+  }
+  return index;
 }
+
+/**
+ * The free tier is derived from the index (see lib/free-tier.ts) and applied to
+ * both records, so a template cannot be free on a listing card and chargeable on
+ * its own page.
+ */
+function freeIds(): Set<string> {
+  if (!g.__freeIds) getIndex();
+  return g.__freeIds!;
+}
+
 export function getCatalog(): DetailItem[] {
-  if (!g.__catalog) g.__catalog = readJson<DetailItem[]>("catalog.json");
-  return g.__catalog;
+  let catalog = g.__catalog;
+  if (!catalog) {
+    catalog = applyFreeTier(readJson<DetailItem[]>("catalog.json"), freeIds());
+    g.__catalog = catalog;
+  }
+  return catalog;
 }
 export function getTaxonomy(): Taxonomy {
   if (!g.__taxo) g.__taxo = readJson<Taxonomy>("taxonomy.json");
@@ -295,9 +318,34 @@ export function suggest(qRaw: string): Suggestions {
   };
 }
 
+/**
+ * Related templates for a product page.
+ *
+ * Category and industry alone produced recommendations that shared a theme but
+ * none of the tools: a Trello -> Discord page suggested four HubSpot/Sheets/Slack
+ * workflows. Someone reading a Trello page is, by revealed preference, a Trello
+ * user, so shared platforms are weighted above everything except an exact
+ * subcategory match. Demand only breaks ties.
+ */
 export function related(item: DetailItem, n: number): IndexItem[] {
+  const own = new Set(item.platforms);
+  const score = (w: IndexItem) => {
+    const shared = w.platforms.reduce((acc, p) => acc + (own.has(p) ? 1 : 0), 0);
+    return (
+      shared * 10 +
+      (w.subcategory && w.subcategory === item.subcategory ? 6 : 0) +
+      (w.category === item.category ? 3 : 0) +
+      (w.industry === item.industry ? 1 : 0)
+    );
+  };
   return getIndex()
-    .filter((w) => w.id !== item.id && (w.category === item.category || w.industry === item.industry))
-    .sort((a, b) => (b.demand ?? 0) - (a.demand ?? 0))
+    .filter(
+      (w) =>
+        w.id !== item.id &&
+        (w.category === item.category ||
+          w.industry === item.industry ||
+          w.platforms.some((p) => own.has(p))),
+    )
+    .sort((a, b) => score(b) - score(a) || (b.demand ?? 0) - (a.demand ?? 0))
     .slice(0, n);
 }

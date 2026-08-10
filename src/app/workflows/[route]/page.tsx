@@ -22,8 +22,7 @@ import TrackView from "@/components/TrackView";
 import { RecentlyViewedTracker, RecentlyViewedStrip } from "@/components/RecentlyViewed";
 import JsonLd from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/PageHeader";
-import { breadcrumbJsonLd } from "@/lib/seo";
-import { baseUrl } from "@/lib/site";
+import { breadcrumbJsonLd, pageMeta, productOffer } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -35,16 +34,17 @@ export async function generateMetadata({
   if (!w) return { title: "Template not found" };
   const preview = previewWorkflow(w.route);
   const shots = await getScreenshotsForRoute(w.route);
-  const shareImage =
+  const image =
     shots?.cardThumb ??
     shots?.overview ??
     `/api/og?title=${encodeURIComponent(w.title)}&category=${encodeURIComponent(w.category ?? "")}&nodes=${preview?.nodeCount ?? 0}`;
-  return {
+  return pageMeta({
     title: w.title,
-    description: w.shortDescription ?? w.description ?? undefined,
-    alternates: { canonical: `/workflows/${w.route}` },
-    openGraph: { title: w.title, description: w.shortDescription ?? undefined, type: "article", images: [shareImage] },
-  };
+    description: w.shortDescription ?? w.description ?? "",
+    path: `/workflows/${w.route}`,
+    image,
+    type: "article",
+  });
 }
 
 function Row({ k, v }: { k: string; v: string | null | undefined }) {
@@ -131,13 +131,9 @@ export default async function WorkflowDetail({
     name: w.title,
     description: w.shortDescription ?? w.description ?? undefined,
     category: w.category ?? undefined,
-    offers: {
-      "@type": "Offer",
-      price: w.price,
-      priceCurrency: "INR",
-      availability: "https://schema.org/InStock",
-      url: `${baseUrl()}/workflows/${w.route}`,
-    },
+    sku: w.id,
+    brand: { "@type": "Brand", name: "WorkflowCrate" },
+    offers: productOffer({ price: w.price, path: `/workflows/${w.route}` }),
     ...(gallery.length > 0 ? { image: gallery.map((g) => g.src) } : {}),
     // Only real, moderated buyer reviews ever reach this markup.
     ...(reviews.count > 0

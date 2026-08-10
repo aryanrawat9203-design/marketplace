@@ -2,15 +2,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import CustomRequestForm from "./CustomRequestForm";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
 import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Get a custom n8n workflow built",
-  description:
-    `Can't find the exact automation you need? Describe it and get a fixed quote - we build custom, ready-to-import n8n workflows on the same quality bar as our ${TEMPLATE_COUNT_LABEL}-template catalog.`,
-  alternates: { canonical: "/custom" },
-};
+  description: `Can't find the exact automation you need? Describe it and get a fixed quote - we build custom, ready-to-import n8n workflows on the same quality bar as our ${TEMPLATE_COUNT_LABEL}-template catalog.`,
+  path: "/custom",
+});
 
 const faqs: [string, string][] = [
   [

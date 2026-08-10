@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 
-export const metadata: Metadata = {
-    title: "Blog",
-    description: "Practical n8n automation patterns, workflow breakdowns, and what is new from WorkflowCrate.",
-    alternates: { canonical: "/blog" },
-};
+export const metadata: Metadata = pageMeta({
+  title: "Blog",
+  description:
+    "Practical n8n automation patterns, workflow breakdowns, and what is new from WorkflowCrate.",
+  path: "/blog",
+});
 
 export default function BlogIndexPage() {
     return (

@@ -15,6 +15,18 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["latin"] });
 
+/**
+ * Sitewide revalidation policy.
+ *
+ * Every page was static-at-build with no revalidation, so anything read at
+ * render time from Supabase - template screenshots, review counts, the
+ * homepage showcase - could only change by redeploying. An hour is short
+ * enough that an uploaded screenshot appears the same morning and long enough
+ * that the catalog's pages stay cache-served rather than rendered per request.
+ * Individual routes can override this with their own `revalidate`.
+ */
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl()),
   title: {
@@ -49,7 +61,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <div aria-hidden="true" className="ambient-edges" />
-        <PageSideGraph />
         <a
           href="#content"
           className="sr-only rounded-lg font-medium focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-surface-2 focus:px-4 focus:py-2 focus:text-sm focus:text-ink focus:shadow-lg focus:outline focus:outline-2 focus:outline-violet-500"
@@ -64,6 +75,10 @@ export default function RootLayout({
           </CartProvider>
           <ChatWidget />
         </AuthProvider>
+        {/* Decorative only: rendered after the content so its node labels
+            are never the first text a crawler reads on a page. `fixed`
+            positioning means DOM order has no visual effect. */}
+        <PageSideGraph />
         <Analytics />
         <GoogleAnalytics />
       </body>

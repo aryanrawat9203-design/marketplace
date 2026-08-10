@@ -2,15 +2,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Browse n8n templates by integration",
   description:
     "Find ready-to-import n8n workflow templates for the apps you already use - Gmail, Slack, Google Sheets, OpenAI, Telegram, Notion and hundreds more.",
-  alternates: { canonical: "/integrations" },
-};
+  path: "/integrations",
+});
 
 export default function IntegrationsPage() {
   const integrations = getIntegrations();

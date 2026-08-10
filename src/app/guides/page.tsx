@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { guides } from "@/lib/guides";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Guides",
-  description: "Guides for choosing, importing, and getting the most out of n8n workflow templates.",
-  alternates: { canonical: "/guides" },
-};
+  description:
+    "Guides for choosing, importing, and getting the most out of n8n workflow templates - plus honest comparisons with Zapier, Make and the free template libraries.",
+  path: "/guides",
+});
 
 export default function GuidesIndexPage() {
   return (
