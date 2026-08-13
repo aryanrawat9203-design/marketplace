@@ -45,6 +45,11 @@ export default function NewsletterSignup() {
           if (state === "error") setState("idle");
         }}
         placeholder="you@email.com"
+        // Form-filler browser extensions inject an `fdprocessedid` attribute
+        // onto inputs before React hydrates, tripping a hydration-mismatch
+        // warning that has nothing to do with our markup. Suppressing it here
+        // (attribute-level, this element only) keeps real warnings visible.
+        suppressHydrationWarning
         // `min-h-11`, not `h-11`: the wrapper is `flex-col` until `sm`, so on
         // mobile `flex-1` resolves to `flex-basis: 0` on the *vertical* axis
         // and overrides a plain `height`, collapsing the field to 20px.

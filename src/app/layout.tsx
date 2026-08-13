@@ -8,7 +8,6 @@ import AuthProvider from "@/components/AuthProvider";
 import CartProvider from "@/components/CartProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import ChatWidget from "@/components/Chatbot/ChatWidget";
-import PageSideGraph from "@/components/PageSideGraph";
 import { baseUrl } from "@/lib/site";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -75,10 +74,6 @@ export default function RootLayout({
           </CartProvider>
           <ChatWidget />
         </AuthProvider>
-        {/* Decorative only: rendered after the content so its node labels
-            are never the first text a crawler reads on a page. `fixed`
-            positioning means DOM order has no visual effect. */}
-        <PageSideGraph />
         <Analytics />
         <GoogleAnalytics />
       </body>

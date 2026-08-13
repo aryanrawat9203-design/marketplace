@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getByRoute, getTaxonomy, topByDemand, freeSamples } from "@/lib/catalog";
@@ -7,6 +6,7 @@ import { fullLibrary, lifetime, categoryBundles } from "@/lib/bundles";
 import { getCollections, collectionStats } from "@/lib/collections";
 import { getShowcaseScreenshots, SHOWCASE_SLOTS } from "@/lib/screenshots";
 import WorkflowCard from "@/components/WorkflowCard";
+import ShowcaseTabs from "@/components/ShowcaseTabs";
 import HeroGraph from "@/components/HeroGraph";
 import SectionConnector from "@/components/SectionConnector";
 import TrustStrip from "@/components/TrustStrip";
@@ -159,7 +159,6 @@ export default async function Home() {
         return src ? [{ slot, src, ...SHOWCASE_COPY[slot] }] : [];
       })
     : [];
-  const [featured, ...restShowcase] = showcaseCards;
 
   const stats: [string, string][] = [
     [fmt(taxo.total), "templates"],
@@ -255,39 +254,8 @@ export default async function Home() {
             <div className="anim-rise anim-d3">
               <TrustStrip />
             </div>
-            {/* Proof, raised above the fold: a visitor who bounces from the
-                hero never used to see this. It's a real template page, not a
-                stock photo - the single best answer to "why pay when free
-                templates exist?" (Fix 2.7). */}
-            {showcase && showcaseItem && featured && (
-              <Link
-                href={`/workflows/${showcase.route}`}
-                className="card card-hover anim-rise anim-d3 mx-auto mt-10 block max-w-3xl overflow-hidden text-left"
-              >
-                <Image
-                  src={featured.src}
-                  alt={featured.title}
-                  width={featured.w}
-                  height={featured.h}
-                  priority
-                  sizes="(min-width: 768px) 768px, 100vw"
-                  className="h-auto w-full border-b border-white/[0.06] bg-surface-1 object-contain"
-                />
-                <div className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">
-                      Proof, not promises
-                    </p>
-                    <p className="mt-0.5 text-sm text-body">
-                      &ldquo;{showcaseItem.title}&rdquo; &mdash; the real node graph, before you pay.
-                    </p>
-                  </div>
-                  <span className="link-arrow shrink-0 text-sm">
-                    View <span className="arrow">&rarr;</span>
-                  </span>
-                </div>
-              </Link>
-            )}
+            {/* The real product proof lives just below, in the interactive
+                "See exactly what you get" tour — the hero stays focused. */}
             <div className="anim-rise anim-d4 mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] sm:grid-cols-4">
               {stats.map(([v, label]) => (
                 <div key={label} className="bg-surface-1 px-4 py-3.5">
@@ -303,41 +271,26 @@ export default async function Home() {
       <SectionConnector />
 
       {/* ------------------------------------------------ showcase */}
-      {showcase && showcaseItem && restShowcase.length > 0 && (
+      {showcase && showcaseItem && showcaseCards.length >= 3 && (
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <Reveal>
             <SectionHeader
               eyebrow="Every detail, documented"
               title="See exactly what you get"
               description={
-                <>The rest of &ldquo;{showcaseItem.title}&rdquo; &mdash; design decisions, credentials, troubleshooting, all included.</>
+                <>Every part of &ldquo;{showcaseItem.title}&rdquo; &mdash; the node graph, design decisions, credentials and troubleshooting &mdash; laid out before you buy.</>
               }
               action={{ href: `/workflows/${showcase.route}`, label: "View this template" }}
             />
-            {/* Masonry, not a fixed-height grid: these screenshots range from
-                wide sticky notes to tall doc cards, and letterboxing a 370x630
-                card into a short row would shrink its text past legibility.
-                Below the fold, so lazy-loaded (next/image default) rather
-                than eagerly fetched like the hero screenshot above. */}
-            <div className="mt-7 gap-4 sm:columns-2 lg:columns-3">
-              {restShowcase.map((c) => (
-                <div key={c.slot} className="card card-hover mb-4 break-inside-avoid overflow-hidden">
-                  <div className="border-b border-white/[0.06] bg-surface-1">
-                    <Image
-                      src={c.src}
-                      alt={c.title}
-                      width={c.w}
-                      height={c.h}
-                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                      className="h-auto w-full object-contain"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-sans text-sm font-semibold text-ink">{c.title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-muted">{c.desc}</p>
-                  </div>
-                </div>
-              ))}
+            {/* One readable frame at a time, aspect chosen by the visitor —
+                turns ten stacked screenshots into a compact product tour that
+                stays short on mobile. Below the fold, so images lazy-load. */}
+            <div className="mt-8">
+              <ShowcaseTabs
+                route={showcase.route}
+                templateTitle={showcaseItem.title}
+                cards={showcaseCards}
+              />
             </div>
           </Reveal>
         </section>
@@ -371,8 +324,6 @@ export default async function Home() {
           </Reveal>
         </section>
       )}
-
-      <SectionConnector />
 
       {/* ------------------------------------------------ flagship bundles */}
       {full && life && (
@@ -484,8 +435,6 @@ export default async function Home() {
         </Reveal>
       </section>
 
-      <SectionConnector />
-
       {/* ------------------------------------------------ integrations */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <Reveal>
@@ -557,8 +506,6 @@ export default async function Home() {
 
       <RecentlyViewedStrip />
 
-      <SectionConnector />
-
       {/* ------------------------------------------------ why us */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <Reveal>
@@ -604,8 +551,6 @@ export default async function Home() {
           </div>
         </Reveal>
       </section>
-
-      <SectionConnector />
 
       {/* ------------------------------------------------ how it works */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">

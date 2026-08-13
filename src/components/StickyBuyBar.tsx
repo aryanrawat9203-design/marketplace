@@ -24,6 +24,17 @@ export default function StickyBuyBar({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Flag the body while this bar is on screen so the floating chat button can
+  // lift clear of it on mobile (it otherwise rests over the Buy button). See
+  // `.chat-fab-rest` in globals.css. Attribute-based so the two decoupled
+  // components never need to share state directly.
+  const barActive = show && !item.free;
+  useEffect(() => {
+    if (barActive) document.body.setAttribute("data-buybar", "");
+    else document.body.removeAttribute("data-buybar");
+    return () => document.body.removeAttribute("data-buybar");
+  }, [barActive]);
+
   if (item.free || !show) return null;
 
   return (

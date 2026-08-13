@@ -28,10 +28,10 @@ export default function Header() {
       >
         <Logo />
       </Link>
-      <nav className="ml-2 hidden items-center gap-0.5 text-sm text-muted lg:flex">
+      <nav className="ml-1 hidden items-center gap-0.5 text-sm text-muted lg:flex xl:ml-2">
         <NavLinks links={navLinks} />
       </nav>
-      <div className="ml-auto hidden w-full max-w-xs lg:block">
+      <div className="ml-auto hidden w-full max-w-[180px] lg:block xl:max-w-xs">
         <Suspense fallback={<div className="h-10" />}>
           <SearchBar compact />
         </Suspense>

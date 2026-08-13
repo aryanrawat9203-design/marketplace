@@ -104,7 +104,7 @@ export default function HeroGraph() {
           <svg
             viewBox="0 0 1200 560"
             preserveAspectRatio="xMidYMid slice"
-            className="hero-graph absolute left-1/2 top-0 hidden h-full min-w-[1200px] -translate-x-1/2 lg:block"
+            className="hero-graph absolute left-1/2 top-0 hidden h-full min-w-[1200px] -translate-x-1/2 opacity-80 lg:block"
           >
             <g fill="none" strokeLinecap="round">
               {EDGES.map(([from, to], i) => {
@@ -151,7 +151,7 @@ export default function HeroGraph() {
           <svg
             viewBox="0 0 400 800"
             preserveAspectRatio="xMidYMid slice"
-            className="hero-graph-mobile absolute inset-0 block h-full w-full lg:hidden"
+            className="hero-graph-mobile absolute inset-0 block h-full w-full opacity-60 lg:hidden"
           >
             <g fill="none" strokeLinecap="round">
               {MOBILE_EDGES.map(([from, to], i) => {

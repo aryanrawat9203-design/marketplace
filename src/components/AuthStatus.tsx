@@ -17,15 +17,15 @@ export default function AuthStatus() {
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm text-body">
+    <div className="flex shrink-0 items-center gap-1.5 text-sm text-body">
       <Link
         href="/account"
-        className="hidden rounded-lg px-2 py-1.5 text-violet-300 hover:bg-white/[0.06] hover:text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 sm:inline"
+        className="hidden whitespace-nowrap rounded-lg px-2 py-1.5 text-violet-300 hover:bg-white/[0.06] hover:text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 sm:inline"
       >
         My library
       </Link>
-      <span className="hidden max-w-[10rem] truncate lg:inline">{user.email}</span>
-      <button onClick={() => signOut()} className="btn-secondary btn-sm">
+      <span className="hidden max-w-[12rem] truncate xl:inline">{user.email}</span>
+      <button onClick={() => signOut()} className="btn-secondary btn-sm whitespace-nowrap">
         Sign out
       </button>
     </div>

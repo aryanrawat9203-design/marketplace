@@ -405,7 +405,7 @@ export default function ChatWidget() {
         aria-expanded={open}
         style={{ touchAction: "none", ...(togglePos ? { left: togglePos.x, top: togglePos.y } : {}) }}
         className={`fixed z-[90] grid h-14 w-14 cursor-grab place-items-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-violet-900/30 transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 active:cursor-grabbing ${
-          togglePos ? "" : "bottom-5 right-5 sm:bottom-6 sm:right-6"
+          togglePos ? "" : "chat-fab-rest bottom-5 right-5 sm:bottom-6 sm:right-6"
         }`}
       >
         {open ? (

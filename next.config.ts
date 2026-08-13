@@ -75,6 +75,12 @@ const nextConfig: NextConfig = {
         ]
       : [],
     formats: ["image/avif", "image/webp"] as const,
+    // Local dev only: skip the optimizer. Next 16's optimizer refuses upstream
+    // images whose IP looks private, and a NAT64/proxied dev network makes the
+    // public Supabase host resolve into `64:ff9b::/96` — so every remote image
+    // 400s in dev while working perfectly in production. Bypassing the
+    // optimizer in dev renders the raw (CSP-allowed) URL; prod is unchanged.
+    unoptimized: isDev,
   },
   // Bundle catalog data + product files into the serverless functions that read
   // them from disk at runtime.
