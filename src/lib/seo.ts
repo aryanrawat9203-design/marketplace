@@ -37,18 +37,26 @@ export function pageMeta({
   path,
   image,
   type = "website",
+  noindex = false,
 }: {
   title: string;
   description: string;
   path: string;
   image?: string;
   type?: "website" | "article";
+  /**
+   * Keep the page out of the index while leaving it reachable and its links
+   * followed - `follow` matters, because these pages still pass authority to
+   * the higher-inventory ones they link to.
+   */
+  noindex?: boolean;
 }): Metadata {
   const images = image ? [image] : undefined;
   return {
     title,
     description,
     alternates: { canonical: path },
+    ...(noindex ? { robots: { index: false, follow: true } } : {}),
     openGraph: { title, description, type, url: path, ...(images ? { images } : {}) },
     twitter: {
       card: "summary_large_image",

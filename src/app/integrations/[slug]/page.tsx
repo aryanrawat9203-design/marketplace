@@ -9,6 +9,9 @@ import {
   relatedPairs,
   pairsForIntegration,
   pairTitleRelevance,
+  isPairIndexable,
+  richerNeighbourPairs,
+  THIN_PAIR_TEMPLATES,
   type IntegrationPair,
 } from "@/lib/integrations";
 import { getPairGuide, type PairGuide } from "@/lib/pair-guides";
@@ -64,6 +67,7 @@ export async function generateMetadata({
       description,
       path: `/integrations/${pair.slug}`,
       image: shareImage(`${pair.a.name} + ${pair.b.name}`, pair.count),
+      noindex: !isPairIndexable(pair),
     });
   }
 
@@ -251,7 +255,11 @@ function PairTutorial({ guide, heading }: { guide: PairGuide; heading: string })
         {guide.sections.map((sec) => (
           <div key={sec.h}>
             <h3 className="font-sans text-lg font-semibold text-ink">{sec.h}</h3>
-            <div className="mt-2.5 space-y-3.5 leading-relaxed text-body">
+            {/* break-words: the guides quote URLs and identifiers
+                (https://app.asana.com/0/<project_gid>/<task_gid>) that have no
+                break opportunity and push the page 41px wider than a 375px
+                viewport otherwise. */}
+            <div className="mt-2.5 space-y-3.5 leading-relaxed text-body break-words">
               {sec.p.map((para, i) => (
                 <p key={i}>{para}</p>
               ))}
@@ -285,7 +293,7 @@ function FaqSection({ faqs, heading }: { faqs: Faq[]; heading: string }) {
                 +
               </span>
             </summary>
-            <p className="-mt-1 pb-4 pr-8 leading-relaxed text-muted">{f.a}</p>
+            <p className="-mt-1 break-words pb-4 pr-8 leading-relaxed text-muted">{f.a}</p>
           </details>
         ))}
       </div>
@@ -319,6 +327,10 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
   const related = relatedPairs(pair, 12);
   const browseHref = pairBrowseHref(pair);
   const faqs = pairFaqs(pair, matching);
+  // A short template list is not, on its own, a reason to waste the visit. Where
+  // inventory is thin, name the neighbouring pairs that have depth.
+  const neighbours =
+    pair.count <= THIN_PAIR_TEMPLATES ? richerNeighbourPairs(pair, 6) : [];
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -472,6 +484,36 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
           ))}
         </ol>
       </div>
+      )}
+
+      {neighbours.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-lg font-semibold text-ink">
+            More templates for {a.name} and {b.name} users
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted">
+            {a.name} and {b.name} is a focused pairing, so the list above is short by
+            design. These neighbouring pairings share one of the two tools and have far more
+            ready-made workflows behind them - useful if the automation you want sits one step
+            either side of this one.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {neighbours.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/integrations/${p.slug}`}
+                className="card card-hover group rounded-xl p-4"
+              >
+                <div className="text-sm font-medium text-body group-hover:text-white">
+                  {p.a.name} <span className="text-faint">+</span> {p.b.name}
+                </div>
+                <div className="mt-1 font-mono text-xs text-faint">
+                  {fmt(p.count)} templates
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       <FaqSection faqs={faqs} heading={`${a.name} and ${b.name} in n8n: common questions`} />

@@ -29,6 +29,40 @@ export { integrationSlug, pairSlug, isPairSlug };
  */
 export const MIN_PAIR_TEMPLATES = 3;
 
+/**
+ * Pair slugs with measured Search Console demand. These stay indexable however
+ * thin the inventory gets, because a page that earns impressions is answering a
+ * real query - the fix for it is more content, not removal from the index.
+ *
+ * Impressions are the 90 days to 2026-08-13. Add a slug here only with a number
+ * from GSC behind it; a guess defeats the point of having a threshold at all.
+ */
+export const PAIR_DEMAND_SLUGS: ReadonlySet<string> = new Set([
+  "asana-and-discord", // 58 impressions ("asana discord integration")
+  "discord-and-trello", // 128 impressions ("discord trello" + "trello discord")
+]);
+
+/**
+ * Below this a pair page is real but too thin to deserve a place in the index:
+ * three or four templates plus boilerplate is the kind of page that dilutes a
+ * site's average quality rather than adding to it. They stay reachable, linked
+ * and crawlable (robots: noindex, follow) - they are just not submitted.
+ *
+ * Deliberately one above the top of the current thin tail: 11 pairs sit at 3-4
+ * templates and the next rung up is 5. Set as a count rather than a hand-listed
+ * set of slugs so it stays correct as inventory moves - a pair that grows past
+ * the threshold becomes indexable on the next build with no code change.
+ */
+export const MIN_INDEXABLE_PAIR_TEMPLATES = 5;
+
+/**
+ * Whether a pair page should be indexed and listed in the sitemap.
+ * Demand beats the threshold; otherwise inventory has to clear it.
+ */
+export function isPairIndexable(pair: IntegrationPair): boolean {
+  return pair.count >= MIN_INDEXABLE_PAIR_TEMPLATES || PAIR_DEMAND_SLUGS.has(pair.slug);
+}
+
 const g = globalThis as unknown as {
   __integrations?: Integration[];
   __integrationsBySlug?: Map<string, Integration>;
@@ -110,17 +144,38 @@ export function canonicalPairSlug(slug: string): string | undefined {
   return getIntegrationPairBySlug(flipped) ? flipped : undefined;
 }
 
+/** True when `p` shares exactly one side with `pair` (and is not `pair`). */
+function sharesASide(p: IntegrationPair, pair: IntegrationPair): boolean {
+  return (
+    p.slug !== pair.slug &&
+    (p.a.slug === pair.a.slug ||
+      p.b.slug === pair.a.slug ||
+      p.a.slug === pair.b.slug ||
+      p.b.slug === pair.b.slug)
+  );
+}
+
 /** Other pairs that share one side with this pair - used for internal linking. */
 export function relatedPairs(pair: IntegrationPair, n: number): IntegrationPair[] {
   return getIntegrationPairs()
-    .filter(
-      (p) =>
-        p.slug !== pair.slug &&
-        (p.a.slug === pair.a.slug ||
-          p.b.slug === pair.a.slug ||
-          p.a.slug === pair.b.slug ||
-          p.b.slug === pair.b.slug),
-    )
+    .filter((p) => sharesASide(p, pair))
+    .slice(0, n);
+}
+
+/**
+ * At or below this a pair page cannot stand on its inventory alone, so it earns
+ * its place by being a good junction: it names the neighbouring pairs that do
+ * have depth instead of leaving the visitor at a dead end.
+ */
+export const THIN_PAIR_TEMPLATES = 20;
+
+/**
+ * Neighbouring pairs with strictly more inventory, richest first. `getIntegrationPairs`
+ * is already sorted by count, so this preserves that order.
+ */
+export function richerNeighbourPairs(pair: IntegrationPair, n: number): IntegrationPair[] {
+  return getIntegrationPairs()
+    .filter((p) => sharesASide(p, pair) && p.count > pair.count)
     .slice(0, n);
 }
 

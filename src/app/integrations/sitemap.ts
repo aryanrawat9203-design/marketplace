@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
+import { getIntegrations, getIntegrationPairs, isPairIndexable } from "@/lib/integrations";
 import { baseUrl, CATALOG_UPDATED } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -14,11 +14,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...getIntegrationPairs().map((p) => ({
-      url: `${base}/integrations/${p.slug}`,
-      lastModified: updated,
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    })),
+    // Pairs too thin to index are deliberately absent: submitting a URL that
+    // carries robots noindex is a contradictory signal, so the two rules are
+    // driven by the same predicate rather than maintained separately.
+    ...getIntegrationPairs()
+      .filter(isPairIndexable)
+      .map((p) => ({
+        url: `${base}/integrations/${p.slug}`,
+        lastModified: updated,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      })),
   ];
 }

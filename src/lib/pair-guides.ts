@@ -164,6 +164,14 @@ export const pairGuides: PairGuide[] = [
     nodes: ["Trello Trigger", "Trello", "IF", "Discord"],
     sections: [
       {
+        h: "What connecting Trello and Discord actually does",
+        p: [
+          "Trello holds the board; Discord is where the team actually talks. The connection exists because nobody reloads a board to find out that something changed - so work sits in a list nobody has looked at since Tuesday, and the conversation about it happens somewhere the board never sees.",
+          "Wiring them together means Trello events become Discord messages, and Discord messages become Trello cards. In practice that is five or six recognisable jobs: announce a card when it lands in a particular list (Done, Blocked, Needs review); nag when a due date passes and the card has not moved; post a once-a-day digest of the board instead of a running commentary; turn a support message or a slash command into a card so requests stop living in scrollback; and mirror checklist progress into a thread so the people discussing the work can see how far it has got.",
+          "What it does not do is make Discord a project manager. Trello stays the record - the board is still where state lives - and Discord becomes the surface that tells people when the record changed. Workflows that try to invert that, keeping the real status in a channel, are the ones that end up disagreeing with the board.",
+        ],
+      },
+      {
         h: "Which nodes you need",
         p: [
           "Both sides have first-party nodes. The common direction is a Trello Trigger watching a board or list, an IF node filtering to the cards that matter, and a Discord node posting to a channel. Going the other way, a Discord Trigger on a message or slash command feeds a Trello node that creates a card.",
@@ -201,12 +209,28 @@ export const pairGuides: PairGuide[] = [
           "Discord's interaction endpoints expect a response within three seconds. If card creation is slow, acknowledge the command immediately and do the Trello work afterwards, or the user sees an interaction-failed error even though the card was created.",
         ],
       },
+      {
+        h: "If none of the six templates is quite your case",
+        p: [
+          "This pairing has a short list here, and that is a fair reflection of it: Trello-to-Discord is a small, well-defined problem, and the whole graph is usually four nodes. There is not a hundred genuinely different workflows to be had, and a page claiming otherwise would be padding.",
+          "The practical consequence is that adapting is easy. Almost every difference between one of these workflows and the one you want is a parameter, not a redesign: the board or list ID on the trigger, the action.type you filter on in the IF node, the channel on the Discord node, and whether the message is plain text or an embed. Import the closest one, change those four things, and you are done - that is a five-minute edit, not a rebuild.",
+          "If you need the Discord side wired to something with more depth behind it, the pairings below share one of these two tools and have far more ready-made workflows. And if the workflow you want genuinely does not exist, a custom build is a fixed quote rather than a subscription.",
+        ],
+      },
     ],
   },
   {
     slug: "asana-and-discord",
     nodes: ["Asana Trigger", "Asana", "Set", "Discord"],
     sections: [
+      {
+        h: "What connecting Asana and Discord actually does",
+        p: [
+          "Asana is where work is assigned and dated; Discord is where the team is actually present. Asana's own notifications go to email and to an inbox most people declare bankruptcy on, so the common complaint is not that nobody was told - it is that being told did not reach anyone.",
+          "Connecting the two moves the signal to where people already are. The jobs worth automating are narrower than they first look: announce when a task is completed or moves into a section that means something (In review, Blocked, Ready to ship); alert the channel when a task is assigned to the team rather than to a person; warn on tasks whose due date has passed while still incomplete; and take requests raised in a channel and file them as real tasks with a workspace, a project and an assignee, so they stop being a message someone promised to remember.",
+          "Asana differs from a card-based tracker here in a way that shapes the workflow: its events carry a task GID and almost nothing else, so every useful message requires a second call to fetch the task before it can be written. That single fact is why an Asana-to-Discord workflow is a node or two longer than it looks like it should be, and why filtering matters more - each event you fail to discard costs an API call as well as a message.",
+        ],
+      },
       {
         h: "Which nodes you need",
         p: [
@@ -241,6 +265,14 @@ export const pairGuides: PairGuide[] = [
         p: [
           "A Discord Trigger on a slash command feeding the Asana node's create-task operation turns requests posted in a channel into tracked work. Set the workspace and project explicitly - Asana requires a workspace GID on create, and the error when it is missing names neither field.",
           "Put the Discord message link in the task notes so the task carries its own context, and post the created task's permalink back to the channel so the person who asked can follow it.",
+        ],
+      },
+      {
+        h: "Building on four templates",
+        p: [
+          "Four ready-made workflows is a small set, and it is worth being straight about why: the Asana-to-Discord shape barely varies. Trigger, fetch the task by GID, filter, format, post. Once you have that skeleton, the difference between one useful workflow and another is which project it watches and which events it keeps - not a different architecture.",
+          "So treat these as a working skeleton rather than a catalogue. The parts you will change are the project GID on the trigger, the resource and action values you filter on, the fields you lift into the message in the Set node, and the destination channel. The awkward parts - the webhook handshake, the second fetch, stripping HTML out of task notes - are already solved in the file, and those are the parts that cost an afternoon when you start from an empty canvas.",
+          "Where Asana itself is the limit rather than the template, note that its free plan rate-limits at 150 requests a minute and its events do not include field-level detail, so anything wanting a full audit trail belongs on a schedule reading the task list rather than on a webhook. If you want more inventory to work from, the pairings below share one of these two tools and have considerably more behind them.",
         ],
       },
     ],
