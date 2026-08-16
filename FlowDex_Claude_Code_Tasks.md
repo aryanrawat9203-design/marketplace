@@ -83,7 +83,7 @@ Then: install `@supabase/supabase-js` if not already present, add a server-only 
 
 23. Add a lightweight `/status` page (even a static "all systems operational" plus last-deploy timestamp) for an extra trust signal, matching direct-competitor practice.
 
-24. Add coupon codes and a simple abandoned-download/email nudge flow once the leads table (task 19) and orders table (task 7) both have real data to work with.
+24. Add a simple abandoned-download/email nudge flow once the leads table (task 19) and orders table (task 7) both have real data to work with. (This item also proposed coupon codes; those were built in July 2026 and deliberately removed on 2026-08-16 — don't re-add them without a new decision.)
 
 ---
 

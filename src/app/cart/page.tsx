@@ -7,7 +7,6 @@ import { track } from "@vercel/analytics";
 import { useCart } from "@/components/CartProvider";
 import { useAuth } from "@/components/AuthProvider";
 import TrustStrip from "@/components/TrustStrip";
-import PromoCodeField, { type AppliedPromo } from "@/components/PromoCodeField";
 import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
 
@@ -16,13 +15,6 @@ export default function CartPage() {
   const { session, openLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [promo, setPromo] = useState<AppliedPromo | null>(null);
-
-  // Display-only estimate; /api/checkout re-validates the code and computes
-  // the actual charge amount from scratch.
-  const discountedTotal = promo
-    ? Math.max(0, Math.round((totalPrice * (100 - promo.discountPercent)) / 100))
-    : totalPrice;
 
   async function checkout() {
     if (!session) {
@@ -38,7 +30,6 @@ export default function CartPage() {
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           items: items.map((l) => ({ kind: l.kind, key: l.key })),
-          ...(promo ? { promoCode: promo.code } : {}),
         }),
       });
       if (res.status === 401) {
@@ -50,11 +41,6 @@ export default function CartPage() {
         return;
       }
       const data = await res.json();
-      if (data.error === "invalid_promo") {
-        setPromo(null);
-        setMsg("Your promo code is no longer valid and was removed. Please try again.");
-        return;
-      }
       if (data.error === "invalid_product" && typeof data.detail === "string") {
         // A line went stale (item renamed/removed) - drop it so the rest of
         // the cart can still check out instead of dead-ending.
@@ -102,7 +88,7 @@ export default function CartPage() {
           }
         },
       });
-      track("begin_checkout", { item: `cart:${items.length}`, price: discountedTotal, kind: "cart" });
+      track("begin_checkout", { item: `cart:${items.length}`, price: totalPrice, kind: "cart" });
       rzp.open();
     } catch {
       setMsg("Something went wrong. Please try again.");
@@ -180,24 +166,14 @@ export default function CartPage() {
                   </dt>
                   <dd className="text-body">{inr(totalPrice)}</dd>
                 </div>
-                {promo && (
-                  <div className="flex justify-between">
-                    <dt className="text-faint">Promo ({promo.code})</dt>
-                    <dd className="text-emerald-400">-{inr(totalPrice - discountedTotal)}</dd>
-                  </div>
-                )}
                 <div className="flex justify-between border-t border-white/[0.08] pt-2 text-base">
                   <dt className="font-medium text-body">Total</dt>
-                  <dd className="font-display font-semibold tracking-tight text-ink">{inr(discountedTotal)}</dd>
+                  <dd className="font-display font-semibold tracking-tight text-ink">{inr(totalPrice)}</dd>
                 </div>
               </dl>
 
-              <div className="mt-4">
-                <PromoCodeField onApplied={setPromo} />
-              </div>
-
               <button onClick={checkout} disabled={loading} className="btn-primary btn-lg mt-4 w-full ">
-                {loading ? "Please wait..." : `Checkout ${inr(discountedTotal)}`}
+                {loading ? "Please wait..." : `Checkout ${inr(totalPrice)}`}
               </button>
               {msg && <p className="mt-3 text-sm text-amber-300">{msg}</p>}
               <TrustStrip />

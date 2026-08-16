@@ -9,12 +9,9 @@ import type { Kind } from "./commerce";
 export type CartItem = { kind: Kind; key: string };
 export type CartRecord = { id: string; items: CartItem[]; amountPaise: number };
 
-export type CartPromo = { code: string; discountPercent: number; originalAmountPaise: number };
-
 export async function createCartRecord(
   items: CartItem[],
-  amountPaise: number,
-  promo?: CartPromo
+  amountPaise: number
 ): Promise<string | null> {
   const admin = createAdminClient();
   if (!admin) return null;
@@ -25,9 +22,6 @@ export async function createCartRecord(
       .insert({
         items,
         amount_paise: amountPaise,
-        promo_code: promo?.code ?? null,
-        discount_percent: promo?.discountPercent ?? null,
-        original_amount_paise: promo?.originalAmountPaise ?? null,
       })
       .select("id")
       .single();
