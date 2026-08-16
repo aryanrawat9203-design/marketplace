@@ -91,3 +91,45 @@ export function productOffer({ price, path }: { price: number; path: string }) {
     seller: ORGANIZATION_JSON_LD,
   };
 }
+
+/**
+ * An ItemList of templates, as the listing pages show them.
+ *
+ * Search Console reported "No data" under Search Appearance for the whole
+ * site: the listing pages emitted a BreadcrumbList and nothing describing what
+ * they actually list. Each entry carries its own Product/Offer so the list is
+ * eligible on its own rather than depending on the per-template pages being
+ * crawled first.
+ *
+ * `items` must be the templates actually rendered on the page, in the order
+ * they are rendered - a list that does not match the visible page is a
+ * structured-data violation, not a ranking shortcut.
+ */
+export function workflowItemListJsonLd({
+  name,
+  items,
+}: {
+  name: string;
+  items: { title: string; route: string; short: string | null; price: number; free: boolean }[];
+}) {
+  const base = baseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((w, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: w.title,
+        ...(w.short ? { description: w.short } : {}),
+        url: `${base}/workflows/${w.route}`,
+        brand: ORGANIZATION_JSON_LD,
+        sku: w.route,
+        offers: productOffer({ price: w.free ? 0 : w.price, path: `/workflows/${w.route}` }),
+      },
+    })),
+  };
+}

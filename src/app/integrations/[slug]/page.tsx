@@ -12,9 +12,10 @@ import {
   type IntegrationPair,
 } from "@/lib/integrations";
 import { getPairGuide, type PairGuide } from "@/lib/pair-guides";
+import { pairFaqs, integrationFaqs, faqJsonLd, type Faq } from "@/lib/integration-faqs";
 import WorkflowCard from "@/components/WorkflowCard";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMeta, workflowItemListJsonLd } from "@/lib/seo";
 import { starterPackItems } from "@/lib/starter-pack";
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -105,15 +106,22 @@ export default async function IntegrationPage({
   const guide = getPairGuide(integration.slug);
 
   const browseHref = `/workflows?platform=${encodeURIComponent(integration.name)}`;
+  const faqs = integrationFaqs(integration, matching);
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Integrations", path: "/integrations" },
     { name: integration.name, path: `/integrations/${integration.slug}` },
   ]);
+  const itemList = workflowItemListJsonLd({
+    name: `${integration.name} n8n workflow templates`,
+    items: top,
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
+      <JsonLd data={itemList} />
+      <JsonLd data={faqJsonLd(faqs)} />
       <nav className="text-xs text-faint">
         <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
@@ -203,6 +211,8 @@ export default async function IntegrationPage({
         <PairTutorial guide={guide} heading={`How to use ${integration.name} with n8n`} />
       )}
 
+      <FaqSection faqs={faqs} heading={`${integration.name} and n8n: common questions`} />
+
       <div className="mt-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-6">
         <div>
           <h2 className="font-semibold text-ink">
@@ -253,6 +263,36 @@ function PairTutorial({ guide, heading }: { guide: PairGuide; heading: string })
   );
 }
 
+/**
+ * The questions the pages already get impressions for, answered on the page.
+ *
+ * Rendered from the same array that builds the FAQPage markup - markup whose
+ * answer is not visible to the visitor is a structured-data violation, so the
+ * two must not be allowed to drift apart.
+ */
+function FaqSection({ faqs, heading }: { faqs: Faq[]; heading: string }) {
+  return (
+    <section className="mt-14 border-t border-white/10 pt-10">
+      <h2 className="text-2xl font-bold tracking-tight text-ink">{heading}</h2>
+      <div className="mt-6 max-w-3xl divide-y divide-white/10 border-y border-white/10">
+        {/* Padding sits on the summary, not the details wrapper, so the whole
+            row is a comfortable tap target on mobile rather than a 26px sliver. */}
+        {faqs.map((f) => (
+          <details key={f.q} className="group">
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-4 py-4 font-medium text-ink [&::-webkit-details-marker]:hidden">
+              <span>{f.q}</span>
+              <span className="mt-0.5 shrink-0 text-faint transition-transform group-open:rotate-45">
+                +
+              </span>
+            </summary>
+            <p className="-mt-1 pb-4 pr-8 leading-relaxed text-muted">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PairPage({ pair }: { pair: IntegrationPair }) {
   const { a, b } = pair;
   const guide = getPairGuide(pair.slug);
@@ -278,16 +318,23 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
   const topSubcategories = countBy(matching, "subcategory", 6);
   const related = relatedPairs(pair, 12);
   const browseHref = pairBrowseHref(pair);
+  const faqs = pairFaqs(pair, matching);
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Integrations", path: "/integrations" },
     { name: `${a.name} + ${b.name}`, path: `/integrations/${pair.slug}` },
   ]);
+  const itemList = workflowItemListJsonLd({
+    name: `${a.name} + ${b.name} n8n workflow templates`,
+    items: top,
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <JsonLd data={breadcrumb} />
+      <JsonLd data={itemList} />
+      <JsonLd data={faqJsonLd(faqs)} />
       <nav className="text-xs text-faint">
         <Link href="/" className="hover:text-body">Home</Link>
         <span className="mx-1">/</span>
@@ -426,6 +473,8 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
         </ol>
       </div>
       )}
+
+      <FaqSection faqs={faqs} heading={`${a.name} and ${b.name} in n8n: common questions`} />
 
       <div className="mt-12">
         <h2 className="text-lg font-semibold text-ink">Explore each integration</h2>

@@ -442,6 +442,282 @@ export const pairGuides: PairGuide[] = [
       },
     ],
   },
+  {
+    slug: "google-sheets-and-slack",
+    nodes: ["Google Sheets Trigger / Schedule Trigger", "Google Sheets", "IF", "Slack"],
+    sections: [
+      {
+        h: "Which nodes you need",
+        p: [
+          "Both sides are first-party nodes, so nothing here needs an HTTP Request node. The common shape is a Google Sheets Trigger (or a Schedule Trigger plus a Google Sheets 'Get Row(s)' node), an IF or Filter node to decide which rows are worth reporting, and a Slack node posting the result.",
+          "The Google Sheets Trigger polls rather than subscribing - Google does not push spreadsheet edits - so it fires on an interval, not instantly. It watches for 'Row Added' or 'Row Updated' on one named sheet within one document. If you need to watch several tabs, that is one trigger per tab, or a Schedule Trigger reading each range in turn.",
+        ],
+      },
+      {
+        h: "Setting up the Google Sheets credential",
+        p: [
+          "Two options, and the right answer depends on who owns the spreadsheet. OAuth2 signs in as you and inherits whatever you can already open - fastest on n8n Cloud, where the redirect URL is filled in for you. A service account is the better choice for anything unattended, because it does not break when the person who authorised it leaves or changes their password.",
+          "The service account failure that costs people an afternoon: the sheet is not shared with it. A service account has its own identity, so open the JSON key, copy the client_email value (it ends in .iam.gserviceaccount.com), and share the spreadsheet with that address as you would with a colleague - Editor if the workflow writes, Viewer if it only reads. Until you do, every call returns a 403 even though the credential itself tests fine.",
+          "Self-hosted n8n on OAuth2 also needs the Google Sheets API and the Google Drive API enabled in your Google Cloud project, and the exact n8n callback URL registered as an authorised redirect URI. Sheets alone is not enough - the node uses Drive to resolve documents by name, so a Drive-less project fails at the document picker rather than at the sign-in.",
+        ],
+      },
+      {
+        h: "Reading the rows you actually want",
+        p: [
+          "The node returns one n8n item per row, using the header row for field names. Keep headers short and stable: renaming a column silently changes the field name every downstream node references, which surfaces as an empty Slack message rather than an error.",
+          "Filter in the sheet range where you can, not in n8n. Pulling A1:Z10000 to keep three rows costs quota on every run and makes the workflow slower to debug. Give the node an explicit range, or use its filter/lookup options to match a column value.",
+          "Empty trailing rows are the other quiet problem. Google returns rows that look blank but exist, so a run can produce a burst of items whose fields are all empty strings. An IF node checking that your key column is non-empty, placed immediately after the read, prevents a Slack channel full of blank messages.",
+        ],
+      },
+      {
+        h: "Not posting the same row twice",
+        p: [
+          "A Schedule Trigger re-reads the same range on every run, so anything matching your condition is reported again and again until someone mutes the channel.",
+          "The durable fix is a status column in the sheet itself. Read only rows where 'Notified' is empty, post them, then use the Google Sheets 'Update Row' or 'Append or Update' operation to write a timestamp into that column - after the Slack node, never before. Order matters: update first and a Slack outage loses the rows for good.",
+          "'Append or Update' needs a column to match on, and it has to be genuinely unique. Matching on an email address in a sheet where the same person appears twice will overwrite the wrong row. If there is no natural key, add an ID column and fill it once.",
+          "Google's quota is per project and generous but not infinite - roughly 300 read requests per minute. Writing back one row at a time inside a loop is what actually trips it; use a single update with multiple rows where the operation supports it, and turn on 'Retry On Fail' for the write.",
+        ],
+      },
+      {
+        h: "Setting up the Slack credential",
+        p: [
+          "OAuth2 is quickest on n8n Cloud. For self-hosted, create your own Slack app and use a bot token - you pick the scopes and it does not expire with a user session.",
+          "Posting needs chat:write, plus channels:read if you want to pick the channel from a dropdown instead of pasting an ID. Private channels also need groups:write and the bot must be invited to the channel with /invite @yourbot, or Slack returns not_in_channel regardless of scopes.",
+          "Batch before you post. Twelve rows should be one message with twelve lines, not twelve messages - Slack allows roughly one message per second per channel, and a loop over a hundred rows will be rate-limited halfway through. Turn on 'Retry On Fail' so a single 429 does not drop the batch.",
+        ],
+      },
+      {
+        h: "Going the other way: Slack to Google Sheets",
+        p: [
+          "Logging Slack activity into a spreadsheet is a Slack Trigger subscribed to the events you care about, then a Google Sheets 'Append Row' node. Register the trigger's Request URL in your Slack app's Event Subscriptions, and activate the workflow in n8n before pasting the URL - Slack calls it immediately to verify it, and an inactive workflow fails that check.",
+          "Slack retries deliveries it believes failed, so a slow workflow can log the same message twice. Append the Slack message timestamp (the ts field) as a column and use 'Append or Update' matching on it, which turns a duplicate delivery into a harmless overwrite.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "http-rest-api-and-slack",
+    nodes: ["Schedule Trigger", "HTTP Request", "IF", "Slack"],
+    sections: [
+      {
+        h: "Which nodes you need",
+        p: [
+          "There is no 'REST API' node - the HTTP Request node is the general-purpose client you use when an API has no dedicated n8n node, or when the dedicated node does not expose the endpoint you need. Paired with Slack it covers the whole 'poll something, tell the team' category: a Schedule Trigger, an HTTP Request node calling the API, an IF node deciding whether the response is worth reporting, and a Slack node posting it.",
+          "If the API can call you instead of being polled, invert the workflow: a Webhook node in place of the Schedule Trigger and HTTP Request. That removes the polling delay and the wasted calls, and it is almost always the better design when the source supports webhooks.",
+        ],
+      },
+      {
+        h: "Authenticating without pasting secrets into the URL",
+        p: [
+          "The HTTP Request node has a 'Predefined Credential Type' option that reuses any credential n8n already knows - so you can call an undocumented Google or HubSpot endpoint while n8n handles the OAuth refresh. Reach for that first; it is the difference between a token that renews itself and one that expires at 3am.",
+          "Otherwise use Generic Credentials: Header Auth for an API key, Basic Auth for user/password, or the built-in OAuth2 flow. What you should not do is put the key in the URL as a query parameter - it ends up in n8n's execution logs, and anyone with access to the execution history can read every past run's secret.",
+          "Some APIs also insist on a User-Agent header and reject requests without one, which shows up as a 403 that looks like an auth problem but is not.",
+        ],
+      },
+      {
+        h: "Handling pagination and large responses",
+        p: [
+          "Most list endpoints return one page. The HTTP Request node has built-in pagination that handles the common patterns - a cursor in the response body, a Link header, or an incrementing page parameter - and it is worth configuring rather than building a manual loop.",
+          "Always set a maximum page count. A pagination rule with a condition that never becomes false will loop until the execution times out, and against a rate-limited API that is also the fastest way to get your key suspended.",
+          "By default the node parses JSON into items. If the endpoint returns a file, a CSV or XML, set the response format accordingly - otherwise you get one item containing a string blob and every downstream expression resolves to undefined.",
+        ],
+      },
+      {
+        h: "Making failures visible instead of silent",
+        p: [
+          "By default a 4xx or 5xx stops the execution. That is usually right for a workflow you watch, and wrong for one that runs hourly - a single blip leaves you with nothing in Slack and no indication anything happened.",
+          "Turn on 'Always Output Data' plus the option to never error on HTTP status codes, then branch on the status code with an IF node: success posts the result, failure posts the error to a Slack channel. An alert that says the API returned 503 is far more useful than silence.",
+          "Set 'Retry On Fail' with two or three attempts for transient errors, and a request timeout - the default wait on a hanging endpoint is long enough to stack executions on top of each other.",
+        ],
+      },
+      {
+        h: "Posting the result to Slack",
+        p: [
+          "The bot token needs chat:write, plus channels:read to pick channels from a dropdown, and groups:write plus an /invite for private channels.",
+          "For a single-channel notification you do not strictly need the Slack node at all - an Incoming Webhook URL called from a second HTTP Request node with a JSON body works, cannot read anything, and is a small blast radius if the URL leaks.",
+          "Keep API payloads out of the message. Posting a raw JSON response into Slack is unreadable and can leak fields you did not intend to share; use a Set node to pull out the three values that matter and format those.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "google-sheets-and-http-rest-api",
+    nodes: ["Schedule Trigger", "HTTP Request", "Set", "Google Sheets"],
+    sections: [
+      {
+        h: "Which nodes you need",
+        p: [
+          "This is the 'pull data from an API into a spreadsheet' pattern: a Schedule Trigger, an HTTP Request node fetching the data, a Set or Code node flattening it, and a Google Sheets node appending or updating rows. The reverse - reading a sheet and calling an API per row - is the same nodes in the opposite order.",
+          "Use the HTTP Request node when the source has no dedicated n8n node, or when the dedicated node is missing the endpoint you need. If a first-party node exists and covers it, prefer it: it handles token refresh and pagination for you.",
+        ],
+      },
+      {
+        h: "Flattening the response before it reaches the sheet",
+        p: [
+          "A spreadsheet is flat and JSON is not, and this is where most of these workflows break. The Google Sheets node maps top-level fields to columns; a nested object arrives as [object Object] and an array arrives as a comma-smashed string.",
+          "Put a Set node between the API call and the sheet and map each column explicitly - customer_name from {{ $json.customer.name }}, and so on. It is more typing than passing everything through, and it means a change in the API's response shape shows up as one empty column rather than a corrupted sheet.",
+          "If the response nests the actual list inside a wrapper - data, results, items - use a Split Out node on that field first, so you get one n8n item per record and therefore one row per record. Without it the whole array lands in a single row.",
+        ],
+      },
+      {
+        h: "Pagination, and not writing 10,000 rows one at a time",
+        p: [
+          "Configure the HTTP Request node's built-in pagination rather than looping by hand, and always set a maximum page count - a rule whose stop condition never fires will run until the execution times out.",
+          "Then write in batches. Appending row by row inside a loop is the single most common cause of hitting Google's quota, which is roughly 300 requests per minute per project. Passing all items to one Google Sheets 'Append' node sends them as one call.",
+          "For genuinely large pulls, add a Loop Over Items node with a batch size in the hundreds and a short Wait between batches. Slower by design, and it finishes - unlike the version that gets a 429 at row 4,000 and loses everything after it.",
+        ],
+      },
+      {
+        h: "Keeping the sheet in sync instead of just growing it",
+        p: [
+          "'Append' adds rows forever, so a workflow that re-fetches the same 500 records every morning produces a sheet with 15,000 rows by the end of the month. 'Append or Update' with a matching column is what you usually want - it updates the record if the key already exists and adds it if not.",
+          "The matching column has to be a real unique key from the source: an ID from the API, not a name or an email that can repeat. If the API has no stable ID, build one in the Set node by concatenating two fields that together are unique.",
+          "Add a 'synced_at' column filled with {{ $now }} on every write. When someone asks whether the numbers are current, that column answers it without anyone having to open the execution log.",
+        ],
+      },
+      {
+        h: "Going the other way: sheet rows into an API",
+        p: [
+          "Reading a sheet and calling an endpoint per row is a Google Sheets read, an IF node filtering to unprocessed rows, an HTTP Request node, then a write-back marking the row done. Write the status back after the call succeeds, so a failure mid-run leaves the remaining rows to be picked up next time rather than skipped.",
+          "Rate-limit yourself on the API side too. A sheet with 2,000 rows becomes 2,000 requests as fast as n8n can issue them, which many APIs treat as an attack; a Loop Over Items node with a modest batch size and a Wait node between batches keeps you inside the limit.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "notion-and-slack",
+    nodes: ["Notion Trigger / Schedule Trigger", "Notion", "IF", "Slack"],
+    sections: [
+      {
+        h: "Which nodes you need",
+        p: [
+          "Both are first-party nodes. The usual shape is a Notion Trigger (or a Schedule Trigger plus a Notion 'Get Many Database Pages' node), an IF node filtering to the pages worth announcing, and a Slack node posting them.",
+          "The Notion Trigger polls - Notion's API has no outbound webhooks for this - so it checks on an interval for pages added or updated in one database. Expect a delay of up to your polling interval rather than an instant post.",
+        ],
+      },
+      {
+        h: "The Notion credential, and the mistake everyone makes first",
+        p: [
+          "Create an internal integration in Notion's developer settings and paste its Internal Integration Token into n8n. That part is easy. The part that catches everyone: creating the integration does not give it access to anything.",
+          "You have to share each database or page with the integration explicitly - open it in Notion, use the connections menu, and add your integration by name. Until you do, the credential tests successfully and every query returns an empty list or object_not_found, which reads like a broken workflow rather than a permissions problem. Sharing a parent page shares everything nested under it, which is the least tedious way to do it.",
+          "Capabilities matter too: an integration with read access only will fail on any node that writes, with an error that names the capability rather than the page.",
+        ],
+      },
+      {
+        h: "Getting properties out of a Notion page",
+        p: [
+          "Notion's property model is the other source of friction. Every property is an object with a type, not a bare value - a title is an array of rich-text objects, a select is an object with a name, a person is an array of user objects. Referencing {{ $json.Name }} and getting [object Object] is the normal first result.",
+          "The n8n node simplifies much of this, but for anything unusual the reliable move is to run the node once, open the output panel, and copy the actual path to the value you want rather than guessing at it.",
+          "Rich text also has a 2,000-character limit per block. Pasting a long summary into a single text property fails validation; split it across blocks, or truncate deliberately so the failure is yours rather than the API's.",
+        ],
+      },
+      {
+        h: "Filtering, and not re-announcing the same page",
+        p: [
+          "Filter in the Notion query rather than pulling the whole database and filtering in n8n - the node exposes Notion's filter options, and a database with a few thousand pages is slow and quota-hungry to fetch in full.",
+          "For the duplicate problem, use the database itself as the memory. Add a checkbox property such as 'Announced', query for pages where it is false, post them, then update the property in a second Notion node placed after the Slack node. Because the state lives in Notion, re-importing the workflow does not replay a month of pages.",
+          "Notion's API is rate-limited to roughly three requests per second on average. Updating pages one at a time in a loop over a large result set will hit it, so keep batches small and enable 'Retry On Fail'.",
+        ],
+      },
+      {
+        h: "Going the other way: Slack to Notion",
+        p: [
+          "Capturing Slack messages as Notion pages is a Slack Trigger - often on a reaction or a slash command rather than every message - followed by a Notion 'Create Database Page' node. Triggering on a specific emoji reaction is the version people actually keep: it makes saving deliberate instead of logging everything.",
+          "Map the Slack permalink into a URL property. Without it the Notion page has no route back to the conversation it came from, which is the first thing anyone reading it later wants.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "hubspot-and-slack",
+    nodes: ["HubSpot Trigger / Schedule Trigger", "HubSpot", "IF", "Slack"],
+    sections: [
+      {
+        h: "Which nodes you need",
+        p: [
+          "Both are first-party nodes. Most of these workflows are a HubSpot Trigger or a Schedule Trigger, a HubSpot node fetching the records, an IF node applying whatever rule makes something worth interrupting people for, and a Slack node posting it.",
+          "The HubSpot Trigger uses HubSpot's webhooks, which are configured on a developer app rather than on your portal - so it needs a HubSpot developer account, not just a private app token. If that is more setup than the job deserves, a Schedule Trigger polling the search endpoint every fifteen minutes is a legitimate substitute.",
+        ],
+      },
+      {
+        h: "Setting up the HubSpot credential",
+        p: [
+          "Use a private app access token. HubSpot's old API keys were sunset years ago, so any tutorial telling you to paste an hapikey is out of date and will not work.",
+          "Create the private app in your HubSpot account settings under Integrations, then grant it only the scopes the workflow needs - crm.objects.contacts.read for reading contacts, the matching .write scope only if it writes. A missing scope surfaces as a 403 naming the scope, which is one of the more helpful errors in this stack.",
+          "OAuth2 is the other option and is worth it only if you are building something that other HubSpot accounts will install. For your own portal, the private app token is less setup and does not expire.",
+        ],
+      },
+      {
+        h: "Deal stages, owners and the IDs behind the labels",
+        p: [
+          "HubSpot shows labels in its UI and stores IDs in its API. A deal stage you see as 'Contract Sent' arrives as a numeric ID, and a filter written against the label silently matches nothing.",
+          "Fetch the pipelines once, note the stage IDs, and write the filter against those. The same is true of owners - the record carries hubspot_owner_id, not a name - so posting a useful Slack message usually means a second HubSpot node resolving that ID to a person.",
+          "Custom properties are only returned if you ask for them by their internal name, which is not always what the label suggests. Check the internal name in HubSpot's property settings rather than inferring it.",
+        ],
+      },
+      {
+        h: "Not announcing the same deal twice",
+        p: [
+          "A polling workflow re-runs the same search each time, so every matching record is reported again on every run.",
+          "The cleanest fix uses HubSpot as the memory: add a custom property such as 'slack_notified', exclude records where it is set, and write it back with a HubSpot update node placed after the Slack node. Filtering on lastmodifieddate alone is not enough on its own - any unrelated edit makes a record look new again.",
+          "HubSpot allows roughly 100 requests per 10 seconds on standard plans and its search endpoint is more tightly limited than the rest. Batch the Slack side into one message rather than looping, and enable 'Retry On Fail' on the HubSpot nodes.",
+        ],
+      },
+      {
+        h: "Going the other way: Slack to HubSpot",
+        p: [
+          "Creating or updating CRM records from Slack is a Slack Trigger - usually a slash command or a form-style modal - feeding a HubSpot 'Create or Update Contact' node. Use the create-or-update operation rather than create: HubSpot deduplicates contacts by email, and a plain create against an existing email returns a conflict error.",
+          "Post a confirmation back into the same Slack thread with the record's URL. Without it nobody can tell whether the command worked, and the usual response is to run it again.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "http-rest-api-and-hubspot",
+    nodes: ["Schedule Trigger", "HubSpot", "HTTP Request", "Set"],
+    sections: [
+      {
+        h: "When to use the HTTP Request node with HubSpot",
+        p: [
+          "n8n's HubSpot node covers contacts, companies, deals, tickets and engagements. Use it wherever it fits. The HTTP Request node is for the rest of the API - custom objects, associations v4, the properties API, quotes, or anything HubSpot shipped after the node was last extended.",
+          "You do not need a second credential for this. Set the HTTP Request node's authentication to 'Predefined Credential Type' and choose your existing HubSpot credential, and n8n signs the request for you. That is much better than pasting a token into a header by hand, which then has to be rotated in several places.",
+        ],
+      },
+      {
+        h: "Exporting HubSpot records as JSON",
+        p: [
+          "The endpoint that does the work is POST /crm/v3/objects/{object}/search - it takes a JSON body with filterGroups, the properties you want returned, and a limit of up to 100 per page. A plain GET on the objects endpoint works too but cannot filter.",
+          "Ask for properties explicitly. HubSpot returns a thin default set, so a request that does not list the properties it wants comes back missing most of the fields you were trying to export, which looks like empty data rather than an incomplete request.",
+          "The search endpoint caps out at 10,000 results for any single query, no matter how you paginate. For a full export, slice by a date range - createdate between two values - and run the query once per slice, rather than trying to page past the ceiling.",
+          "To write the result out as a file, pass the items into a Convert to File node in JSON mode; that produces something you can attach to an email, drop into Drive, or hand to another system.",
+        ],
+      },
+      {
+        h: "Pagination the way HubSpot does it",
+        p: [
+          "HubSpot uses a cursor, not page numbers. The response carries paging.next.after, and the next request sends that value as the after parameter. When paging.next is absent you are done.",
+          "The HTTP Request node's built-in pagination handles this - set it to use the response body's paging.next.after value and stop when that field is empty. Always set a maximum page count as a backstop, because a stop condition that never becomes true will loop until the execution times out.",
+          "Keep the page size at 100 and expect roughly 100 requests per 10 seconds of headroom. A 50,000-record export is a few minutes of paging, so give the workflow a realistic timeout rather than assuming it finished when it was actually killed.",
+        ],
+      },
+      {
+        h: "Flattening before anything downstream sees it",
+        p: [
+          "Every record comes back wrapped: the fields you care about are under a properties object, alongside id, createdAt and archived. So {{ $json.email }} is undefined and {{ $json.properties.email }} is what you meant.",
+          "Use a Split Out node on the results array to get one item per record, then a Set node to lift the properties you want to the top level. Do this once, immediately after the call, and every node after it can be written normally.",
+          "Dates arrive as ISO strings or epoch milliseconds depending on the property, and numbers often arrive as strings. If the destination is a database or a spreadsheet with typed columns, cast in the Set node rather than letting the destination guess.",
+        ],
+      },
+      {
+        h: "Going the other way: an external API into HubSpot",
+        p: [
+          "Importing into HubSpot is the same nodes reversed, with one addition: use the batch endpoints. POST /crm/v3/objects/contacts/batch/upsert takes up to 100 records per call, which turns a 1,000-record import from 1,000 requests into 10.",
+          "Upsert on a unique property - email for contacts - rather than creating. HubSpot deduplicates on email, so a plain create against an address that already exists returns a conflict, and a retry loop around that will not fix it.",
+          "Batch endpoints report per-record failures inside a 207-style response body rather than failing the whole call. Check the response for errors instead of assuming a 2xx means all 100 landed.",
+        ],
+      },
+    ],
+  },
 ];
 
 const bySlug = new Map(pairGuides.map((g) => [g.slug, g]));
