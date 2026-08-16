@@ -10,60 +10,40 @@
  * Expressing the tier as a *rule* over the catalog rather than as scattered
  * flags means it cannot silently rot again: the selection is re-derived on every
  * boot, it stays balanced as the catalog grows, and the criteria are reviewable
- * in one place instead of inferred from 120 edits to a 29MB JSON file.
+ * in one place instead of inferred from 200 edits to a 29MB JSON file.
  *
  * Rules, in order:
- *   1. Beginner-weighted (75/25 against Intermediate). Beginners are who /free
- *      converts; an Expert template teaches them only that this is hard.
- *   2. Honest titles only - every platform a title names must actually be in the
- *      template's platform list. This is the check that keeps a workflow off the
- *      free tier when its title claims tools its node graph does not have.
+ *   1. Beginner-weighted (60/40 against Intermediate). Beginners are who /free
+ *      converts; an Expert template teaches them only that this is hard. The
+ *      Beginner quota is deliberately close to the number of Beginner templates
+ *      that exist - if the catalog gains more, the tier stays balanced without
+ *      anyone retuning it.
+ *   2. Honest titles only (see lib/title-honesty) - every platform a title names
+ *      must actually be in the template's platform list. This is the check that
+ *      keeps a workflow off the free tier when its title claims tools its node
+ *      graph does not have.
  *   3. Capped per category, so /free reads as a tour of the catalog rather than
  *      a pile from one corner of it.
  *   4. Highest demand first inside those constraints, so the free tier is also
  *      the most searched-for work.
  */
 import type { IndexItem } from "./catalog";
+import { platformVocabulary, titleIsHonest, type PlatformVocabulary } from "./title-honesty";
+import { priceFor, tierForPrice, type PriceInput } from "./price-model";
 
-export const FREE_TIER_SIZE = 120;
+export const FREE_TIER_SIZE = 200;
 
 const MIX = [
-  { difficulty: "Beginner", take: 90, perCategory: 7 },
-  { difficulty: "Intermediate", take: 30, perCategory: 3 },
+  { difficulty: "Beginner", take: 120, perCategory: 10 },
+  { difficulty: "Intermediate", take: 80, perCategory: 5 },
 ] as const;
 
 /** Internal IDs that leaked into titles, e.g. "... for Support Bots (07873)". */
 const LEAKED_ID = /\(\s*\d{3,}\s*\)|\bWF\d{3,}\b/i;
 
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * True when every platform the title names is genuinely in the node graph.
- * The vocabulary is built from the catalog itself, so it can never drift from
- * what the templates actually contain.
- */
-function titleIsHonest(w: IndexItem, vocabulary: Map<string, RegExp>): boolean {
-  const title = w.title.toLowerCase();
-  const own = new Set(w.platforms.map((p) => p.toLowerCase()));
-  for (const [name, re] of vocabulary) {
-    if (!own.has(name) && re.test(title)) return false;
-  }
-  return true;
-}
-
 /** The IDs of every template that should be free, derived from the catalog. */
 export function selectFreeTier(index: IndexItem[]): Set<string> {
-  const vocabulary = new Map<string, RegExp>();
-  for (const w of index) {
-    for (const p of w.platforms) {
-      const name = p.toLowerCase();
-      if (!vocabulary.has(name)) {
-        vocabulary.set(name, new RegExp(`(^|[^a-z0-9])${escapeRe(name)}([^a-z0-9]|$)`));
-      }
-    }
-  }
+  const vocabulary = platformVocabulary(index);
 
   const chosen = new Set<string>();
   for (const { difficulty, take, perCategory } of MIX) {
@@ -100,23 +80,25 @@ export function selectFreeTier(index: IndexItem[]): Set<string> {
   return chosen;
 }
 
-/** The paid tier a template returns to when it leaves the free selection. */
-function paidTierFor(value: number | null): { tier: string; price: number } {
-  const v = value ?? 50;
-  if (v >= 85) return { tier: "Enterprise", price: 699 };
-  if (v >= 70) return { tier: "Premium", price: 399 };
-  if (v >= 50) return { tier: "Professional", price: 199 };
-  return { tier: "Starter", price: 79 };
+/**
+ * The paid tier a template returns to when it leaves the free selection.
+ *
+ * Deferred to the price model rather than restated here: this used to carry its
+ * own 699/399/199/79 table, which meant a template that was once free came back
+ * at a price nothing else on the site charged.
+ */
+function paidTierFor(w: PriceInput, vocabulary: PlatformVocabulary): { tier: string; price: number } {
+  const price = priceFor(w, vocabulary);
+  return { tier: tierForPrice(price), price };
 }
 
-type Priceable = {
+type Priceable = PriceInput & {
   id: string;
   tier: string | null;
   price: number;
   mrp: number;
   off: number;
   free: boolean;
-  value: number | null;
 };
 
 /**
@@ -129,6 +111,8 @@ type Priceable = {
  * the rewrite in exactly one place is what rules it out.
  */
 export function applyFreeTier<T extends Priceable>(items: T[], freeIds: Set<string>): T[] {
+  // Only the paid-restore branch needs it, and that branch usually never runs.
+  let vocabulary: PlatformVocabulary | undefined;
   for (const w of items) {
     if (freeIds.has(w.id)) {
       w.free = true;
@@ -137,7 +121,8 @@ export function applyFreeTier<T extends Priceable>(items: T[], freeIds: Set<stri
       w.mrp = 0;
       w.off = 0;
     } else if (w.free) {
-      const { tier, price } = paidTierFor(w.value);
+      vocabulary ??= platformVocabulary(items);
+      const { tier, price } = paidTierFor(w, vocabulary);
       w.free = false;
       w.tier = tier;
       w.price = price;

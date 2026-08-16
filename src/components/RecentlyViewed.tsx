@@ -13,7 +13,11 @@ type RecentItem = {
   free: boolean;
 };
 
-const KEY = "wc:recently-viewed";
+// The strip stores the price it saw, so entries written before a repricing
+// keep rendering the old number until the visitor opens that product again.
+// Bump the suffix whenever prices change: the old key is simply never read,
+// and the strip refills from the next few pages the visitor opens.
+const KEY = "wc:recently-viewed:v2";
 const MAX = 12;
 
 function readRecent(): RecentItem[] {

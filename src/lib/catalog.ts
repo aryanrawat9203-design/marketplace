@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { Screenshots } from "./screenshots";
 import { selectFreeTier, applyFreeTier } from "./free-tier";
+import { applyPriceModel } from "./price-model";
 
 export type IndexItem = {
   id: string;
@@ -20,6 +21,8 @@ export type IndexItem = {
   value: number | null;
   estValue: string | null;
   short: string | null;
+  /** Carried on the index too, because lib/price-model prices from it. */
+  totalNodes: number;
   price: number;
   mrp: number;
   off: number;
@@ -97,12 +100,24 @@ const g = globalThis as unknown as {
   __freeIds?: Set<string>;
 };
 
+/**
+ * Both money rules, in the one order they may run in.
+ *
+ * The price model prices everything; the free tier then takes its selection
+ * back down to zero. Reversed, a free template would be handed a price again.
+ * Nothing else in the codebase writes `price`, `mrp`, `off` or `tier` - the
+ * fields sitting in catalog.json are stale by design and overwritten here.
+ */
+function priceItems<T extends IndexItem | DetailItem>(items: T[], ids: Set<string>): T[] {
+  return applyFreeTier(applyPriceModel(items), ids);
+}
+
 export function getIndex(): IndexItem[] {
   let index = g.__index;
   if (!index) {
     const items = readJson<IndexItem[]>("catalog-index.json");
     g.__freeIds = selectFreeTier(items);
-    index = applyFreeTier(items, g.__freeIds);
+    index = priceItems(items, g.__freeIds);
     g.__index = index;
   }
   return index;
@@ -121,13 +136,31 @@ function freeIds(): Set<string> {
 export function getCatalog(): DetailItem[] {
   let catalog = g.__catalog;
   if (!catalog) {
-    catalog = applyFreeTier(readJson<DetailItem[]>("catalog.json"), freeIds());
+    catalog = priceItems(readJson<DetailItem[]>("catalog.json"), freeIds());
     g.__catalog = catalog;
   }
   return catalog;
 }
+/** Cheapest first, so the tier filter reads as a ladder rather than a ranking. */
+const TIER_ORDER = ["Free", "Starter", "Core", "Professional", "Premium", "Enterprise"];
+
 export function getTaxonomy(): Taxonomy {
-  if (!g.__taxo) g.__taxo = readJson<Taxonomy>("taxonomy.json");
+  if (!g.__taxo) {
+    const taxo = readJson<Taxonomy>("taxonomy.json");
+    // Tier is derived from the price model now, so the counts stored on disk
+    // describe a tier set that no longer exists. Recount from the live index -
+    // otherwise the /workflows tier filter offers bands nothing is in, and
+    // hides the one band that most of the catalog sits in.
+    const counts = new Map<string, number>();
+    for (const w of getIndex()) {
+      if (w.tier) counts.set(w.tier, (counts.get(w.tier) ?? 0) + 1);
+    }
+    taxo.tiers = TIER_ORDER.filter((name) => counts.has(name)).map((name) => ({
+      name,
+      count: counts.get(name)!,
+    }));
+    g.__taxo = taxo;
+  }
   return g.__taxo;
 }
 // Historical route slugs that named a tool the template does not actually use.

@@ -10,7 +10,15 @@
  * existed anywhere else on the site.
  *
  * Deriving the index instead of hand-editing it makes that class of drift
- * impossible. Run this after any change to catalog.json:
+ * impossible.
+ *
+ * Note that `price`/`mrp`/`off`/`tier`/`free` are copied through but are no
+ * longer what the site charges: src/lib/price-model.ts and src/lib/free-tier.ts
+ * recompute all five at load, for both files, from the same rule. What still
+ * matters here is that the *inputs* to those rules - difficulty, totalNodes,
+ * value, demand, category, platforms - reach the index intact.
+ *
+ * Run this after any change to catalog.json:
  *
  *   node scripts/build-catalog-index.mjs
  *
@@ -47,6 +55,10 @@ const index = catalog.map((w) => ({
   demand: w.demand,
   value: w.value,
   short: w.shortDescription,
+  // Carried even though no listing renders it: src/lib/price-model.ts prices
+  // from the node count, and the index has to reach the same price as the
+  // detail record or a card and its product page disagree.
+  totalNodes: w.totalNodes,
   price: w.price,
   mrp: w.mrp,
   free: w.free,

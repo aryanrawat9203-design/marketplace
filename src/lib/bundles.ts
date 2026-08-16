@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getIndex, getCatalog, type IndexItem, type DetailItem } from "./catalog";
+import { PRICE_POINTS } from "./price-model";
 
 export type BundleType = "full" | "lifetime" | "category" | "subcategory" | "practice";
 
@@ -13,7 +14,6 @@ export type Bundle = {
   price: number;
   mrp: number;
   off: number;
-  individualValue: number;
   gradient: string;
   category?: string;
   subcategory?: string;
@@ -31,10 +31,90 @@ const g = globalThis as unknown as {
   __bundleBySlug?: Map<string, Bundle>;
 };
 
+/**
+ * What a bundle costs, by how much is in it.
+ *
+ * Same reasoning as lib/price-model.ts: a bundle price stored on disk is a
+ * price nobody re-checks. These are sized off the *resolved* member list, not
+ * the `count` field on the record - `count` is a snapshot that has already
+ * drifted from the catalog once.
+ */
+const SUBCATEGORY_BANDS = [
+  { upTo: 25, price: 3999 },
+  { upTo: 75, price: 6999 },
+  { upTo: 200, price: 9999 },
+  { upTo: Infinity, price: 12999 },
+];
+const CATEGORY_BANDS = [
+  { upTo: 100, price: 14999 },
+  { upTo: 400, price: 19999 },
+  { upTo: 1000, price: 24999 },
+  { upTo: Infinity, price: 29999 },
+];
+const FULL_LIBRARY_PRICE = 24999;
+const LIFETIME_PRICE = 39999;
+
+// Practice packs are a curriculum, not a filter: what they're worth tracks the
+// distance travelled, not the file count, so each is priced by name.
+const PRACTICE_PRICES: Record<string, number> = {
+  "getting-started-pack": 1999,
+  "skill-builder-pack": 4999,
+  "job-ready-pack": 8999,
+  "automation-architect-pack": 12999,
+  "ai-agent-specialist-pack": 6999,
+  "lead-gen-crm-specialist-pack": 5999,
+  "complete-mastery-bundle": 17999,
+};
+
+function bandPrice(bands: Array<{ upTo: number; price: number }>, n: number): number {
+  return (bands.find((b) => n <= b.upTo) ?? bands[bands.length - 1]).price;
+}
+
+/** Down to the nearest price ending in 9, the shape every other price here has. */
+function roundDownTo9(n: number): number {
+  return n < 9 ? 0 : Math.floor((n - 9) / 10) * 10 + 9;
+}
+
+/**
+ * A bundle must never cost more than a decent discount on buying its members
+ * one at a time. The bands alone don't guarantee that - a thin subcategory can
+ * fall in the same band as one four times its size - so the band price is a
+ * ceiling and 60% of the real member total is the other one. Without this a
+ * one-template bundle would out-price the single template inside it, which is
+ * the kind of thing a buyer notices and a spreadsheet doesn't.
+ */
+const BUNDLE_DISCOUNT = 0.6;
+
+function priceBundle(b: Bundle): number {
+  const members = bundleMembersIndex(b);
+  const memberSum = members.reduce((sum, w) => sum + w.price, 0);
+
+  const ceiling =
+    b.type === "full"
+      ? FULL_LIBRARY_PRICE
+      : b.type === "lifetime"
+        ? LIFETIME_PRICE
+        : b.type === "practice"
+          ? (PRACTICE_PRICES[b.slug] ?? bandPrice(SUBCATEGORY_BANDS, members.length))
+          : b.type === "category"
+            ? bandPrice(CATEGORY_BANDS, members.length)
+            : bandPrice(SUBCATEGORY_BANDS, members.length);
+
+  // Floor at the cheapest single template: a bundle of entirely free templates
+  // would otherwise price at zero and take a ₹0 order through checkout.
+  return Math.max(PRICE_POINTS[0], Math.min(ceiling, roundDownTo9(memberSum * BUNDLE_DISCOUNT)));
+}
+
 export function getBundles(): Bundle[] {
   if (!g.__bundles) {
     const p = path.join(process.cwd(), "src", "data", "bundles.json");
-    g.__bundles = JSON.parse(fs.readFileSync(p, "utf-8")) as Bundle[];
+    const bundles = JSON.parse(fs.readFileSync(p, "utf-8")) as Bundle[];
+    for (const b of bundles) {
+      b.price = priceBundle(b);
+      b.mrp = b.price;
+      b.off = 0;
+    }
+    g.__bundles = bundles;
   }
   return g.__bundles;
 }
@@ -85,13 +165,21 @@ export function practiceBundles(): Bundle[] {
 
 export type SkillBand = "Foundation" | "Core" | "Advanced" | "Production" | "Architect";
 
-// Mirrors the real tier/complexity bands from the catalog upgrade, so a
-// bundle's stated progression always matches the actual template architecture.
-export function bandFor(item: { tier: string | null; totalNodes: number }): SkillBand {
-  if (item.tier === "Starter" || item.tier === "Free") return "Foundation";
-  if (item.tier === "Professional") return item.totalNodes <= 14 ? "Core" : "Advanced";
-  if (item.tier === "Premium") return "Production";
-  return "Architect";
+// One band per price tier. The tiers come out of lib/price-model.ts, which
+// scores difficulty, node count, value and demand - so a template's stated
+// place in the curriculum is the same judgement that set its price, and the
+// two cannot say different things about the same workflow.
+const BAND_BY_TIER: Record<string, SkillBand> = {
+  Free: "Foundation",
+  Starter: "Foundation",
+  Core: "Core",
+  Professional: "Advanced",
+  Premium: "Production",
+  Enterprise: "Architect",
+};
+
+export function bandFor(item: { tier: string | null }): SkillBand {
+  return BAND_BY_TIER[item.tier ?? ""] ?? "Architect";
 }
 
 function byCurriculumOrder<T extends { id: string }>(items: string[], all: T[]): T[] {

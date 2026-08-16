@@ -15,7 +15,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     q: "Is browsing free?",
-    a: "Yes - searching and browsing the whole catalog is always free. A small set of templates are free to download; everything else is priced, starting from Rs49 for entry-level Starter workflows.",
+    a: "Yes - searching and browsing the whole catalog is always free. A set of templates are free to download; everything else is priced, starting from Rs499 for entry-level Starter workflows.",
   },
   {
     q: "How do I use a template after buying?",

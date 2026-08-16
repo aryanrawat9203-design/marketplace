@@ -8,16 +8,20 @@ import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Bundles & pricing",
   description:
-    `Buy a single template, a whole category bundle, or the full library of ${TEMPLATE_COUNT_LABEL} original n8n workflows. Simple, discounted launch pricing.`,
+    `Buy a single template, a whole category bundle, or the full library of ${TEMPLATE_COUNT_LABEL} original n8n workflows. Five flat price points, one-time payment.`,
   alternates: { canonical: "/bundles" },
 };
 
-const tiers: { name: string; lo: number; hi?: number; desc: string }[] = [
-  { name: "Free", lo: 0, desc: "A handful of genuine samples, kept free permanently - no payment." },
-  { name: "Starter", lo: 49, hi: 129, desc: "Simple, everyday micro-automations. Less than a coffee." },
-  { name: "Professional", lo: 149, hi: 299, desc: "Solid everyday automations. Impulse-buy pricing." },
-  { name: "Premium", lo: 299, hi: 599, desc: "Higher-complexity, higher-value workflows." },
-  { name: "Enterprise", lo: 549, hi: 999, desc: "Advanced, multi-step, high-commercial-value builds." },
+// The five paid tiers are the five price points in lib/price-model.ts. Each is
+// one exact price, not a range: a template's difficulty, node count, value and
+// demand decide which of the five it lands in.
+const tiers: { name: string; price: number; desc: string }[] = [
+  { name: "Free", price: 0, desc: "A genuine cross-section of the catalog, kept free permanently - no payment, no account." },
+  { name: "Starter", price: 499, desc: "Small, single-purpose automations. The shortest builds we sell." },
+  { name: "Core", price: 1299, desc: "Everyday automations with real branching and error handling." },
+  { name: "Professional", price: 2499, desc: "Multi-system workflows doing work you'd otherwise do by hand." },
+  { name: "Premium", price: 3999, desc: "Deep, high-node-count builds in commercially valuable areas." },
+  { name: "Enterprise", price: 6999, desc: "The most advanced architecture in the catalog, in the highest-value categories." },
 ];
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -33,8 +37,8 @@ export default function BundlesPage() {
         <p className="eyebrow">Simple pricing</p>
         <h1 className="mt-2.5 text-3xl font-bold text-ink">Bundles &amp; pricing</h1>
         <p className="mt-2 leading-relaxed text-muted">
-          Buy one template at a time, grab an entire category, or get everything at once. All prices
-          are launch pricing - discounted now, rising as we grow.
+          Buy one template at a time, grab an entire category, or get everything at once. Every
+          price is a flat one-time payment - no subscription, no countdown, no strike-through.
         </p>
       </div>
 
@@ -101,12 +105,12 @@ export default function BundlesPage() {
             Every template is priced by its tier and complexity, so you only pay more for genuinely
             more valuable automations. Prefer to buy in bulk? A bundle is always cheaper per template.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {tiers.map((t) => (
               <div key={t.name} className="card card-hover p-5">
                 <div className="text-sm font-semibold text-body">{t.name}</div>
                 <div className="mt-1 font-display text-2xl font-bold tracking-tight text-ink">
-                  {t.lo === 0 ? "Free" : t.hi ? `${inr(t.lo)} - ${inr(t.hi)}` : inr(t.lo)}
+                  {t.price === 0 ? "Free" : inr(t.price)}
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{t.desc}</p>
               </div>

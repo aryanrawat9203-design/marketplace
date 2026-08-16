@@ -65,12 +65,14 @@ export function tierTone(t?: string | null) {
       return "zinc";
     case "Starter":
       return "emerald";
-    case "Professional":
+    case "Core":
       return "sky";
-    case "Premium":
+    case "Professional":
       return "violet";
-    case "Enterprise":
+    case "Premium":
       return "amber";
+    case "Enterprise":
+      return "rose";
     default:
       return "zinc";
   }

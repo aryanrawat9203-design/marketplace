@@ -17,7 +17,7 @@ const faqs: [string, string][] = [
   ],
   [
     "Is browsing free?",
-    "Yes - searching and browsing the whole catalog is always free, and we keep a small set of templates genuinely free to download so you can judge the quality first. Every other template is priced, starting from just ₹49 for entry-level \"Starter\" workflows.",
+    "Yes - searching and browsing the whole catalog is always free, and we keep a set of templates genuinely free to download so you can judge the quality first. Every other template is priced, starting from ₹499 for entry-level \"Starter\" workflows.",
   ],
   [
     "How do I use a template after buying?",

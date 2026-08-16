@@ -36,7 +36,11 @@ export function useCart() {
   return ctx;
 }
 
-const KEY = "wc:cart";
+// Lines carry the price they were added at, but /api/checkout re-prices
+// everything from the catalog and charges that. A cart saved before a
+// repricing would therefore show one number and charge another - so the key
+// is versioned, and a repricing drops those carts instead of mispricing them.
+const KEY = "wc:cart:v2";
 const MAX_LINES = 100;
 
 function readCart(): CartLine[] {
