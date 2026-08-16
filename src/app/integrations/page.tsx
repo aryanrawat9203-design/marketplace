@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getIntegrations, getIntegrationPairs } from "@/lib/integrations";
+import { getIntegrations, getIndexablePairs, getNonIndexablePairs } from "@/lib/integrations";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
 import { baseUrl } from "@/lib/site";
@@ -14,7 +14,9 @@ export const metadata: Metadata = pageMeta({
 
 export default function IntegrationsPage() {
   const integrations = getIntegrations();
-  const pairs = getIntegrationPairs();
+  // Guided pairs lead; the rest stay linked from here so nothing is orphaned.
+  const guided = getIndexablePairs();
+  const others = getNonIndexablePairs();
   const fmt = (n: number) => n.toLocaleString("en-IN");
 
   const breadcrumb = breadcrumbJsonLd([
@@ -54,19 +56,20 @@ export default function IntegrationsPage() {
         ))}
       </div>
 
-      {pairs.length > 0 && (
+      {guided.length > 0 && (
         <div className="mt-14">
           <p className="eyebrow">App to app</p>
           <h2 className="mt-2.5 text-xl font-semibold text-ink sm:text-2xl">
             Connect two apps together
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-faint">
-            Most automations join two tools. These {fmt(pairs.length)} pairings each have a set of
-            ready-to-import templates that wire them together end to end.
+            Most automations join two tools. These {fmt(guided.length)} pairings each come with a
+            written guide - the nodes involved, the credential setup, a worked example and the
+            failure modes - alongside the ready-to-import templates.
           </p>
 
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {pairs.map((p) => (
+            {guided.map((p) => (
               <Link
                 key={p.slug}
                 href={`/integrations/${p.slug}`}
@@ -76,6 +79,28 @@ export default function IntegrationsPage() {
                   {p.a.name} <span className="text-faint">+</span> {p.b.name}
                 </span>
                 <span className="ml-3 shrink-0 font-mono text-xs text-faint">{fmt(p.count)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {others.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-lg font-semibold text-ink">Every other pairing we have templates for</h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-faint">
+            {fmt(others.length)} further combinations, each with its own set of templates. There is
+            no written guide behind these yet, so they list the workflows and leave the walkthrough
+            to the pairings above.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {others.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/integrations/${p.slug}`}
+                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-body transition-colors hover:border-violet-500/50 hover:bg-white/[0.06] hover:text-white"
+              >
+                {p.a.name} + {p.b.name} <span className="text-faint">({fmt(p.count)})</span>
               </Link>
             ))}
           </div>

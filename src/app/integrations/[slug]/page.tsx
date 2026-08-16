@@ -57,11 +57,17 @@ export async function generateMetadata({
 
   const pair = getIntegrationPairBySlug(slug);
   if (pair) {
-    // Search Console shows the demand arrives as "connect x to y" / "x to y"
-    // far more than "x + y", and at better positions - so the title leads with
-    // the directional phrasing and the body covers both directions.
-    const title = `${pair.a.name} to ${pair.b.name}: ${fmt(pair.count)} n8n integration templates`;
-    const description = `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Download the JSON, add your credentials and it runs - no code required.`;
+    // Indexed pairs carry a hand-written title and description aimed at the
+    // phrasing that pair's demand actually arrives in. The generated pair below
+    // is the fallback for the noindexed tail, where a distinct title buys
+    // nothing because the page is not being submitted.
+    const guide = getPairGuide(pair.slug);
+    const title =
+      guide?.title ??
+      `${pair.a.name} to ${pair.b.name}: ${fmt(pair.count)} n8n integration templates`;
+    const description =
+      guide?.description ??
+      `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Download the JSON, add your credentials and it runs - no code required.`;
     return pageMeta({
       title,
       description,

@@ -30,37 +30,71 @@ export { integrationSlug, pairSlug, isPairSlug };
 export const MIN_PAIR_TEMPLATES = 3;
 
 /**
- * Pair slugs with measured Search Console demand. These stay indexable however
- * thin the inventory gets, because a page that earns impressions is answering a
- * real query - the fix for it is more content, not removal from the index.
+ * The pair pages we ask Google to index. Everything else keeps its page, its
+ * links and its crawlability, and carries `noindex, follow`.
  *
- * Impressions are the 90 days to 2026-08-13. Add a slug here only with a number
- * from GSC behind it; a guess defeats the point of having a threshold at all.
+ * This replaced an inventory threshold that left 126 pages indexable, and the
+ * reason is worth recording because the numbers said something a threshold
+ * cannot express: Google crawled almost none of them. Not ranked badly - never
+ * fetched. 126 near-identical templated pages is an ask that gets declined as a
+ * quality judgement, and no technical fix addresses a quality judgement. The
+ * page this site actually gets surfaced for is a blog post with original prose
+ * (209 impressions, against 41 for the homepage). Prose earns crawl here;
+ * templates do not.
+ *
+ * So the set is small and hand-chosen, on the union of two signals:
+ *
+ *   demand    - >=15 Search Console impressions across the 90 days to
+ *               2026-08-13, aggregated over query phrasings rather than per
+ *               query string. Note this cuts one way only: a page that was
+ *               never crawled cannot have impressions, so zero is silence, not
+ *               evidence of no demand, and absence is never held against a pair.
+ *   inventory - the largest template counts in the catalog, which are the pages
+ *               most likely to serve a real query once they are crawled.
+ *
+ * Both numbers are recorded per slug so the next person to revisit this knows
+ * which signal put a page here. Every slug also has a hand-written guide in
+ * pair-guides.ts, and that is a hard requirement rather than a coincidence:
+ * asking for a page to be indexed is a claim that it is worth reading, which is
+ * exactly the claim the templated version could not support.
  */
-export const PAIR_DEMAND_SLUGS: ReadonlySet<string> = new Set([
-  "asana-and-discord", // 58 impressions ("asana discord integration")
-  "discord-and-trello", // 128 impressions ("discord trello" + "trello discord")
+export const INDEXABLE_PAIR_SLUGS: ReadonlySet<string> = new Set([
+  //                                    impressions / templates
+  "discord-and-trello", //                      154 / 6
+  "postgresql-and-slack", //                     95 / 1231
+  "airtable-and-shopify", //                     70 / 19
+  "http-rest-api-and-hubspot", //                61 / 1025
+  "asana-and-discord", //                        58 / 4
+  "postgresql-and-shopify", //                   51 / 12
+  "airtable-and-discord", //                     42 / 87
+  "discord-and-notion", //                       29 / 195
+  "google-drive-and-notion", //                  28 / 247
+  "google-sheets-and-microsoft-teams", //        27 / 700
+  "discord-and-hubspot", //                      20 / 72
+  "http-rest-api-and-mysql", //                  19 / 726
+  "mysql-and-slack", //                          16 / 1020
+  "discord-and-jira", //                         15 / 6
+  "airtable-and-slack", //                       15 / 971
+  // Kept on inventory depth: no impressions yet because no crawl yet.
+  "google-sheets-and-slack", //                   - / 7332
+  "http-rest-api-and-slack", //                   - / 5907
+  "google-sheets-and-http-rest-api", //           - / 5671
+  "notion-and-slack", //                          - / 1993
+  "http-rest-api-and-notion", //                  - / 1792
+  "google-sheets-and-notion", //                  - / 1661
+  "hubspot-and-slack", //                         - / 1245
+  "google-drive-and-slack", //                    - / 988
+  "google-drive-and-google-sheets", //            - / 921
+  "google-sheets-and-hubspot", //                 - / 835
 ]);
 
 /**
- * Below this a pair page is real but too thin to deserve a place in the index:
- * three or four templates plus boilerplate is the kind of page that dilutes a
- * site's average quality rather than adding to it. They stay reachable, linked
- * and crawlable (robots: noindex, follow) - they are just not submitted.
- *
- * Deliberately one above the top of the current thin tail: 11 pairs sit at 3-4
- * templates and the next rung up is 5. Set as a count rather than a hand-listed
- * set of slugs so it stays correct as inventory moves - a pair that grows past
- * the threshold becomes indexable on the next build with no code change.
- */
-export const MIN_INDEXABLE_PAIR_TEMPLATES = 5;
-
-/**
- * Whether a pair page should be indexed and listed in the sitemap.
- * Demand beats the threshold; otherwise inventory has to clear it.
+ * Whether a pair page should be indexed and listed in the sitemap. One
+ * predicate drives both the robots tag and the sitemap, because submitting a
+ * URL that carries noindex is a contradictory signal.
  */
 export function isPairIndexable(pair: IntegrationPair): boolean {
-  return pair.count >= MIN_INDEXABLE_PAIR_TEMPLATES || PAIR_DEMAND_SLUGS.has(pair.slug);
+  return INDEXABLE_PAIR_SLUGS.has(pair.slug);
 }
 
 const g = globalThis as unknown as {
@@ -121,6 +155,24 @@ export function getIntegrationPairs(): IntegrationPair[] {
     );
   }
   return g.__integrationPairs;
+}
+
+/**
+ * The pair pages we index, in `INDEXABLE_PAIR_SLUGS` order rather than by
+ * template count - the list is ordered by demand first, and a page with 154
+ * impressions behind it deserves to lead the hub over one with more inventory
+ * and no measured interest.
+ */
+export function getIndexablePairs(): IntegrationPair[] {
+  const bySlug = new Map(getIntegrationPairs().map((p) => [p.slug, p]));
+  return [...INDEXABLE_PAIR_SLUGS]
+    .map((s) => bySlug.get(s))
+    .filter((p): p is IntegrationPair => p !== undefined);
+}
+
+/** The pair pages that keep their page but carry `noindex, follow`. */
+export function getNonIndexablePairs(): IntegrationPair[] {
+  return getIntegrationPairs().filter((p) => !isPairIndexable(p));
 }
 
 export function getIntegrationPairBySlug(slug: string): IntegrationPair | undefined {
