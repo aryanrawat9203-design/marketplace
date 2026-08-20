@@ -19,7 +19,7 @@ import JsonLd from "@/components/JsonLd";
 import { inr } from "@/lib/pricing";
 import { integrationSlug } from "@/lib/slug";
 import { baseUrl, SITE_NAME } from "@/lib/site";
-import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
+import { TEMPLATE_COUNT_ROUNDED } from "@/lib/site";
 
 // Root canonical so query-string variants (utm_*, cache-busters, ?ref=) all
 // consolidate to the bare homepage rather than splitting ranking signals.
@@ -168,7 +168,7 @@ export default async function Home() {
   ];
 
   const steps: [string, string, string][] = [
-    ["1", "Find the right one", `Search ${TEMPLATE_COUNT_LABEL} original templates by industry, tool, or use case.`],
+    ["1", "Find the right one", `Search ${TEMPLATE_COUNT_ROUNDED} original templates by industry, tool, or use case.`],
     ["2", "Buy securely", "Pay in seconds with UPI, cards, or netbanking via Razorpay."],
     ["3", "Download & import", "Get the ready-to-import n8n JSON instantly - add your credentials and go."],
   ];

@@ -6,6 +6,7 @@ import Script from "next/script";
 import { track } from "@vercel/analytics";
 import { useCart } from "@/components/CartProvider";
 import { useAuth } from "@/components/AuthProvider";
+import CartBundleUpsell from "@/components/CartBundleUpsell";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import "@/lib/razorpay";
@@ -124,6 +125,8 @@ export default function CartPage() {
           </Link>
         </div>
       ) : (
+        <>
+        <CartBundleUpsell />
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           <ul className="space-y-3 lg:col-span-2">
             {items.map((l) => (
@@ -183,6 +186,7 @@ export default function CartPage() {
             </div>
           </aside>
         </div>
+        </>
       )}
     </div>
   );

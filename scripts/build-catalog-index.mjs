@@ -32,6 +32,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const DATA = path.join(here, "..", "src", "data");
 const CATALOG = path.join(DATA, "catalog.json");
 const INDEX = path.join(DATA, "catalog-index.json");
+const COUNT = path.join(DATA, "catalog-count.json");
 
 const check = process.argv.includes("--check");
 
@@ -65,18 +66,29 @@ const index = catalog.map((w) => ({
   off: w.off,
 }));
 
-const next = JSON.stringify(index);
-const prev = fs.existsSync(INDEX) ? fs.readFileSync(INDEX, "utf8") : "";
+// src/lib/site.ts reads this instead of declaring the catalog size as a
+// literal, which is how it came to claim 10,463 templates against a catalog
+// of 10,489 for weeks. A number nobody has to remember to update cannot drift.
+const outputs = [
+  { file: INDEX, name: "catalog-index.json", body: JSON.stringify(index) },
+  { file: COUNT, name: "catalog-count.json", body: JSON.stringify({ total: catalog.length }) },
+];
 
-if (next === prev) {
-  console.log(`catalog-index.json already in sync (${index.length} records)`);
+const stale = outputs.filter(
+  (o) => (fs.existsSync(o.file) ? fs.readFileSync(o.file, "utf8") : "") !== o.body,
+);
+
+if (stale.length === 0) {
+  console.log(`catalog data already in sync (${index.length} records)`);
   process.exit(0);
 }
 
 if (check) {
-  console.error(`catalog-index.json is STALE — run: node scripts/build-catalog-index.mjs`);
+  console.error(
+    `${stale.map((o) => o.name).join(", ")} is STALE — run: node scripts/build-catalog-index.mjs`,
+  );
   process.exit(1);
 }
 
-fs.writeFileSync(INDEX, next);
-console.log(`catalog-index.json rebuilt from catalog.json (${index.length} records)`);
+for (const o of stale) fs.writeFileSync(o.file, o.body);
+console.log(`rebuilt ${stale.map((o) => o.name).join(", ")} from catalog.json (${index.length} records)`);

@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 import CustomRequestForm from "./CustomRequestForm";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbJsonLd, pageMeta } from "@/lib/seo";
-import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
+import { TEMPLATE_COUNT_ROUNDED } from "@/lib/site";
 
 export const metadata: Metadata = pageMeta({
   title: "Get a custom n8n workflow built",
-  description: `Can't find the exact automation you need? Describe it and get a fixed quote - we build custom, ready-to-import n8n workflows on the same quality bar as our ${TEMPLATE_COUNT_LABEL}-template catalog.`,
+  description: `Can't find the exact automation you need? Describe it and get a fixed quote - we build custom, ready-to-import n8n workflows on the same quality bar as our ${TEMPLATE_COUNT_ROUNDED} template catalog.`,
   path: "/custom",
 });
 
@@ -61,7 +61,7 @@ export default function CustomPage() {
           Need a workflow we <span className="gradient-text">don&apos;t have?</span>
         </h1>
         <p className="mt-3 text-lg text-muted">
-          We built the {TEMPLATE_COUNT_LABEL} templates in this store - we can build yours. Describe the automation
+          We built the {TEMPLATE_COUNT_ROUNDED} templates in this store - we can build yours. Describe the automation
           and get a fixed quote, no payment upfront.
         </p>
       </div>

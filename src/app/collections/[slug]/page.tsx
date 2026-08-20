@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCollection, getCollections, collectionMembers, collectionStats } from "@/lib/collections";
 import { bundleForCategory } from "@/lib/bundles";
+import { bundleUpsell } from "@/lib/cart-upsell";
 import WorkflowCard from "@/components/WorkflowCard";
 import AddCollectionToCart from "@/components/AddCollectionToCart";
+import BundleUpsellNote from "@/components/BundleUpsellNote";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import JsonLd from "@/components/JsonLd";
@@ -44,6 +46,11 @@ export default async function CollectionPage({
   const stats = collectionStats(c);
   const singleCategory = c.rule.categories?.length === 1 ? c.rule.categories[0] : undefined;
   const catBundle = singleCategory ? bundleForCategory(singleCategory) : undefined;
+  // A collection is priced as the honest sum of its members, which since the
+  // catalog-derived repricing can exceed the bundle those members came from.
+  // Say so here rather than let a shopper find it themselves and conclude the
+  // per-template prices are made up.
+  const upsell = bundleUpsell(members.map((w) => ({ kind: "workflow" as const, key: w.route })));
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -106,7 +113,17 @@ export default async function CollectionPage({
         </div>
       </div>
 
-      {catBundle && (
+      {upsell && (
+        <div className="mt-4">
+          <BundleUpsellNote upsell={upsell} totalLabel={`These ${stats.count} individually`} />
+        </div>
+      )}
+
+      {/* Only when there's no cheaper offer to make. This card names the
+          category bundle unconditionally, which on an Email Automation
+          collection meant advertising a 29,999 bundle directly beneath a
+          24,999 Full Library offer that contains it - more money for less. */}
+      {!upsell && catBundle && (
         <Link
           href={`/bundles/${catBundle.slug}`}
           className="card-hover mt-4 block rounded-2xl border border-violet-500/30 bg-violet-500/[0.06] p-5 hover:border-violet-500/60"

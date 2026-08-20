@@ -85,8 +85,7 @@ function roundDownTo9(n: number): number {
  */
 const BUNDLE_DISCOUNT = 0.6;
 
-function priceBundle(b: Bundle): number {
-  const members = bundleMembersIndex(b);
+function priceBundle(b: Bundle, members: IndexItem[]): number {
   const memberSum = members.reduce((sum, w) => sum + w.price, 0);
 
   const ceiling =
@@ -105,12 +104,27 @@ function priceBundle(b: Bundle): number {
   return Math.max(PRICE_POINTS[0], Math.min(ceiling, roundDownTo9(memberSum * BUNDLE_DISCOUNT)));
 }
 
+/** `{n}` in a stored name or tagline, filled from the resolved member count. */
+function withCount(s: string, n: number): string {
+  return s.replace(/\{n\}/g, n.toLocaleString("en-IN"));
+}
+
 export function getBundles(): Bundle[] {
   if (!g.__bundles) {
     const p = path.join(process.cwd(), "src", "data", "bundles.json");
     const bundles = JSON.parse(fs.readFileSync(p, "utf-8")) as Bundle[];
     for (const b of bundles) {
-      b.price = priceBundle(b);
+      const members = bundleMembersIndex(b);
+      // `count` on disk is a snapshot, and it had already gone stale: the
+      // full-library record claimed 10,463 against a catalog of 10,489, and 12
+      // category bundles were off by a handful each. Every surface that prints
+      // a bundle size reads this field, and the counts written into the names
+      // and taglines came from the same snapshot - so all three are resolved
+      // here from the real member list rather than trusted from the file.
+      b.count = members.length;
+      b.name = withCount(b.name, b.count);
+      b.tagline = withCount(b.tagline, b.count);
+      b.price = priceBundle(b, members);
       b.mrp = b.price;
       b.off = 0;
     }
