@@ -75,6 +75,16 @@ export const INDEXABLE_PAIR_SLUGS: ReadonlySet<string> = new Set([
   "mysql-and-slack", //                          16 / 1020
   "discord-and-jira", //                         15 / 6
   "airtable-and-slack", //                       15 / 971
+  // Added 2026-08-20 off the 3-month Search Console read to 2026-08-18. These
+  // three were the impression leaders among pages carrying `noindex`, which is
+  // a contradiction worth naming: they earned that demand before the tag went
+  // on, and the tag then guaranteed the demand could not convert. They stayed
+  // out because they had no hand-written guide, which was the right rule; each
+  // now has one written against the node graphs of its own templates, so the
+  // rule is satisfied rather than waived.
+  "discord-and-google-drive", //                 50 / 75
+  "airtable-and-google-drive", //                32 / 72
+  "mysql-and-twilio", //                          9 / 96
   // Kept on inventory depth: no impressions yet because no crawl yet.
   "google-sheets-and-slack", //                   - / 7332
   "http-rest-api-and-slack", //                   - / 5907

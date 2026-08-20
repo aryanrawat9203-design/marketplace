@@ -79,8 +79,17 @@ export async function generateMetadata({
 
   const integration = getIntegrationBySlug(slug);
   if (!integration) return { title: "Integration not found" };
-  const title = `${integration.name} n8n workflow templates`;
-  const description = `${fmt(integration.count)} original, ready-to-import n8n workflow templates that automate ${integration.name} - buy a single template or a bundle and download instantly.`;
+  // Same rule as the pair branch above: where a single-integration page has a
+  // hand-written guide, it has a hand-written title and description aimed at
+  // the phrasing its demand arrives in, and those win over the generated pair.
+  // Missing this is not cosmetic - "Airtable n8n workflow templates" describes
+  // the shelf, and the measured query ("airtable n8n integration", the closest
+  // of any of these to page one) is asking what the integration does.
+  const guide = getPairGuide(integration.slug);
+  const title = guide?.title ?? `${integration.name} n8n workflow templates`;
+  const description =
+    guide?.description ??
+    `${fmt(integration.count)} original, ready-to-import n8n workflow templates that automate ${integration.name} - buy a single template or a bundle and download instantly.`;
   return pageMeta({
     title,
     description,
@@ -245,6 +254,33 @@ export default async function IntegrationPage({
  * search demand. Rendered in place of the generic three-step block, which was
  * identical across every pair page and answered none of what the query asked.
  */
+/**
+ * Renders `backticked` spans as <code>.
+ *
+ * The guides quote identifiers straight out of the shipped workflow JSONs -
+ * node types, parameter paths, option values - and marking them up matters for
+ * more than looks: `scripts/check-guide-claims.mjs` parses these same
+ * backticks and asserts every one of them actually occurs in a product file.
+ * The backtick is the boundary between "a literal from the file" and prose, so
+ * a claim that is not in backticks is not audited, and one that is has been.
+ *
+ * Split keeps the delimiters out by capturing the inside, so odd indices are
+ * the code spans. An unpaired backtick therefore renders as plain text rather
+ * than swallowing the rest of the paragraph.
+ */
+function withCode(text: string, keyPrefix: string) {
+  const parts = text.split(/`([^`]+)`/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <code key={`${keyPrefix}-${i}`} className="code-ref">
+        {part}
+      </code>
+    ) : (
+      part
+    ),
+  );
+}
+
 function PairTutorial({ guide, heading }: { guide: PairGuide; heading: string }) {
   return (
     <section className="mt-14 border-t border-white/10 pt-10">
@@ -267,12 +303,25 @@ function PairTutorial({ guide, heading }: { guide: PairGuide; heading: string })
                 viewport otherwise. */}
             <div className="mt-2.5 space-y-3.5 leading-relaxed text-body break-words">
               {sec.p.map((para, i) => (
-                <p key={i}>{para}</p>
+                <p key={i}>{withCode(para, `${sec.h}-${i}`)}</p>
               ))}
             </div>
           </div>
         ))}
       </div>
+      {guide.example && (
+        <div className="mt-8 max-w-3xl rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p className="text-xs uppercase tracking-wide text-faint">
+            The template walked through above
+          </p>
+          <Link
+            href={`/workflows/${guide.example.route}`}
+            className="mt-1.5 block font-medium text-violet-400 transition-colors hover:text-violet-300"
+          >
+            {guide.example.title} <span aria-hidden>&rarr;</span>
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

@@ -38,6 +38,13 @@ export type PairGuide = {
   description?: string;
   /** Nodes the reader will actually place on the canvas, in order. */
   nodes: string[];
+  /**
+   * The template the guide's worked example walks through, linked under the
+   * sections. A worked example that names a real file and then does not let
+   * you open it is asking to be taken on trust, which is the thing these pages
+   * are trying to stop doing.
+   */
+  example?: { route: string; title: string };
   sections: PairGuideSection[];
 };
 
@@ -112,44 +119,80 @@ export const pairGuides: PairGuide[] = [
   },
   {
     slug: "airtable",
-    nodes: ["Airtable Trigger / Schedule Trigger", "Airtable", "Set", "Airtable"],
+    title: "Airtable and n8n: how the node is actually configured",
+    description:
+      "What the Airtable n8n node looks like in 1,105 working templates - create vs upsert vs search, the matchingColumns key, the LastModified column filterByFormula needs, and why the trigger is used exactly once.",
+    nodes: ["Schedule Trigger", "Airtable (search)", "Set", "Airtable (upsert)"],
+    example: {
+      route: "push-airtable-product-edits-to-shopify",
+      title: "Push Airtable product edits to Shopify",
+    },
     sections: [
       {
-        h: "Which nodes you need",
+        h: "The three operations that cover almost everything",
         p: [
-          "Airtable has a first-party n8n node covering search, create, update, upsert and delete, plus an Airtable Trigger that polls a table for new or changed records. Almost every Airtable automation is some arrangement of: trigger, search for a matching record, transform fields with a Set or Code node, then update or upsert.",
-          "The Airtable Trigger polls - it does not receive a push - so its interval is the floor on how quickly the workflow reacts. Set it to the slowest interval you can tolerate; polling every minute across several workflows is the quickest way to hit Airtable's rate limit.",
+          "`n8n-nodes-base.airtable` appears 2,521 times across the 1,105 templates here, and three operations account for effectively all of it: `operation: \"create\"` in 1,615 nodes, `operation: \"search\"` in 505, and `operation: \"upsert\"` in 407.",
+          "That distribution is the shape of most Airtable automation. Write rows as things happen; read back the ones that changed; and where re-running has to be safe, upsert instead of create. Delete barely appears, and neither does anything schema-level - these workflows put data into tables somebody else designed.",
+          "Both `base` and `table` are resource locators rather than plain string IDs. In all 2,521 nodes they are set to `mode: \"list\"`, the dropdown form, which is the friendly option in the editor and the one that has a consequence on import - see below.",
         ],
       },
       {
-        h: "Setting up the Airtable credential",
+        h: "Field mapping: autoMapInputData or defineBelow",
         p: [
-          "Airtable retired user-level API keys in early 2024. Use a Personal Access Token created at airtable.com/create/tokens, and scope it to the specific bases the workflow touches rather than all of them.",
-          "Grant only the scopes you need: data.records:read for anything that only queries, plus data.records:write to create or update, plus schema.bases:read if you want n8n to populate the table and field dropdowns instead of making you type IDs. A token missing schema.bases:read still works, but every field selector turns into a manual ID entry and the workflow becomes far harder to read later.",
-          "Reference tables by ID (tblXXXXXXXX), not by name, in anything you intend to keep. Renaming a table in Airtable's UI is a one-click action that silently breaks every workflow referencing it by name.",
+          "`columns.mappingMode` decides how incoming data becomes columns, and it is `autoMapInputData` in 2,066 nodes. That takes each field name on the incoming item and writes it to the column of the same name. It is concise, and it makes the Set node immediately upstream into your schema contract: whatever that node emits is what the write attempts.",
+          "The alternative is `defineBelow`, which gives an explicit `columns.value` object mapping each column to an expression. Use it as soon as your column names differ from your data's field names, or when a column name contains a space - `Order ID`, `Item Count`, `Source Subject` all appear in these files and none of them survives auto-mapping from a field called `order_id`.",
+          "`columns.matchingColumns` is what turns `upsert` into an actual upsert, and it is set on 428 nodes. The values are stable identifiers from the source system rather than anything derived from content: `messageId` on 104, `leadId` on 58, `jobId` on 49, `requestId` on 45, `documentId` on 34, `contactId` on 31, `orderId` on 18. An upsert with no matching column configured is a create, which means a re-run duplicates rather than corrects.",
         ],
       },
       {
-        h: "The rate limit, and how to stay under it",
+        h: "The column filterByFormula assumes you have",
         p: [
-          "Airtable allows 5 requests per second per base. Exceed it and the API returns 429 and then locks that base out for 30 seconds - long enough that a single burst can fail an entire run.",
-          "The fix is batching, not retrying. Airtable's create and update endpoints accept 10 records per call, so a Loop Over Items node with a batch size of 10 turns 500 single-record writes into 50 calls. Add a short wait between batches - one second is plenty - and set the Airtable node's 'Retry On Fail' so an occasional 429 recovers instead of failing the execution.",
-          "If several workflows write to the same base, the limit is shared across all of them. Two workflows that each stay comfortably under the ceiling alone will still trip it when they run at the same minute of the hour, so stagger their schedules.",
+          "503 nodes set `filterByFormula` to exactly `{LastModified} > DATEADD(NOW(), -1, 'days')`. It is the standard incremental-read filter in this catalog: ask Airtable for records touched in the last day, rather than paging the whole table.",
+          "The formula is evaluated on Airtable's side and it references a column literally named `LastModified`. No base has that column by default - you add it as a Last Modified Time field, and the name has to match including the capitalisation. If it does not exist, the search does not raise a connection error. It returns zero records, the workflow completes green, and a sync that appears healthy moves nothing. This is the failure that takes longest to notice, because everything downstream is written to handle an empty result gracefully.",
+          "The window is also fixed at one day. If your workflow runs hourly it re-reads twenty-four hours of records every hour, which costs API calls but is otherwise harmless; if it runs weekly it silently skips six days out of seven. Match the interval to the formula, or change the formula to match the interval.",
         ],
       },
       {
-        h: "Field types that break imports",
+        h: "The trigger is used once in 1,105 templates",
         p: [
-          "Most Airtable errors in n8n are type mismatches rather than connection problems. A Single Select rejects any value that is not already one of its options unless the token has schema write permission and typecast is enabled. A Linked Record field expects an array of record IDs, not names - so you look the linked record up first and pass its ID. A Date field wants ISO 8601; a date rendered as DD/MM/YYYY is accepted as a string by the API and then read back wrong.",
-          "Attachment fields take an array of objects with a url property, and Airtable fetches that URL itself - which means the URL has to be publicly reachable. A signed link that expires in five minutes will sometimes work and sometimes not, depending on how busy Airtable is.",
-          "Computed fields - formulas, rollups, autonumber, created time - are read-only. Including one in an update payload fails the whole record, so strip them in a Set node before the write.",
+          "`n8n-nodes-base.airtableTrigger` exists and appears exactly once across the whole set, with `triggerField: \"Last Modified\"`. Everything else starts from a schedule, a webhook, a form or another workflow, and reaches Airtable with a `search`.",
+          "That is not an oversight, it is what the tool supports. The Airtable trigger polls - it asks for records whose trigger field has moved since the last check - so it is a scheduled read wearing a different hat, and its interval is the floor on how fast anything reacts. Given that, the templates mostly do the polling explicitly with a Schedule Trigger and a `search`, which is more visible and lets the filter be anything rather than one field.",
+          "The practical consequence: if you need to react to an Airtable edit within seconds, neither option delivers it. Airtable has no outgoing webhook in play here. Design for a polling interval you can live with, or push from whatever is editing the record instead of watching the record.",
         ],
       },
       {
-        h: "Going the other way: n8n into Airtable as a database",
+        h: "Credential, and the thing that is not one",
         p: [
-          "Airtable is often the easiest place to park data an automation produces - scraped rows, form submissions, AI-generated summaries - because it is legible to non-technical colleagues in a way a Postgres table is not.",
-          "Use the upsert operation with a column you control as the match key (an external ID, a URL, an email address) rather than create, so re-running a workflow corrects records instead of duplicating them. A base with a unique-ish key column and upsert on every write is effectively idempotent, which is what you want when a run half-fails and you need to run it again.",
+          "The node cards mark `🔑 Airtable PAT`. Airtable retired user-level API keys, so this is a Personal Access Token created in your Airtable account and scoped to the specific bases the workflow touches.",
+          "Grant it record read, plus record write if the workflow creates or updates, plus schema read if you want n8n's base and table dropdowns to populate. That last scope is optional and you will want it: without schema read the pickers stay empty and you are typing the app- and tbl-prefixed IDs by hand into every node.",
+          "The `credentials` block is stripped from every workflow file in this catalog, so on import each Airtable node shows an empty credential selector. That is packaging rather than damage - you create the credential once and pick it.",
+          "What is not a credential, and is the most common first-run failure: all 2,521 nodes ship with `base.value` and `table.value` set to the empty string, carrying only a `cachedResultName` placeholder. The dropdown displays text - `Email Automation Base`, `Documents`, `Leads` - so the field looks populated. Nothing is bound. Every Airtable node in an imported template needs its base and table re-picked before it will run.",
+        ],
+      },
+      {
+        h: "The fields wrapper, and node names that lie",
+        p: [
+          "Airtable's API does not return a record as a flat object. Fields arrive nested under a `fields` key alongside the record id, so an expression reading the column name directly off a record straight out of Airtable is undefined, and the same name under `fields` is what you meant. The templates that read from Airtable guard for both shapes - `{{ $json.fields ? $json.fields['Title'] : $json['Title'] }}` - because whether the wrapper is present depends on which node produced the item.",
+          "Note the bracket syntax in that expression. Column names with spaces cannot be reached with dot notation, and `Shopify Product ID` is a column name these files actually use. If you rename a column in Airtable's UI, every expression referencing it by name breaks silently and nothing warns you - renaming is a one-click action in Airtable and a breaking change in n8n.",
+          "Separately, 156 nodes across these files are named some variant of upsert and thirty-seven of them run a different operation - thirty-six are `n8n-nodes-base.googleSheets` with `operation: \"appendOrUpdate\"`, which is a genuine upsert under another name, and one is `n8n-nodes-base.notion` with `operation: \"create\"`, which is not. When you are auditing a template for idempotency, read the `operation` parameter rather than the caption on the canvas.",
+        ],
+      },
+      {
+        h: "A worked example: Airtable as the source of truth",
+        p: [
+          "`Push Airtable product edits to Shopify` is seven nodes and is the one template in the set built on the Airtable trigger, which makes it the clearest illustration of both the trigger and the `fields` wrapper.",
+          "`n8n-nodes-base.airtableTrigger` watches a table with `triggerField: \"Last Modified\"` - it re-reads on a schedule and emits records whose Last Modified value has advanced. Its `base` and `table` are the same unbound `mode: \"list\"` locators as everywhere else, showing `Your Shopify base` and `Products` as placeholder text.",
+          "A Set node maps four columns into flat fields, each with the both-shapes guard: `{{ $json.fields ? $json.fields['Shopify Product ID'] : $json['Shopify Product ID'] }}` and the same for `Title`, `Tags` and `Status`.",
+          "An IF node named Has Shopify ID? checks `shopify_product_id` is not empty, and this is the load-bearing node. A product row that has never been pushed to Shopify has no ID, and calling Shopify's update with an empty ID is an error rather than a create. The false branch goes to a `n8n-nodes-base.noOp` named Skip Unlinked Row, which is the correct behaviour: rows that are not yet linked are not failures.",
+          "The true branch runs `n8n-nodes-base.shopify` with `resource: \"product\"`, `operation: \"update\"`, `productId` from the mapped field, and `updateFields` carrying `title`, `tags` and `status`. It sets `retryOnFail` with `maxTries: 3` and `waitBetweenTries: 2000`, and `onError: \"continueErrorOutput\"` so a rejected update takes the error branch instead of stopping the run.",
+          "To reuse the pattern against something other than Shopify, the first four nodes are unchanged - trigger, map with the wrapper guard, check the external ID exists, branch. Only the final node changes.",
+        ],
+      },
+      {
+        h: "What the 1,105 templates actually cover",
+        p: [
+          "The base and table placeholder names are a fair index of the set, because they were written per workflow rather than generated: `Email Automation Base` on 458 nodes with an `Emails` table, `Document Processing Base` on 330 with `Documents` on 452, `AI Agents Base` on 315, `Content Generation Base` on 272 with `Drafts`, `Lead Generation Base` on 217 with `Leads`, `Workflow Automation Base` on 184 with `Jobs`, then RAG, social, CRM and e-commerce bases in the low hundreds.",
+          "So the depth is in Airtable-as-a-log: something is processed and a row records it. If that is your use, this is a large set. If you are looking for Airtable-as-an-app - interfaces, complex linked-record graphs, formula-heavy bases driven from n8n - it is thinner, and the linked-record case in particular needs a lookup before every write, because a Linked Record field takes an array of record IDs rather than names.",
         ],
       },
     ],
@@ -223,83 +266,72 @@ export const pairGuides: PairGuide[] = [
   },
   {
     slug: "discord-and-trello",
-    title: "Trello and Discord with n8n: card alerts, and cards from chat",
+    title: "Trello and Discord: how the integration actually works",
     description:
-      "Connect Trello to Discord with n8n - post card moves into a channel, and turn Discord messages into cards. Trello token expiry, webhook vs bot token, the 2,000-character cap, and keeping the channel readable.",
-    nodes: ["Trello Trigger", "Trello", "IF", "Discord"],
+      "What a Trello-Discord integration looks like in practice, and how the six n8n templates here build it - trelloTrigger on a board, the listAfter field that distinguishes a move from a rename, and the Discord webhook that only ever posts.",
+    nodes: ["Trello Trigger", "Set", "Filter", "IF", "Discord"],
+    example: {
+      route: "post-new-and-moved-trello-cards-to-a-discord-channel",
+      title: "Post new and moved Trello cards to a Discord channel",
+    },
     sections: [
       {
-        h: "What connecting Trello and Discord actually does",
+        h: "There is no native Trello-Discord integration",
         p: [
-          "Trello holds the board; Discord is where the team actually talks. The connection exists because nobody reloads a board to find out that something changed - so work sits in a list nobody has looked at since Tuesday, and the conversation about it happens somewhere the board never sees.",
-          "Wiring them together means Trello events become Discord messages, and Discord messages become Trello cards. In practice that is five or six recognisable jobs: announce a card when it lands in a particular list (Done, Blocked, Needs review); nag when a due date passes and the card has not moved; post a once-a-day digest of the board instead of a running commentary; turn a support message or a slash command into a card so requests stop living in scrollback; and mirror checklist progress into a thread so the people discussing the work can see how far it has got.",
-          "What it does not do is make Discord a project manager. Trello stays the record - the board is still where state lives - and Discord becomes the surface that tells people when the record changed. Workflows that try to invert that, keeping the real status in a channel, are the ones that end up disagreeing with the board.",
+          "Trello does not post to Discord, and Discord does not write to Trello. Neither vendor ships a connector for the other, so anything that looks like a Trello-Discord integration is a third piece of software sitting between them, reading events from one and calling the other's API.",
+          "Two mechanisms exist to do that, and Trello's Power-Up directory offers neither for Discord. The first is Trello's outgoing webhook, which POSTs a JSON body to a URL you nominate every time something happens on a board. The second is Discord's incoming webhook, a per-channel URL that turns an HTTP POST into a message. An integration is whatever joins those two ends and decides which events are worth forwarding - and that decision is most of the work, because a Trello board emits an event for every field edit.",
+          "n8n is one way to be that middle piece: you host it (or use their cloud), and the joining logic is a graph of nodes rather than code. The six templates on this page are that graph, pre-built. What follows is what they actually contain - read it as a description of the problem, whether or not you use these files.",
         ],
       },
       {
-        h: "Which nodes you need",
+        h: "The node graph, as the six files build it",
         p: [
-          "Both sides have first-party nodes. The common direction is a Trello Trigger watching a board or list, an IF node filtering to the cards that matter, and a Discord node posting to a channel. Going the other way, a Discord Trigger on a message or slash command feeds a Trello node that creates a card.",
-          "The Trello Trigger registers a webhook against a board, a list or a single card. Watching the board gives you everything and a lot of noise - card moved, label added, comment posted - so filter early. Reading action.type in an IF node ('createCard', 'updateCard', 'commentCard') is the cheapest way to cut the volume.",
+          "Both directions are represented. Trello-to-Discord starts at `n8n-nodes-base.trelloTrigger`, which registers the outgoing webhook against a board; Discord-to-Trello starts at the generic `n8n-nodes-base.webhook` node, and a scheduled digest starts at `n8n-nodes-base.scheduleTrigger`. Between the ends sit `n8n-nodes-base.set` to flatten the payload, `n8n-nodes-base.filter` or `n8n-nodes-base.if` to drop events nobody wants, and sometimes `n8n-nodes-base.code` to aggregate.",
+          "Worth naming explicitly, because it is the thing people expect and do not get: there is no Discord trigger node in any of these six files. The template that turns a chat message into a card listens on a plain `n8n-nodes-base.webhook` at `path: \"discord-to-trello\"` and parses the message text itself with a `!card <title> | <description>` convention. Discord's own event stream is not being consumed. If you need a bot that reacts to messages in general, this is not that, and no parameter change will make it that.",
+          "The Trello side uses `n8n-nodes-base.trello` with `resource: \"card\"` for `operation: \"create\"` and `operation: \"update\"`, and `resource: \"list\"` for `operation: \"getCards\"`. Moving a card between lists is an `update` that sets `updateFields.idList` - the same call as any other edit, with a different field in the body.",
         ],
       },
       {
-        h: "Setting up the Trello credential",
+        h: "The Discord side is a webhook, in all fourteen nodes",
         p: [
-          "Trello wants an API key and a token. The key comes from trello.com/power-ups/admin (Power-Up admin, then the API key section); the token is generated from that page by authorising your own account, and it is what actually carries permissions.",
-          "Generate the token with read and write scope, and set the expiry deliberately. A token issued with a 30-day expiry is the single most common cause of a Trello workflow that worked for a month and then stopped without anyone changing it. If you want it to keep running, issue it as never-expiring and treat it like a password.",
-          "The token inherits the permissions of the account that created it. A token made from a personal account that later loses access to the board leaves the workflow returning 401 with no obvious cause.",
+          "Every one of the fourteen `n8n-nodes-base.discord` nodes across these six templates carries `authentication: \"webhook\"`, and every one sets `content` - a plain string. None uses a bot token, none builds an embed, none reads anything.",
+          "That is a design constraint, not an oversight, and it decides what these files can do. A Discord incoming webhook URL is bound to exactly one channel forever, carries no scopes, and cannot fetch history, add reactions, or manage threads. It also cannot fail an authorisation check, which is why setup is a copy-paste of one URL rather than an OAuth app, a bot user and an invite.",
+          "One template sets `options.threadName`, which posts into a thread on the webhook's channel. That is the full extent of the Discord surface used here. If your requirement involves reading messages or reacting to them, you need a bot token and the channel-select form of the node, which no file in this pair uses - none of these six is a starting point for it.",
         ],
       },
       {
-        h: "Setting up the Discord side",
+        h: "What you have to create before any of it runs",
         p: [
-          "For posting only, use a Discord webhook: channel settings, Integrations, Webhooks, New Webhook, copy the URL. n8n's Discord node accepts it directly, it takes seconds to set up, and it cannot read messages or do anything beyond posting to that one channel.",
-          "Use a bot token instead when the workflow needs to read messages, react, manage threads, or be triggered by Discord events. That means creating an application in the Discord developer portal, adding a bot user, enabling the Message Content intent if you need message text, and inviting the bot to the server with the right permissions. Discord treats message content as privileged data; without that intent enabled, message bodies arrive empty and the workflow looks broken while everything else appears fine.",
-          "Discord rejects messages over 2000 characters outright. A card description pasted straight into a message will eventually hit that, so truncate in a Set node, or use an embed - embed descriptions allow 4096 - and put a link back to the card rather than its full text.",
+          "On the Trello side, an API key and a token: the node cards mark this `🔑 Trello API`. On the Discord side, one incoming webhook URL per channel you post to, marked `🔑 Discord webhook URL`. Nothing else.",
+          "The workflow JSONs ship with no credential objects at all - the `credentials` block is stripped from every file in the catalog - so on import each Trello and Discord node shows an empty credential selector. That is expected. You create the two credentials once in n8n and pick them; you are not repairing a broken file.",
+          "Board and list IDs are the other prerequisite, and they are not credentials. Get a board ID by opening the board and appending `.json` to its URL; get a list ID from the same document. You need them before the trigger will register.",
         ],
       },
       {
-        h: "Keeping the channel readable",
+        h: "Two things that will catch you, both visible in the files",
         p: [
-          "A board of any size will produce more events than a channel can absorb. Filter to a specific list ID (the 'Done' list, or an escalation list) rather than the whole board, so the channel carries one meaningful kind of update instead of an activity log.",
-          "Trello fires an update action for every field change, including ones nobody cares about. Comparing the action's data.old object against the new value in an IF node - and only continuing when the field that changed is the one you are reporting - removes most of the noise without losing anything.",
-          "For high-traffic boards, collect events across an interval and post one digest on a Schedule Trigger instead of one message per card. Five updates in a single message is read; five separate messages is muted.",
+          "First: the IDs are read from environment variables with a literal fallback. The trigger's `id` parameter is `{{ $env.TRELLO_BOARD_ID || 'YOUR_BOARD_ID' }}`, and the card-creating node's `listId` is `{{ $env.TRELLO_LIST_ID || 'YOUR_LIST_ID' }}`. If those variables are not set in your n8n environment, the expression does not error - it resolves to the string `YOUR_BOARD_ID`, and Trello is asked about a board with that ID. Either set the two variables before activating, or replace the expressions with the IDs directly. Note also that `$env` is unavailable in n8n Cloud, so on Cloud the substitution is the only option.",
+          "Second: `updateCard` does not mean the card moved. Trello fires that action type for a rename, a description edit, a due-date change and a move, and the four are distinguished only by which sub-object the payload carries. The templates handle this by extracting `action.data.listAfter` in a Set node and filtering on it - a move populates `listAfter`, a rename leaves it absent. A workflow that filters on `action.type` alone posts every typo correction to your channel, which is how these integrations get muted in week one.",
+          "A third, smaller one: the eighteen nodes that call an external API in these files all set `retryOnFail` with `maxTries: 3` and `waitBetweenTries: 2000`, and `onError: \"continueErrorOutput\"`. That second setting sends failures out of the node's second output into an error branch rather than stopping the run. If you extend one of these graphs and wire only the first output, a failed Discord post will vanish silently - the error branch is there precisely so it does not.",
         ],
       },
       {
-        h: "Going the other way: Discord to Trello",
+        h: "A worked example: new and moved cards, in nine nodes",
         p: [
-          "A Discord Trigger listening for a slash command or a specific reaction emoji, feeding a Trello node's create-card operation, turns a support channel into an intake queue. Put the Discord message ID in the card description so the card links back to the conversation.",
-          "Discord's interaction endpoints expect a response within three seconds. If card creation is slow, acknowledge the command immediately and do the Trello work afterwards, or the user sees an interaction-failed error even though the card was created.",
+          "`Post new and moved Trello cards to a Discord channel` is the file to read first, because it contains the whole pattern and nothing else.",
+          "`n8n-nodes-base.trelloTrigger` registers against the board ID and receives every board action. A Set node immediately flattens what matters out of the nested payload into seven named fields: `action.type` becomes `actionType`, `action.data.card.name` becomes `cardName`, `action.memberCreator.fullName` becomes `member`, and the three list fields - `action.data.listBefore`, `action.data.listAfter`, `action.data.list` - become `listBefore`, `listAfter` and `listName`, each guarded so an absent object yields an empty string rather than an error.",
+          "The card link is assembled rather than read: `{{ 'https://trello.com/c/' + $json.action.data.card.shortLink }}`. The card's `id` is also in the payload and is not a URL anyone can open - `shortLink` is the one that resolves in a browser.",
+          "A Filter node then keeps only two cases: a `createCard`, or an `updateCard` that carries a non-empty `listAfter`. That is the noise gate described above, and it is the reason this workflow reports moves rather than edits. An IF node splits the survivors so a new card and a moved card get different wording, two Set nodes build the two message strings, and both feed the same Discord node.",
+          "The failure path is wired: the Discord node's error output goes to a Set node that captures the reason, which posts to a second Discord webhook. So a Discord outage produces a notice on a different channel instead of silence.",
+          "To adapt it you change four things and nothing else: the board ID on the trigger, the list names you care about in the Filter, the message text in the two Set nodes, and the webhook URL on the Discord node.",
         ],
       },
       {
-        h: "A worked example: a Done list that announces itself",
+        h: "Six templates, and why that is the honest number",
         p: [
-          "The concrete job: when a card reaches the Done list, post it to a Discord channel with who moved it, and do not post anything else.",
-          "Register the Trello webhook against the board, not the card - card-level webhooks disappear when the card is archived. Then filter twice in n8n, because the board sends everything.",
-          "The first filter is an IF node on action.type equal to updateCard. That alone removes comments, label changes and new cards. The second reads action.data.listAfter.id and continues only when it matches your Done list ID. Both values are in the webhook body; find them by running the trigger once with a real card move and reading the output panel rather than working from documentation.",
-          "The listAfter field is the important one. Trello fires updateCard for every field edit, and a rename produces an update with no listAfter at all - so a workflow filtering only on the type posts every typo correction to the channel. Checking listAfter specifically is what makes this mean 'moved into Done' rather than 'was touched'.",
-          "Then a Set node builds the message from action.data.card.name, the member creator's fullName, and a link assembled as https://trello.com/c/ plus the card's shortLink. Use shortLink, not the card ID - the ID resolves through the API but is not a URL a person can open.",
-          "Post it as an embed rather than plain text. Embeds allow 4,096 characters against a message's 2,000, and a card description pasted into a plain message will eventually exceed the limit and fail the whole node. Better still, do not include the description at all - a title, a mover and a link is what anyone reading the channel actually wants.",
-          "If the board is busy enough that even Done moves are noisy, replace the Discord node with a Postgres or Airtable write and add a second Schedule-triggered workflow posting a daily digest. Five moves in one message gets read; five separate messages get muted.",
-        ],
-      },
-      {
-        h: "When Trello and Discord is the wrong pairing",
-        p: [
-          "Trello's token is the thing that will break this, and it breaks silently. A token issued with a 30-day expiry is the most common reason a Trello workflow runs for a month and then stops with nobody having changed anything. Issue it as never-expiring and treat it as a password, and if the workflow returns 401 out of nowhere, check whether the account that created the token still has access to the board.",
-          "The pairing is a poor fit when Discord is meant to become the tracker. Slash commands creating cards work well as an intake path; conversations in a channel deciding status while the board says something else is how you end up with a board nobody trusts. Trello holds state, Discord reports it.",
-          "It is also the wrong choice for anything needing reliable delivery. Trello does not guarantee webhook delivery, there is no replay, and an n8n outage means those events are gone with nothing to reconcile against. If a missed Done card would matter, add a Schedule-triggered sweep that lists the Done list and compares against what you have posted, and treat the webhook as the fast path rather than the record.",
-        ],
-      },
-      {
-        h: "If none of the six templates is quite your case",
-        p: [
-          "This pairing has a short list here, and that is a fair reflection of it: Trello-to-Discord is a small, well-defined problem, and the whole graph is usually four nodes. There is not a hundred genuinely different workflows to be had, and a page claiming otherwise would be padding.",
-          "The practical consequence is that adapting is easy. Almost every difference between one of these workflows and the one you want is a parameter, not a redesign: the board or list ID on the trigger, the action.type you filter on in the IF node, the channel on the Discord node, and whether the message is plain text or an embed. Import the closest one, change those four things, and you are done - that is a five-minute edit, not a rebuild.",
-          "If you need the Discord side wired to something with more depth behind it, the pairings below share one of these two tools and have far more ready-made workflows. And if the workflow you want genuinely does not exist, a custom build is a fixed quote rather than a subscription.",
+          "This pair has six templates here. That is not a placeholder for a library still being filled - it is what the problem is worth. Trello-to-Discord is a four-to-nine node graph, and the six files cover the distinct shapes: board events to a channel, a scheduled board digest, an overdue-card alert, a card created from a chat command, a card moved by a chat command, and the checklist variant.",
+          "Past that, the differences between one workflow and the next are parameters - which board, which list, which channel, what the message says - not different graphs. So the useful thing to know is that adapting is a five-minute edit, and a page listing sixty near-identical variants would be padding a number rather than adding anything.",
+          "If you want the Discord side connected to something with more inventory behind it, the pairs listed below share one of these two tools and have considerably more.",
         ],
       },
     ],
@@ -387,60 +419,74 @@ export const pairGuides: PairGuide[] = [
   },
   {
     slug: "discord-and-notion",
-    title: "Notion and Discord with n8n: alerts, and capture by reaction",
+    title: "Notion and Discord: pages in one, alerts in the other",
     description:
-      "Connect Notion to Discord with n8n. Why the Notion trigger polls instead of pushing, the sharing step that makes every query return empty, the property types that reject writes, and capturing messages with an emoji.",
-    nodes: ["Notion Trigger / Schedule Trigger", "Notion", "Set", "Discord"],
+      "How a Notion-Discord integration is built in practice - databasePage as the only resource used, thirteen nodes named upsert that run create, and the database sharing step that no credential covers. From 195 n8n templates.",
+    nodes: ["Trigger", "Set", "IF", "Notion", "Discord"],
+    example: {
+      route: "digest-long-emails-with-notion-and-discord-at-scale",
+      title: "Digest long emails: Notion & Discord",
+    },
     sections: [
       {
-        h: "Which nodes you need",
+        h: "What the connection is for",
         p: [
-          "Both have first-party nodes. Notion to Discord is a Notion Trigger (or a Schedule Trigger plus a Notion database query), a Set node shaping the message, and a Discord node. Discord to Notion is a Discord Trigger feeding the Notion node's create-database-page operation.",
-          "Notion's trigger polls rather than pushes - Notion has no general-purpose outbound webhook for database changes - so reaction time is bounded by the poll interval, and 'instant' is not on the table. For anything time-sensitive, have the human action write to Notion through n8n rather than waiting to notice a Notion change.",
+          "Notion is where a team writes things down; Discord is where it notices them. Neither has a connector for the other, so joining them means a third program reading one and calling the other's API.",
+          "Across the 195 templates here the direction is overwhelmingly one way: something produces structured data, a Notion page records it, and Discord announces that it happened. 349 of the 462 Notion nodes are creates. Discord is the notification surface, not a source - and that asymmetry is the single most useful thing to know before you start, because people arrive expecting a two-way sync and the shape on offer is a write-and-announce pipeline.",
+          "If you want the reverse - a Discord message becoming a Notion page - it exists in this set but you build it from a plain webhook, not from a Discord trigger. There is no Discord trigger node in any of these files.",
         ],
       },
       {
-        h: "Setting up the Notion credential",
+        h: "The Notion node only ever touches one resource",
         p: [
-          "Create an internal integration at notion.so/my-integrations and use its secret as an API-key credential in n8n. Then - and this is the step everyone misses - open the Notion page or database itself, use the ... menu, Connections, and add your integration to it.",
-          "A Notion integration has access to nothing by default. The credential tests green, the API answers, and every query returns an empty result until the page is explicitly shared with the integration. If your Notion node returns no rows from a database you can plainly see in your browser, this is why, essentially every time.",
-          "Sharing a parent page shares its children, so connecting the integration to a top-level workspace page is usually less maintenance than connecting each database individually.",
+          "`n8n-nodes-base.notion` appears 462 times, and 435 of those set `resource: \"databasePage\"`. Not `page`, not `block`, not `user` - a row in a Notion database. That is worth internalising, because Notion's API distinguishes a database page from a regular page sharply, and the properties you can set on one are the columns of its parent database rather than free-form content.",
+          "The operations are `create` in 349 nodes, `getAll` in eighty-six - all of which set `returnAll: true` - `appendOrUpdate` in fourteen and `append` in thirteen. The `databaseId` parameter is a resource locator in `mode: \"list\"` on all 435.",
+          "`title` is the property most nodes set, typically from an upstream field: `{{ $json.query || $json.requestId }}` in the worked example. Notion requires every database page to have a title property, and it is the one property that cannot be omitted.",
+          "The `databaseId.cachedResultName` values show what these databases are meant to hold, and they are a decent map of the set: `Email Database` on eighty-eight nodes, `Document Database` on eighty-six, `Request Database` on forty-eight, `Draft Database` on thirty-one, `Lead Database` on thirty, then ticket, job, contact, event, order and conversation databases in smaller numbers.",
         ],
       },
       {
-        h: "Notion property types that trip you up",
+        h: "The Discord side, in two forms",
         p: [
-          "The Notion API's property model is verbose and unforgiving. Title and Rich Text are arrays of rich-text objects, not strings; Select needs a name that already exists unless the integration may create options; Relation takes page IDs; People takes Notion user IDs, which are not email addresses. Multi-select rejects any value containing a comma, silently.",
-          "Formula, rollup, created-time and last-edited-time properties are read-only and fail the whole page update if included. Build the payload in a Set node listing only writable properties rather than passing an object through from upstream.",
-          "Notion's API allows roughly three requests per second per integration and returns 429 with a Retry-After header above it. Enable Retry On Fail on the Notion node; it honours the header, which is enough for most workflows.",
+          "Of 326 `n8n-nodes-base.discord` nodes, 304 use `authentication: \"webhook\"` with a plain `content` string. Twenty-two use `select: \"channel\"` with a `channelId` locator in `mode: \"name\"` - values like `#ai-ops` and `#inbox-ops`.",
+          "The two need different credentials and are not interchangeable. A webhook is one URL bound to one channel, write-only, set up in about thirty seconds from that channel's integration settings. The `select: \"channel\"` form needs a Discord application with a bot user, a bot token, and the bot invited to the server with permission to post in that channel. Importing a template and building the wrong one is a common way to lose twenty minutes, so check the node's `authentication` parameter first.",
+          "Nothing here reads from Discord, reacts, or manages threads, in either form.",
         ],
       },
       {
-        h: "Going the other way: Discord to Notion",
+        h: "Credentials, and the step that is not a credential",
         p: [
-          "Capturing a Discord message into a Notion database is one of the more useful small automations - a bug reported in a channel becomes a row in a tracker without anyone retyping it.",
-          "Use a reaction as the trigger rather than every message: a Discord Trigger filtered on a specific emoji means a human decides what gets captured, which keeps the database clean without any filtering logic on your side. Store the Discord message ID as a text property so re-reacting updates the existing row rather than adding a second one.",
+          "`🔑 Notion integration token` and `🔑 Discord webhook URL`, per the node cards. The `credentials` block is stripped from every file in this catalog, so both nodes show empty selectors on import.",
+          "Notion's token comes from an internal integration you create in its developer settings. Creating it is not enough, and this is the failure that catches almost everyone: a fresh integration can see nothing in your workspace. You have to open each database the workflow touches and share it with the integration by name. Until you do, the API returns an object-not-found error for a database that plainly exists and that you are looking at, and no amount of checking the token helps.",
+          "The same applies to a database you add later. A workflow that has been running for months will fail on a new database for exactly this reason, which makes it worth knowing rather than worth rediscovering.",
+          "One more Notion constraint that shapes what you can write: the API caps a single rich-text value at 2,000 characters. A summarisation pipeline handing a model's full output straight into a Notion property will eventually exceed it and fail the whole page write. Truncate before the node, or split the content across blocks.",
         ],
       },
       {
-        h: "A worked example: a bug channel that fills a Notion tracker",
+        h: "Thirteen nodes named upsert that create",
         p: [
-          "The concrete job: someone reports a bug in a Discord channel, a maintainer reacts with a specific emoji, and the message becomes a row in a Notion bug database with a link back to the conversation.",
-          "Reaction-as-trigger is the whole idea here, and it is better than capturing every message for a reason that is not obvious: it moves the filtering decision to a human who has context, so the database stays clean without you writing a single classification rule.",
-          "A Discord Trigger on the message-reaction-add event starts it. An IF node continues only when the emoji name matches your chosen one - otherwise every thumbs-up in the channel becomes a bug report. Note that the reaction event carries IDs rather than content, so a Discord node fetching the message by its ID comes next; and reading message text at all requires the Message Content intent enabled on the bot in Discord's developer portal, without which bodies arrive empty and everything else looks fine.",
-          "Before creating anything, query the Notion database filtered on a Discord Message ID text property equal to this message's ID. An IF node on whether that returns results splits create from update, which is what makes re-reacting - or two maintainers reacting - update one row instead of making two.",
-          "The Set node then builds the property payload, and this is where Notion's model bites. Title is an array of rich-text objects, not a string. The Status select needs a value that already exists as an option, so normalise it rather than passing user input through. Store the Discord permalink in a URL property and the message ID in a plain text one - they serve different purposes and conflating them makes the lookup above impossible.",
-          "Truncate the message text. Notion caps rich text at 2,000 characters per block, and a bug report with a stack trace pasted in will exceed it. Take the first 1,900 characters and let the permalink carry the rest.",
-          "Finally, post a short confirmation back into the thread with the Notion page URL. Without it the maintainer cannot tell whether the capture worked, and the usual response is to react again.",
+          "Twenty-three nodes across these files are named some variant of Upsert into Notion. Twenty-two of them are not upserts. Thirteen are `n8n-nodes-base.notion` with `operation: \"create\"`, eight are `n8n-nodes-base.googleSheets` with `operation: \"appendOrUpdate\"` - which is a real upsert, so the caption is fair - and one is `n8n-nodes-base.postgres` with `operation: \"executeQuery\"`.",
+          "The thirteen Notion ones matter. `create` makes a new page every time it runs. If the workflow is triggered by a webhook that redelivers, or re-run manually after a partial failure, you get duplicate pages, and Notion has no unique constraint to stop you. The node name says the intent; `operation` says what happens.",
+          "Notion's own API has no upsert. To make one, query first with `operation: \"getAll\"` and a filter on your key property, then branch on whether anything came back - `operation: \"appendOrUpdate\"` if yes, `create` if no. That is two extra nodes and it is the difference between a re-run being safe and a re-run doubling your database. The fourteen `appendOrUpdate` nodes in this set are where you can see that pattern already built.",
+          "Five nodes here set `columns.matchingColumns` to `messageId` and four to `contactId` - those are the deduplication keys the more careful templates use, and they are a reasonable starting choice: a stable ID from the source system rather than anything derived from content.",
         ],
       },
       {
-        h: "The limits worth knowing before you build",
+        h: "A worked example: a webhook, a page, a message",
         p: [
-          "Notion polls. There is no general-purpose outbound webhook for database changes, so the Notion-to-Discord direction has a delay of up to your poll interval and cannot be made instant. If something needs to reach Discord immediately, have the action write to Notion through n8n and post to Discord in the same run, rather than waiting for a poll to notice.",
-          "Notion allows roughly three requests per second per integration. Since the pattern above costs at least two calls per capture, a burst of reactions during a bug bash will hit it - enable Retry On Fail, which honours the Retry-After header Notion sends.",
-          "The pairing is a poor fit for high-volume capture. A channel where hundreds of messages a day should become rows is asking Notion to be a database it is not, and the polling direction makes it worse. Write to Postgres or Airtable and let Notion hold a curated view if humans need one there.",
-          "And the credential trap that catches everyone once: creating a Notion integration grants it access to nothing. Until you open the database, use the connections menu and add the integration by name, the credential tests green and every query returns empty. If your Notion node finds no rows in a database you can plainly see in the browser, that is why.",
+          "`Digest long emails: Notion & Discord` is nine working nodes and shows the standard shape with its branches.",
+          "An `n8n-nodes-base.webhook` receives the payload and a Set node collapses the possible input shapes into one `content` field. An `@n8n/n8n-nodes-langchain.informationExtractor` backed by a Groq chat model pulls structured fields out of the text.",
+          "An IF node named All Required Fields Found? then does the thing that makes this graph worth reading: it checks the extraction actually produced what the downstream nodes need. The true branch goes to the Notion node - `resource: \"databasePage\"`, `operation: \"create\"`, `databaseId` pointing at `Request Database`, `title` set to `{{ $json.query || $json.requestId }}`. The false branch goes to a Discord node posting a review request instead. A model that returns nothing useful produces a message asking a human to look, rather than an empty Notion page.",
+          "Both branches meet at a Merge node in `mode: \"append\"`, so one path continues regardless of which was taken, and a final Discord node posts the completion line with `{{ $now.toFormat('HH:mm') }}`.",
+          "Every external call sets `retryOnFail` with `maxTries: 3` and `waitBetweenTries: 2000`. Note that the Notion node here is one of the thirteen named as an upsert while running `create` - if you put this into production against a webhook that can redeliver, add the getAll-and-branch described above.",
+          "To adapt: share your database with the integration, pick it on the Notion node, map `title` and any other properties to your columns, and paste your webhook URL into the Discord nodes.",
+        ],
+      },
+      {
+        h: "195 templates, and what the number includes",
+        p: [
+          "All 195 files contain both `n8n-nodes-base.notion` and `n8n-nodes-base.discord` as real nodes on the canvas - the page is filtered on the node graph rather than on the title, so none of them is a Notion template that merely mentions Discord. It is a deep set, and deep in a particular direction: document, email and request processing that lands in Notion and reports to Discord.",
+          "Size is the caveat rather than authenticity. The median file here has thirty working nodes and the same 195 also carry 383 `n8n-nodes-base.googleSheets` nodes, 359 `n8n-nodes-base.code` nodes and 290 `n8n-nodes-base.slack` nodes between them - these are multi-tool pipelines that include the pair, not two-tool workflows. The smallest is nine nodes, which is the worked example above, and it is the one to start from if the pair is your whole problem.",
         ],
       },
     ],
@@ -1132,74 +1178,71 @@ export const pairGuides: PairGuide[] = [
   },
   {
     slug: "airtable-and-shopify",
-    title: "Airtable and Shopify with n8n: run the catalog from a base",
+    title: "Shopify and Airtable: what the integration has to get right",
     description:
-      "Sync Shopify products and orders with Airtable using n8n. Modelling rows as variants not products, the inventory endpoint that actually moves stock, both rate limits, and where Airtable stops being the right store.",
-    nodes: ["Schedule Trigger / Shopify Trigger", "Airtable", "Set", "Shopify"],
+      "How a Shopify-Airtable sync is actually built - the orders/create webhook topic, upsert on an Order ID matching column, and the two type casts that stop Airtable rejecting the row. Read from 19 working n8n templates.",
+    nodes: ["Shopify Trigger", "Set", "Code", "Airtable"],
+    example: {
+      route: "sync-new-shopify-orders-into-airtable",
+      title: "Sync new Shopify orders into Airtable",
+    },
     sections: [
       {
-        h: "What people actually use this pairing for",
+        h: "What the integration has to do",
         p: [
-          "Almost every Airtable-Shopify workflow is one of three jobs, and they pull in different directions, so it is worth naming which one you are building before you open n8n.",
-          "The first is Airtable as a lightweight PIM: merchandisers write titles, descriptions, prices and launch dates in a base, and a workflow pushes the approved rows into Shopify. Airtable is the source of truth and Shopify is downstream. The second is the reverse - orders and customers flowing out of Shopify into a base so that ops, fulfilment or a marketing team can annotate them without being given Shopify admin access. The third is inventory, which looks like the other two and is not: stock is the one field where both systems have a claim to being right, and that is where these projects go wrong.",
-          "The reason the pairing exists at all is access. Shopify's admin is a poor multiplayer editing surface and its permissions are coarse; Airtable is a good one. Handing a photographer or a copywriter an Airtable view is easy in a way that handing them Shopify staff accounts is not.",
+          "Shopify holds orders in a schema you do not control; Airtable holds a table whose columns you chose. Connecting them means something has to receive an order, reshape it into your columns, and write it without creating a second copy when the same order arrives twice. Neither vendor does this for the other, so the connection is a third system - here, n8n - holding the mapping and the deduplication rule.",
+          "The reshaping is not incidental. A Shopify order is a deeply nested object with line items, addresses and money represented as strings; an Airtable table is flat and typed. Most of the work in all nineteen templates on this page is that translation, and most of the ways this integration breaks are translation failures rather than connection failures.",
+          "The duplicate problem is the other half. Shopify's webhooks are at-least-once: a delivery it believes failed is retried, and a retry is indistinguishable from a new order unless the write side is keyed. Every template here that ingests orders handles it the same way, described below.",
         ],
       },
       {
-        h: "Which nodes you need",
+        h: "The nodes, and which way data flows",
         p: [
-          "Both sides have first-party nodes. Airtable to Shopify is a Schedule Trigger, an Airtable node searching a view, a Set node building the Shopify payload, and a Shopify node running create or update. Shopify to Airtable is a Shopify Trigger, a Set node flattening the order, and an Airtable upsert.",
-          "The Shopify node covers products, variants, orders and customers. Metafields, publications and the inventory endpoints are not all exposed, so anything touching those goes through an HTTP Request node - point its authentication at your existing Shopify credential rather than pasting the token again.",
+          "Ingest starts at `n8n-nodes-base.shopifyTrigger`. Its only parameter is `topic`, and across these templates that is `orders/create` in fifteen nodes and `products/update` in one. The topic is the subscription - the trigger registers a webhook with Shopify for exactly that event and receives nothing else.",
+          "The write side is `n8n-nodes-base.airtable`, which appears fifty-five times across the nineteen files: `operation: \"create\"` in thirty-three, `operation: \"upsert\"` in fourteen, and `operation: \"search\"` in eight. Between them sit `n8n-nodes-base.set` to map fields and `n8n-nodes-base.code` to flatten line items.",
+          "Going the other way - Airtable as the source of truth, Shopify as the thing updated - uses `n8n-nodes-base.shopify` with `resource: \"order\"` or `resource: \"product\"` and `operation: \"update\"`, addressed by `orderId` or `productId`. The product-update path sets `updateFields.title`, `updateFields.tags` and `updateFields.status`. There is also one `n8n-nodes-base.airtableTrigger`, which polls a table using a `triggerField` rather than receiving a push - Airtable has no outgoing webhook here, so the polling interval is the floor on how fast that direction can react.",
         ],
       },
       {
-        h: "Model the base on variants, not products",
+        h: "The fields that decide whether the row lands",
         p: [
-          "This is the decision that determines whether the whole thing works, and it is easy to get wrong because Airtable's grid tempts you into one row per product.",
-          "Shopify's sellable unit is the variant. Price, SKU, barcode, weight and stock all live on the variant; only title, description, vendor, product type and images live on the product. A base with one row per product has nowhere to put the price of the medium blue one, and the workaround people reach for - comma-separated fields - is unpickable the moment a size name contains a comma.",
-          "The arrangement that holds up is two tables: Products, and Variants linked to it. Store the Shopify product ID on the product row and the variant ID on the variant row, both as plain text fields, and treat them as read-only after the first write. Those IDs are the join key for every subsequent sync, and an upsert matching on them is what makes re-running the workflow safe.",
+          "Airtable's `base` and `table` parameters are resource locators, not plain IDs. Both carry `__rl: true` and, in all fifty-five nodes here, `mode: \"list\"` - the dropdown form. Under `columns` sits `mappingMode`, which is `autoMapInputData` in forty-one nodes and `defineBelow` in six. Auto-map takes each incoming field name as a column name; define-below gives an explicit `columns.value` object mapping column to expression, which is what you want the moment your column names differ from Shopify's field names.",
+          "`columns.matchingColumns` is the deduplication key and only applies to `upsert`. In these files it is `orderId` in twelve nodes and `Order ID` in one - the Airtable column whose value identifies the order. Upsert without a matching column configured is a create.",
+          "For reading changed records back out, `filterByFormula` carries `{LastModified} > DATEADD(NOW(), -1, 'days')` in eight nodes - an Airtable formula evaluated server-side, referencing a column named `LastModified` that has to exist in your base. It does not exist by default. Add it as a Last Modified Time field or the formula returns nothing and the workflow looks like it is working while syncing zero rows.",
         ],
       },
       {
-        h: "Updating stock: the field that looks right and does nothing",
+        h: "Credentials, and what is not in the file",
         p: [
-          "Setting inventory_quantity on a variant is the obvious move and it is the wrong one. Shopify treats that field as read-only on update - the request succeeds, returns 200, and the stock level does not change. There is no error to debug, which is why this costs people an afternoon.",
-          "Stock lives on an inventory level, which is the pairing of an inventory item with a location. The path is: read the variant to get its inventory_item_id, then call the inventory levels endpoint with that ID, the location ID, and either an absolute quantity or a delta. A single-warehouse store has one location ID that you can hard-code once; a multi-location store has to decide which location the Airtable number refers to, and if it does not, the number is meaningless.",
-          "Prefer setting an absolute quantity over adjusting by a delta when Airtable is the source of truth. Deltas compound: a workflow that runs twice because of a retry applies the adjustment twice, and stock drifts in a way nobody notices until a count.",
+          "Two, marked on the node cards: `🔑 Shopify access token` and `🔑 Airtable PAT`. The Shopify side is a custom app's Admin API access token, created in your own store's admin rather than through OAuth - OAuth exists for apps distributed to other merchants, which this is not. The Airtable side is a Personal Access Token; Airtable's older user-level API keys no longer work.",
+          "No workflow file in the catalog contains a `credentials` block - they are stripped before packaging. So on import every Shopify and Airtable node has an empty credential selector, and that is normal rather than damage.",
+          "The other thing not in the file is your base. Every one of the fifty-five Airtable nodes ships with `base.value` and `table.value` set to the empty string and only a `cachedResultName` placeholder - `Your Shopify base`, `Orders`, `Sync Errors`. The dropdown displays that placeholder text, which reads as though something is selected. Nothing is bound, and the node fails until you re-pick both. This is the single most common reason an imported template errors on its first run.",
         ],
       },
       {
-        h: "A worked example: pushing approved copy into Shopify",
+        h: "Two type casts that are not decoration",
         p: [
-          "Say the copy team writes product descriptions in Airtable and you want approved ones live in Shopify without anyone touching the admin.",
-          "Build an Airtable view filtered to Status = Approved and Synced at is empty - the filter lives in Airtable so the copy lead can adjust it without you. A Schedule Trigger every fifteen minutes runs an Airtable Search node against that view. Because the view already narrows the set, the node usually returns nothing, which is what you want: cheap runs.",
-          "Next a Set node builds the payload, and it should list fields explicitly - title, body_html, vendor, product_type, tags - rather than passing the Airtable record through. Airtable returns computed fields, and sending a formula or a rollup to Shopify fails the record. Take the Shopify product ID from its text field and put it on the payload.",
-          "Then an IF node splits on whether that Shopify ID is empty: empty goes to the Shopify node's create operation, populated goes to update. The create branch has one extra step - a second Airtable node writing the new Shopify ID back onto the row - or the next run creates the product again.",
-          "Finally, after the Shopify node and only after it, an Airtable update writes the current timestamp into Synced at. That removes the row from the view, which is what stops the next run reprocessing it. Put that write before the Shopify call and a Shopify outage marks rows as synced that never were.",
-          "Wire the workflow's error output to a Slack or email node. The failure mode you will actually hit is one record in fifty being rejected for a bad field value, and a silent workflow means finding out when someone asks why the product is not live.",
+          "Shopify sends money as a string. In the order-sync template the total is mapped as `Number($json.total_price)`, an explicit cast, and the Set node's assignment is typed `number`. Skip that and Airtable receives the string \"42.50\" for a Currency or Number field; depending on the field's configuration it is either rejected or silently stored as text, and text does not sum. A revenue rollup built on those rows is wrong in a way nothing surfaces.",
+          "Shopify order IDs go the other way: the same node maps `String($json.id)`. Shopify IDs are large integers, and the cast keeps them exact and keeps the value type-stable for use as a matching column. A numeric ID that round-trips through a float is a duplicate waiting to happen.",
+          "Both casts are the kind of thing that works in a test store and fails on real data, because a test order for 10.00 survives sloppy typing and an order for 1,299.95 in a second currency does not.",
         ],
       },
       {
-        h: "Two rate limits, and they are not the same shape",
+        h: "A worked example: orders into a table, once each",
         p: [
-          "Airtable allows 5 requests per second per base, and going over gets that base locked out for 30 seconds - a burst can fail an entire run rather than slowing it. Batch with a Loop Over Items node at 10 records, which is Airtable's own maximum per write call.",
-          "Shopify's REST Admin API is a leaky bucket: 2 requests per second sustained on a standard plan with a burst allowance of about 40. A 429 from Shopify is expected traffic shaping rather than a bug, and the response carries a header telling you how full the bucket is. Turn on Retry On Fail on the Shopify node and it recovers by itself.",
-          "The practical consequence is that Shopify is the slower side, so pace the workflow to it. A 400-variant catalogue sync is a few minutes of steady calls, not a burst - give the execution a realistic timeout instead of assuming it hung.",
+          "`Sync new Shopify orders into Airtable` is six nodes and contains the whole pattern.",
+          "`n8n-nodes-base.shopifyTrigger` with `topic: \"orders/create\"` receives the order. A Set node named Map Order to Columns pulls six fields out of the payload and types each one: `order_id` as `String($json.id)`, `email`, `total` as `Number($json.total_price)`, `currency`, `status` from `$json.financial_status`, and `created_at`.",
+          "A Code node running in `mode: \"runOnceForEachItem\"` reaches back to the trigger's output for `line_items`, builds a one-line summary of quantity and title per line, and adds `item_count`. Line items are one-to-many with the order, so they cannot go in a flat row - summarising them is the compromise that keeps one order to one Airtable record.",
+          "The write is `operation: \"upsert\"` with `columns.mappingMode: \"defineBelow\"` and `columns.matchingColumns: [\"Order ID\"]`, mapping the eight columns explicitly. That matching column is what makes a redelivered `orders/create` webhook update the existing row instead of adding a second one.",
+          "The node sets `retryOnFail` with `maxTries: 3` and `waitBetweenTries: 2000`, and `onError: \"continueErrorOutput\"`. Its second output goes to a Set node capturing `order_id` and the error message, then to a second Airtable node writing `operation: \"create\"` into a `Sync Errors` table. So a rejected row is recorded with its reason rather than lost - which matters because the rejections you get in production are type errors on individual orders, not outages.",
+          "To point it at your own base: pick the base and table on both Airtable nodes, rename the eight columns in the `columns.value` map to match yours, and set `matchingColumns` to whichever column holds your order ID.",
         ],
       },
       {
-        h: "Where Airtable stops being the right place for this",
+        h: "Nineteen templates, and where they thin out",
         p: [
-          "Be honest about the ceiling, because it arrives sooner than people expect. Airtable's per-base record limits sit in the tens of thousands on most plans, and a base holding one row per variant plus order history will reach that on a store that is doing perfectly ordinary volume. When it does, the failure is not graceful - writes start rejecting and there is no incremental fix, only a migration.",
-          "Real-time stock is the other poor fit. Airtable is not transactional and the sync is a poll, so between two runs the base and the store disagree. For a store where overselling matters, stock should live in Shopify or in a proper database and Airtable should read it, not own it. If you want a database on the other end instead, the Shopify and PostgreSQL pairing is the same idea without this ceiling.",
-          "Two-way sync on the same field is the trap worth naming outright. If both Airtable and Shopify can change a price, you need conflict resolution, and there is no honest way to do that with two polls and a timestamp. Pick a direction per field - Airtable owns copy and pricing, Shopify owns stock and orders - and enforce it by only writing the fields that side owns.",
-        ],
-      },
-      {
-        h: "Nineteen templates, and what varies between them",
-        p: [
-          "This pairing has a modest set here rather than hundreds, which is a fair reflection of the problem: there are only so many genuinely different shapes, and most of the work in any of them is the field mapping, which is specific to your base either way.",
-          "What changes between one of these and the one you want is nearly always parameters: which Airtable view the search reads, which fields the Set node maps, whether the Shopify step is create, update or an inventory call, and the direction of the write-back. The parts that take real time when you start from an empty canvas - the create-versus-update branch, the ID write-back, the batching - are already in the file.",
+          "Nineteen files use both tools. Four are purpose-built for the pair alone - orders in, products and inventory in, Airtable edits pushed back to Shopify, and a scheduled catalog sync - and those are the ones to read if the pair is your whole problem.",
+          "The other fifteen are larger workflows where Shopify and Airtable are two participants among several: forty `n8n-nodes-base.googleSheets` nodes, twenty-one `n8n-nodes-base.slack` nodes and ten `n8n-nodes-base.httpRequest` nodes appear across the same nineteen files. They are worth having if your pipeline looks like that, and misleading if you expected nineteen variations on a two-tool sync. It is four, plus fifteen that include it.",
         ],
       },
     ],
@@ -1772,6 +1815,361 @@ export const pairGuides: PairGuide[] = [
           "The ceiling that catches people: any single search query returns at most 10,000 results, no matter how you paginate. Page 101 does not exist. For a full export, slice by a date range - createdate between two values - and run the query once per slice, then concatenate. Trying to page past the limit returns nothing rather than an error.",
           "Every record comes back wrapped, with the fields under a properties object alongside id and createdAt. So an expression referencing the email directly is undefined and the one referencing it under properties is what you meant. A Split Out node on the results array followed by a Set node lifting properties to the top level, done once immediately after the call, means every node after it can be written normally.",
           "Then write with a single Sheets Append rather than per row, and be clear about what the sheet is for. A sheet as a point-in-time export for analysis or for sharing outside the CRM is a good use. A sheet maintained as a continuously synced mirror of HubSpot is a poor one - it is always slightly stale, it has no conflict handling, and HubSpot's own lists and reports do the segmentation job better. If someone is asking for the mirror, it is worth finding out what they actually want to see.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "mysql-and-twilio",
+    title: "MySQL and Twilio: sending SMS from database rows",
+    description:
+      "How a MySQL-Twilio integration is wired in practice - insert vs select, autoMapInputData, and the placeholder sender number in 164 of 170 Twilio nodes that has to be replaced before anything sends.",
+    nodes: ["Webhook / Schedule Trigger", "MySQL", "Set", "Twilio"],
+    example: {
+      route: "summarize-meeting-notes-with-mysql-and-twilio",
+      title: "Summarize meeting notes: MySQL & Twilio",
+    },
+    sections: [
+      {
+        h: "What connects a database to a phone number",
+        p: [
+          "MySQL stores rows; Twilio sends SMS and voice against a REST API. There is no integration between them in either product - a database has no notion of an outbound message, and Twilio has no database driver. Anything described as a MySQL-Twilio integration is a program that queries one and calls the other, plus a rule for when.",
+          "That rule is the actual design decision, and there are only two shapes. Either something happens and you react to it - a row arrives via an HTTP endpoint, you write it and send a message - or nothing pushes and you poll, running a query on a schedule and messaging about whatever it returns. The ninety-six templates here split along exactly that line: forty-seven start at `n8n-nodes-base.webhook`, thirty-six at `n8n-nodes-base.scheduleTrigger`.",
+          "The polling shape carries a problem the event shape does not: a query that returns the same rows every run sends the same SMS every run. Text messages cost money and cannot be recalled, which makes this the one integration where getting deduplication wrong is immediately expensive.",
+        ],
+      },
+      {
+        h: "How the two nodes are configured",
+        p: [
+          "`n8n-nodes-base.mySql` appears 255 times across the ninety-six files. Two operations dominate: `operation: \"insert\"` in 205 nodes and `operation: \"select\"` in 45, of which all 45 set `returnAll: true`.",
+          "The `table` parameter is a resource locator with `mode: \"name\"` - a literal table name rather than a picker - and unlike most locators in this catalog it ships with a real value. The names recur because the templates share a schema vocabulary: `documents` in 65 nodes, `emails` in 33, `requests` in 29, `leads` in 24, `payloads` in 21, `orders` and `drafts` in 18 each, `jobs` in 14, `tickets` in 12. Those tables have to exist in your database, with columns matching the fields flowing in; nothing in the file creates them.",
+          "`dataMode: \"autoMapInputData\"` is set on all 205 insert nodes. That means the node maps incoming JSON keys straight onto column names, so the shape of whatever reaches it is the shape it tries to write. A field the table does not have is an error at insert time, which is why every one of these graphs has a Set node immediately before the MySQL node - that node is the schema contract.",
+          "`n8n-nodes-base.twilio` appears 170 times and takes three parameters: `from`, `to`, and `message`. There is no batching. One node call is one message to one number.",
+        ],
+      },
+      {
+        h: "Credentials, and the two things they do not cover",
+        p: [
+          "The node cards mark `🔑 MySQL connection` and `🔑 Twilio SID + token`. Twilio's is an Account SID and Auth Token from the console; MySQL's is host, port, database, user and password, entered as separate fields rather than a connection URL.",
+          "As with every file in this catalog, the `credentials` block is stripped, so both nodes show an empty selector on import. That is packaging, not breakage.",
+          "Two prerequisites are not credentials and are easy to miss. First, your n8n instance has to be able to reach the database - a managed MySQL will refuse the connection outright unless n8n's egress address is allowlisted, and that failure looks like a timeout rather than an auth error. Second, a Twilio trial account can only send to numbers you have verified in the console; the API accepts the request and the message never arrives.",
+        ],
+      },
+      {
+        h: "The placeholder that sends nothing",
+        p: [
+          "164 of the 170 Twilio nodes here have `from` set to the literal string `+15550100000`. That is not a number anyone owns - 555-01xx is the reserved fictional range - and Twilio rejects it, because `from` has to be a number on your own account.",
+          "This is deliberate on the packaging side and it is the first edit to make on any of these files. Replace it with a Twilio phone number, a Messaging Service SID, or an alphanumeric sender ID where your destination country permits one. There is no default that could have worked, since the value is account-specific.",
+          "The `to` side has the same shape of problem with a different failure. In the worked example it is `{{ $json.phone || 'ONCALL_NUMBER' }}` - if the upstream row has no `phone` field, the expression resolves to the string `ONCALL_NUMBER` and Twilio returns an invalid-number error rather than the workflow noticing that the data was incomplete. If you keep the fallback pattern, make the fallback a real number.",
+          "Both values need E.164 format - a leading `+` and country code. A ten-digit national number that works when you dial it will be rejected by the API.",
+        ],
+      },
+      {
+        h: "A node named upsert that inserts",
+        p: [
+          "Six `n8n-nodes-base.mySql` nodes in these files are named some variant of Upsert into MySQL, and all six are configured `operation: \"insert\"`. Insert is not idempotent. If one of those graphs is re-run - a webhook redelivery, a manual retry, a scheduled sweep over a window that overlaps the previous one - the row is written again, and if a Twilio node sits downstream, the SMS goes out again too.",
+          "The node name is the label someone typed on the canvas; `operation` is what executes. Read the parameter, not the caption. This is worth a habit rather than a one-off check: node names across this catalog describe intent and the parameters describe behaviour, and where they disagree the parameter wins.",
+          "The fix in MySQL is a unique key on whatever identifies the row - a message ID, an external reference - and either an INSERT ... ON DUPLICATE KEY UPDATE statement through the node's execute-query operation - which no file in this pair uses - or a preceding `operation: \"select\"` and an IF node. Doing it in the database rather than in n8n means a re-import of the workflow does not lose the protection.",
+        ],
+      },
+      {
+        h: "A worked example: extraction to a database, then a text",
+        p: [
+          "`Summarize meeting notes: MySQL & Twilio` shows the event-driven shape with its failure paths wired.",
+          "An `n8n-nodes-base.webhook` at `httpMethod: \"POST\"` receives the payload. A Set node collapses several possible input shapes into one field - `$json.body?.text || $json.content || JSON.stringify($json)` - so the rest of the graph has one thing to read. An `@n8n/n8n-nodes-langchain.informationExtractor` backed by a Gemini chat model pulls structured fields out of that text, and carries `onError: \"continueErrorOutput\"` so a model failure takes the second output rather than stopping the run.",
+          "An IF node checks the required fields came back. The pass branch writes to MySQL - `operation: \"insert\"`, `table` `emails`, `dataMode: \"autoMapInputData\"`. The fail branch posts to a Slack channel for manual review instead of dropping the item. Both branches meet at a Merge node in `mode: \"append\"`, so one path continues regardless.",
+          "After the merge the graph stamps a processing time, caps volume with a Limit node, tags metadata and summarises the run, then writes an audit row with a second MySQL insert. Only then does `n8n-nodes-base.twilio` send, with `from: \"+15550100000\"` - the placeholder - and `message` naming the workflow and completion time.",
+          "The error rail is the part worth copying. Every node that touches an external service sets `retryOnFail` with `maxTries: 3` and `waitBetweenTries: 2000`, and routes `onError: \"continueErrorOutput\"` into a shared Set node that captures `$json.error?.node?.name`, `$json.error?.message` and `$workflow.name`. That feeds a separate Twilio node that escalates. So a failure produces a text saying which node broke, instead of an execution nobody looks at.",
+          "Three edits make it yours: the Twilio `from`, the MySQL `table` and its columns, and the destination number.",
+        ],
+      },
+      {
+        h: "Ninety-six templates, but read the mix",
+        p: [
+          "All ninety-six files contain both `n8n-nodes-base.mySql` and `n8n-nodes-base.twilio` as real nodes - the page filters on the node graph rather than the title - and none of them is a two-node rows-to-SMS toy. The smallest has eight working nodes and the median twenty-one. The same ninety-six also contain 121 `n8n-nodes-base.slack` nodes, 119 `n8n-nodes-base.googleSheets` nodes and 61 `n8n-nodes-base.httpRequest` nodes between them, which tells you what these workflows actually are.",
+          "In practice these are document, email and request pipelines that happen to persist to MySQL and notify over SMS, rather than SMS tools. If what you want is strictly rows-to-texts, the useful move is to take one of these and delete the middle - the trigger, the MySQL node and the Twilio node are the three that matter, and they are wired the same way in all ninety-six.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "discord-and-google-drive",
+    title: "Google Drive and Discord: files in one, notifications in the other",
+    description:
+      "How a Drive-Discord integration is built - upload and download operations, the folderId that ships unbound in all 67 upload nodes, and the 25-result cap on file search. Read from 75 working n8n templates.",
+    nodes: ["Trigger", "Google Drive", "Extract From File", "Set", "Discord"],
+    example: {
+      route: "capture-form-submissions-with-google-drive-and-discord-on-autopilot",
+      title: "Capture form submissions with Google Drive and Discord",
+    },
+    sections: [
+      {
+        h: "What people mean by connecting Drive to Discord",
+        p: [
+          "Google Drive holds files. Discord is where a team notices things. Neither vendor connects to the other, so a Drive-Discord integration is a third program that watches or writes one and posts to the other.",
+          "In practice the request comes in two forms and they are not the same job. One is notification: something landed in a folder, say so in a channel. The other is pipeline: take a file out of Drive, do something with its contents, and report the result - which is what the seventy-five templates on this page overwhelmingly are. The Discord message at the end is a status line on a data pipeline, not the point of the workflow.",
+          "Worth knowing before you start: Drive does not push. There is no outgoing webhook in these files for a new file appearing. Every one of them either runs on a schedule, is called by another workflow, or is triggered by something else entirely - a form, an email, an HTTP call. If your requirement is genuinely reacting within seconds of an upload, that is a polling problem, and the interval is your latency floor.",
+        ],
+      },
+      {
+        h: "How the Drive node is used",
+        p: [
+          "`n8n-nodes-base.googleDrive` appears ninety-seven times across the seventy-five files, in three distinct configurations.",
+          "`operation: \"upload\"` in sixty-seven nodes writes a file, addressed by `driveId` and `folderId`. `operation: \"download\"` in thirteen pulls one back, addressed by `fileId`. Seventeen nodes set `resource: \"fileFolder\"` with `searchMethod: \"query\"` to find files rather than name them.",
+          "The addressing is worth understanding because it differs per parameter. `driveId` and `folderId` are resource locators in `mode: \"list\"` - dropdown pickers. `fileId` on the download nodes uses `mode: \"id\"`, holding an expression like `{{ $json.id || $json.fileId }}` that takes whatever the upstream node produced. That is the right choice: a file being downloaded was discovered at runtime and cannot be picked at design time.",
+          "Downloaded files travel as binary. The thirteen `n8n-nodes-base.extractFromFile` nodes in these files are what turn that binary back into JSON the rest of the graph can read - twelve set `operation: \"csv\"` and one sets `operation: \"xlsx\"`. A Drive download feeding a Set node directly does not work; the content is not in `$json` yet, and picking the wrong extractor for the file type gives you an empty item rather than an error.",
+        ],
+      },
+      {
+        h: "The Discord side has two modes, and they need different setups",
+        p: [
+          "Of the 138 `n8n-nodes-base.discord` nodes here, 128 use `authentication: \"webhook\"` and set a plain `content` string. Ten use `select: \"channel\"` with a `channelId` resource locator in `mode: \"name\"` - values like `#docs`, `#ops`, `#data-ops`, `#sales`, `#content` and `#support`.",
+          "Those are not interchangeable. The webhook form needs one URL, copied from a channel's integration settings, and can only post to that channel - it cannot read, react or list anything. The `select: \"channel\"` form needs a Discord application with a bot user, a bot token credential, and the bot invited to your server with permission to post in the named channel. If you import one of the ten and only set up a webhook credential, it fails; if you import one of the 128 and build a bot, you did more work than the file needed.",
+          "Check which one you have before setting up credentials rather than after. The node cards mark both as `🔑 Discord webhook URL`, which is accurate for the 128 and understates the ten.",
+        ],
+      },
+      {
+        h: "Credentials and Google's two ways in",
+        p: [
+          "The Drive side is marked `🔑 Google OAuth2` on the node cards. n8n also supports a service account for Drive, and which one you want depends on whose files these are.",
+          "OAuth2 acts as you: it sees your My Drive, and the workflow keeps working as long as the grant is valid. A service account is a separate identity with its own empty Drive, and it sees nothing in your account until you explicitly share a folder with the service account's email address. The common first failure with a service account is a workflow that authenticates correctly and then reports that the folder does not exist, because from that identity's point of view it does not.",
+          "For anything running unattended and owned by a team rather than a person, the service account is the better answer - it does not break when someone leaves. For getting one of these templates running today, OAuth2 is fewer steps.",
+          "As with every file in this catalog the `credentials` block is stripped, so both nodes show an empty selector on import.",
+        ],
+      },
+      {
+        h: "Two things in the files that will stop a first run",
+        p: [
+          "The upload nodes are half-configured, and asymmetrically. In all sixty-seven, `driveId` is bound - `mode: \"list\"`, `value: \"My Drive\"` - while `folderId` has `value` set to the empty string and only a `cachedResultName` placeholder: `Archives` in fifty-four nodes, `Processed` in eleven, `Backups` in two. The dropdown shows the word Archives, which reads as a selected folder. Nothing is selected. The drive resolves and the folder does not, so the upload fails on a node that looks configured. Re-pick the folder on every upload node before activating.",
+          "The file searches are capped. All seventeen `resource: \"fileFolder\"` nodes set `returnAll: false` and `limit: 25`. Twenty-five is not a page size the node loops over - it is the total. A folder with two hundred files returns twenty-five of them and reports success, and a workflow that processes a folder nightly will quietly never touch the other 175. If you are searching a folder that grows, set `returnAll: true` or raise the limit deliberately.",
+          "There is also a naming trap in the surrounding graph: twelve nodes in these files are named some variant of upsert, and eleven of them are not upserts by operation - ten are `n8n-nodes-base.googleSheets` with `operation: \"appendOrUpdate\"`, which is close enough, and one is `n8n-nodes-base.notion` with `operation: \"create\"`, which is not. Read the `operation` parameter rather than the node's caption.",
+        ],
+      },
+      {
+        h: "A worked example: a CSV out of Drive, a summary into Discord",
+        p: [
+          "`Capture form submissions with Google Drive and Discord` is twelve working nodes and shows the pipeline shape end to end.",
+          "The trigger hands over a file reference. `n8n-nodes-base.googleDrive` with `operation: \"download\"` fetches it, using `fileId` in `mode: \"id\"` with the expression `{{ $json.id || $json.fileId }}` - two possible field names, because the upstream node's output shape varies by trigger.",
+          "`n8n-nodes-base.extractFromFile` with `operation: \"csv\"` parses the binary into items. A Code node cleans and reshapes the rows, then an IF node named Rows Pass Validation? splits them: the good ones go on to a Google Sheets load, the rest to a quarantine branch rather than being dropped.",
+          "Discord appears twice, both `authentication: \"webhook\"`. One posts the success line with a completion timestamp. The other is on the error rail: the Drive download and the Sheets load both set `onError: \"continueErrorOutput\"` and route their second output into a shared Set node that captures `$json.error?.node?.name`, `$json.error?.message` and `$workflow.name`, which feeds a Discord node posting which node failed and why.",
+          "That error rail is the part worth reusing whatever you are building. The Drive download is the node most likely to fail in normal operation - a file moved, a permission changed, a token expired - and the difference between this graph and a naive one is that the failure produces a message in a channel instead of a red execution nobody opens.",
+          "To adapt it: re-pick the Drive folder if you add an upload, change the webhook URL, and replace the validation rule in the IF node with whatever your rows have to satisfy.",
+        ],
+      },
+      {
+        h: "Seventy-five templates, and what they mostly are",
+        p: [
+          "All seventy-five files contain both `n8n-nodes-base.googleDrive` and `n8n-nodes-base.discord` as real nodes - the page filters on the node graph, not the title - and the median has twenty-two working nodes.",
+          "They are, in the main, document pipelines. The same seventy-five files contain 248 `n8n-nodes-base.googleSheets` nodes, 145 `n8n-nodes-base.code` nodes and 91 `n8n-nodes-base.slack` nodes - Drive is where the file lives, Sheets is usually where the extracted data goes, and Discord is the notification at the end. Twelve `@n8n/n8n-nodes-langchain.lmChatAnthropic` nodes and ten `@n8n/n8n-nodes-langchain.chainSummarization` nodes show up in the summarisation variants.",
+          "If what you want is a bare folder-watcher that announces new files, none of these is that file, but the first four nodes of any of them is. If you want a document pipeline that ends in a Discord message, this is a deep set.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "airtable-and-google-drive",
+    title: "Airtable and Google Drive: the file goes in one, the record in the other",
+    description:
+      "How an Airtable-Drive integration is actually wired - upload then upsert, webViewLink as the join between them, and the LastModified column filterByFormula depends on. Read from 72 working n8n templates.",
+    nodes: ["Trigger", "Google Drive", "Extract From File", "Code", "Airtable"],
+    example: {
+      route: "extract-invoice-attachments-from-email-into-google-drive-and-airtable",
+      title: "Extract invoice attachments from email into Google Drive and Airtable",
+    },
+    sections: [
+      {
+        h: "Why these two get paired at all",
+        p: [
+          "Airtable can store attachments, so the obvious question is why anyone would put files in Drive and records in Airtable rather than keeping both in one place. The answer these seventy-two templates give is consistent: the file is the artefact and the record is the index, and they have different lifetimes and different access rules.",
+          "Airtable attachment fields also have a specific behaviour that shapes the design. You do not upload bytes to Airtable - you hand it a URL and Airtable fetches it. That means the file has to be reachable from Airtable's servers at the moment of the write, which is why the templates here upload to Drive first and put a link in the record second. The order is not stylistic.",
+          "So the shape is: get the file, put it somewhere durable, extract what you need from its contents, and write a row that points back at it. Drive is the somewhere; Airtable is the row.",
+        ],
+      },
+      {
+        h: "The two nodes, and the field that joins them",
+        p: [
+          "`n8n-nodes-base.googleDrive` appears 130 times across the seventy-two files - `operation: \"upload\"` in seventy-three, `operation: \"download\"` in thirty-seven, and twenty with `resource: \"fileFolder\"` and `searchMethod: \"query\"` for finding files. `n8n-nodes-base.airtable` appears 141 times: `operation: \"create\"` in seventy-two, `operation: \"search\"` in forty-four, `operation: \"upsert\"` in twenty-one.",
+          "How they join is worth being exact about, because the honest answer is that mostly they do not join directly. Across all seventy-two files there are only eight connections that run straight from a Drive node into an Airtable node or back - five one way, three the other. In the rest, both tools are present but separated by extraction, parsing and validation steps, and the record is built from the parsed contents rather than from the Drive node's response.",
+          "Where they are wired directly, the field that carries the link is `webViewLink`, which a Drive upload returns in its output and an Airtable node reads as `{{ $json.webViewLink }}` into a link column. That happens in exactly one file here - the worked example below - so treat it as the pattern to copy rather than a pattern already applied throughout.",
+          "Note which link it is. `webViewLink` opens the file in Drive's viewer in a browser and respects Drive permissions, so a row whose link nobody outside your domain can open is a sharing setting rather than a broken workflow. It is not a direct file URL, which matters if you were hoping to hand it to an Airtable attachment field - Airtable fetches attachment URLs itself and will not get bytes from a viewer page.",
+          "Between the two sits `n8n-nodes-base.extractFromFile` in thirty-eight nodes, turning downloaded binary into readable JSON, and 125 `n8n-nodes-base.code` nodes doing the parsing that the extraction leaves to you.",
+        ],
+      },
+      {
+        h: "Airtable's parameters, and the column that has to exist",
+        p: [
+          "`base` and `table` are resource locators, both `mode: \"list\"` in all 135 of the nodes that set them. `columns.mappingMode` is `autoMapInputData` in ninety-three nodes - incoming field names become column names - and `defineBelow` elsewhere, which gives you an explicit `columns.value` map and is what you want as soon as your column names differ from your data's field names.",
+          "`columns.matchingColumns` is the upsert key: `documentId` in eleven nodes here. Without it, `operation: \"upsert\"` behaves as a create.",
+          "The one to plan for is `filterByFormula`, set on forty-four nodes to `{LastModified} > DATEADD(NOW(), -1, 'days')`. That is an Airtable formula evaluated on Airtable's side, and it references a column literally named `LastModified`. No base has that column by default. If it is missing the formula does not error loudly - the search returns nothing, and a workflow that syncs changed records syncs zero of them while reporting success. Add a Last Modified Time field named exactly that, or change the formula, before you trust the sync.",
+          "The window is also a day. If your workflow runs hourly, it re-reads twenty-four hours of records every hour, which is wasteful but harmless; if it runs weekly, it silently misses six days. Match the interval to the formula or change the formula.",
+        ],
+      },
+      {
+        h: "Credentials on both sides",
+        p: [
+          "`🔑 Airtable PAT` and `🔑 Google OAuth2`, per the node cards.",
+          "Airtable's is a Personal Access Token - the older user-level API keys are gone. Scope it to the specific bases the workflow touches. If you want n8n's base and table dropdowns to populate rather than making you type IDs, the token needs schema read access as well as record access; without it the pickers stay empty and the resource locators are much harder to fill in.",
+          "Google's is OAuth2 here, though a service account also works and is the better answer for anything unattended. The tradeoff is the same as anywhere in Drive: OAuth2 sees your My Drive immediately, a service account sees nothing until you share a folder with its address. A service-account setup that authenticates and then cannot find the folder is almost always this.",
+          "The `credentials` block is stripped from every file in the catalog, so both nodes show empty selectors on import.",
+        ],
+      },
+      {
+        h: "Two failures that look like something else",
+        p: [
+          "The Drive uploads ship with the folder unbound. In all seventy-three, `driveId` is set - `mode: \"list\"`, `value: \"My Drive\"` - and `folderId` has `value` set to the empty string with only a `cachedResultName` placeholder: `Archives` in thirty-five, `Backups` in twenty-six, `Processed` in eleven. The picker shows a folder name and holds no folder. Every Airtable node has the same problem: all 135 have `base.value` and `table.value` empty behind placeholders like `Document Processing Base` and `Documents`. This is the normal first-run failure on these imports, and it is four clicks per node rather than a bug.",
+          "The other is that file searches are capped: all twenty `resource: \"fileFolder\"` nodes set `returnAll: false` with `limit: 25`. That is a total, not a page size. A folder with more than twenty-five files is processed twenty-five files at a time and the remainder is not queued for later - it is simply not seen. For a growing folder, set `returnAll: true`.",
+          "One more worth checking as you extend: six nodes in these files are named as upserts, and five are `n8n-nodes-base.googleSheets` running `operation: \"appendOrUpdate\"`. Read the operation, not the caption.",
+        ],
+      },
+      {
+        h: "A worked example: invoices out of email, into Drive and Airtable",
+        p: [
+          "`Extract invoice attachments from email into Google Drive and Airtable` is ten nodes and is the clearest version of the pattern in the set.",
+          "`n8n-nodes-base.emailReadImap` watches a mailbox with `downloadAttachments: true` and `customEmailConfig: [\"UNSEEN\"]`, so it processes each message once. A Filter node keeps only messages that have at least one binary attachment and whose subject matches the regex `invoice|bill|receipt|statement` - two conditions, because either alone lets through most of an inbox.",
+          "`n8n-nodes-base.extractFromFile` with `operation: \"pdf\"` reads the attachment, addressed by `binaryPropertyName: \"attachment_0\"`. That name matters: n8n numbers attachments from zero, and a workflow written against `attachment_0` silently reads the wrong file on a message where the invoice is the second attachment.",
+          "A Code node in `mode: \"runOnceForEachItem\"` runs three regexes over the extracted text for an invoice number, a total and a date, and - the useful part - sets `textFound` from whether the text is longer than forty characters. An IF node reads that flag. A scanned invoice is a PDF with no text layer, so extraction returns almost nothing and the regexes match nothing; without the flag the workflow would write a row full of empty strings and look like it worked. Instead the false branch writes to a review table.",
+          "The Drive upload names the file `{{ $json.invoiceNumber || 'unparsed' }}-{{ $now.toFormat('yyyyLLdd') }}.pdf` and passes the binary through with `inputDataFieldName: \"attachment_0\"`. Then the Airtable node runs `operation: \"upsert\"` with `columns.matchingColumns: [\"Invoice Number\"]`, writing the parsed fields plus `Drive Link` from `{{ $json.webViewLink }}` and `Source Subject` read back from the IMAP node.",
+          "Two details to copy. The Airtable expressions reference earlier nodes by name - `$('Parse Number, Date & Total').item.json.invoiceNumber` - rather than `$json`, because by that point in the graph `$json` is the Drive upload's response and no longer holds the parsed fields. And upserting on the invoice number means the same invoice arriving twice, forwarded or resent, updates one row.",
+        ],
+      },
+      {
+        h: "Seventy-two templates, weighted towards documents",
+        p: [
+          "Seventy-two files use both. The centre of gravity is document processing: `Document Processing Base` is the base placeholder on ninety-nine of the Airtable nodes and `Documents` the table on the same ninety-nine, with invoices, contracts and receipts as the recurring subjects.",
+          "There is a second, smaller cluster doing retrieval-augmented search - seventeen `@n8n/n8n-nodes-langchain.documentDefaultDataLoader` nodes, seventeen text splitters, nine `@n8n/n8n-nodes-langchain.vectorStoreQdrant` and eight `@n8n/n8n-nodes-langchain.vectorStoreSupabase`. In those, Drive is the corpus and Airtable is the metadata index.",
+          "What is genuinely thin here is the simple case: Airtable as an index over a Drive folder, with no extraction in between. Only eight direct Drive-to-Airtable connections exist across the seventy-two files, and only one of them carries a `webViewLink` into a link column. If that plain shape is what you want, the worked example below is the file to start from - it is the one that does it - and the rest of the set is deeper than you need.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "hubspot",
+    title: "HubSpot and n8n: how the node is configured in practice",
+    description:
+      "What the HubSpot n8n node looks like across 1,370 working templates - appToken auth on every node, the lastmodifieddate GTE search filter, and the 2,757 nodes that set no operation at all.",
+    nodes: ["Schedule Trigger", "HubSpot (search)", "Code", "HubSpot (contact)"],
+    example: {
+      route: "augment-company-profiles-with-hubspot-and-http-rest-api-hands-free-for-research-1455",
+      title: "Augment company profiles on a schedule",
+    },
+    sections: [
+      {
+        h: "One resource, one authentication method",
+        p: [
+          "`n8n-nodes-base.hubspot` appears 3,480 times across the 1,370 templates here, and 3,474 of those set `resource: \"contact\"`. Companies, deals, tickets and engagements barely feature. If your work is contact-shaped this is a deep set; if you need deal-pipeline automation it is not what is here.",
+          "The same 3,474 nodes set `authentication: \"appToken\"`. That is HubSpot's private app token - not OAuth2, and not the legacy API key HubSpot retired. You create a private app inside your own portal, grant it scopes, and copy the token; it does not expire on a user session and it is the right choice for anything running unattended.",
+          "The node cards mark it `🔑 HubSpot private-app token`. As with every file in this catalog the `credentials` block is stripped, so the node shows an empty selector on import.",
+        ],
+      },
+      {
+        h: "2,757 nodes leave the operation unset",
+        p: [
+          "This is the detail most worth knowing before you import one. Of the 3,480 HubSpot nodes, 2,757 set no `operation` parameter at all - they carry `resource: \"contact\"`, an `email` expression and `additionalFields.companyName`, and nothing else. 717 set `operation: \"search\"`. A handful set `appendOrUpdate`, `append`, `create` or `insert`.",
+          "A node with no `operation` runs whatever the node's default is for that resource. That is not wrong, and it is how the editor writes a node you never touched the operation dropdown on. But it means the file does not record the behaviour: the same JSON can do different things on two n8n versions if the default ever changes, and reading the workflow tells you less than it appears to.",
+          "It also means you cannot tell by inspection whether one of these writes is idempotent. Many of the 2,757 are named some variant of Upsert into HubSpot - 605 nodes across the set carry an upsert-ish name, and 185 of those demonstrably run something else, including 107 `n8n-nodes-base.googleSheets` nodes on `operation: \"appendOrUpdate\"`, thirty-one `n8n-nodes-base.notion` nodes on `create` and twenty-eight `n8n-nodes-base.postgres` nodes on `executeQuery`. Set the operation explicitly on any node whose behaviour you are relying on.",
+          "The saving grace is that HubSpot itself deduplicates contacts by email address, so a create against an existing email is a conflict rather than a duplicate record. That is a property of HubSpot, not of these workflows, and it does not extend to the other objects.",
+        ],
+      },
+      {
+        h: "The search filter, and the shape of its parameters",
+        p: [
+          "The 717 `operation: \"search\"` nodes all build their filter through the same nested structure - `filterGroupsUi.filterGroupsValues[].filtersUi.filterValues[].propertyName`, and its `operator` and `value` siblings.",
+          "716 of the 717 use `propertyName: \"lastmodifieddate\"` with `operator: \"GTE\"`. That is the incremental read - give me contacts touched since a timestamp - and it is the standard sweep in this catalog. Note that `GTE` is the API's value, not a display label; HubSpot's search operators are uppercase enums, and `EQ` appears once for an email lookup.",
+          "`lastmodifieddate` is HubSpot's internal property name. HubSpot distinguishes the internal name from the label you see in the UI, and expressions have to use the internal one - a property labelled Last Modified Date is `lastmodifieddate` with no separators. Custom properties get internal names generated at creation time that often differ from what you named them, so check in the portal's property settings rather than guessing from the label.",
+          "One ceiling worth designing around: a HubSpot search returns at most 10,000 results for any one query however you paginate. For a full export, slice by date range and run the query per slice; paging past the limit returns nothing rather than an error.",
+        ],
+      },
+      {
+        h: "What a first-time user has to create",
+        p: [
+          "A private app in your HubSpot portal, under Settings, Integrations, Private Apps. Grant it the CRM scopes the workflow needs - contact read for the search nodes, contact write for the create and update nodes - and copy the access token into an n8n HubSpot App Token credential.",
+          "Scope errors are the common first failure and they are legible: HubSpot returns a message naming the scope that was missing, so read the response body rather than assuming the token is wrong.",
+          "The other prerequisite is not HubSpot's. Most of these templates read or write a second system, and the resource locators for those ship unbound - the 60 `n8n-nodes-base.googleSheets` nodes in this set that pair with HubSpot all have `documentId.value` empty behind a `Request Tracker` placeholder, with `sheetName` set to `Main`. The sheet name resolves and the document does not, so the node fails on a field that looks filled in.",
+        ],
+      },
+      {
+        h: "A worked example: an incremental sync with a watermark",
+        p: [
+          "`Augment company profiles on a schedule` is seven nodes and shows the incremental pattern that most of this set is a variation on.",
+          "An `n8n-nodes-base.scheduleTrigger` fires hourly. A Google Sheets node reads the previous run's state, and it sets `alwaysOutputData` - which matters, because on the very first run that sheet is empty and without the flag the branch would produce nothing and the whole workflow would stop before it started.",
+          "An `n8n-nodes-base.httpRequest` fetches changed records with `sendQuery: true` and two query parameters: `updated_since` as `{{ $now.minus({hours: 6}).toISO() }}`, and `limit` as `100`. It sets `options.timeout` to 20000. The six-hour lookback against an hourly schedule is deliberate overlap - re-reading records you already have is cheap, missing one because a run was late is not.",
+          "A Code node in `mode: \"runOnceForAllItems\"` normalises the response to a stable schema, coercing IDs with a String() cast and trimming strings, so that everything downstream reads the same field names regardless of what the API returned.",
+          "The HubSpot node then writes: `resource: \"contact\"`, `email` from the normalised field, `additionalFields.companyName`, `authentication: \"appToken\"`, and `retryOnFail` with `maxTries: 3`. It sets no `operation` - one of the 2,757 - so if you put this into production, set it explicitly to whatever you actually intend.",
+          "The last two nodes are the part worth copying. A Code node computes the newest timestamp seen across the batch, and a Google Sheets node writes that watermark back with `operation: \"appendOrUpdate\"` and `columns.matchingColumns: [\"requestId\"]`. Persisting the watermark outside n8n is what makes the workflow resumable: delete and re-import it and it picks up where it left off instead of replaying history.",
+        ],
+      },
+      {
+        h: "1,370 templates, weighted towards enrichment",
+        p: [
+          "The recurring subjects are augment, clean and enrich company profiles, and the recurring partner is `n8n-nodes-base.httpRequest` - an external data source enriching a contact record. That is the centre of this set.",
+          "What is thin: deal and pipeline automation, ticket workflows, and anything using HubSpot's marketing-email or workflow APIs. The contact object is 3,474 of 3,480 nodes, and a page implying broader CRM coverage would be overstating it.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "wordpress",
+    title: "n8n and WordPress: what the node can do, and what it does here",
+    description:
+      "The WordPress n8n node across 246 templates - three parameters, every post created as a draft, and a two-model writer-editor chain in front of it. What it does not do is publish.",
+    nodes: ["Schedule Trigger", "Set", "Basic LLM Chain", "WordPress"],
+    example: {
+      route: "produce-blog-drafts-with-notion-and-wordpress",
+      title: "Produce blog drafts: WordPress",
+    },
+    sections: [
+      {
+        h: "The node is narrow, and these templates use one corner of it",
+        p: [
+          "`n8n-nodes-base.wordpress` appears exactly 246 times across 246 templates - one node per workflow, no exceptions. Every one of them sets the same three parameters and nothing else: `title`, `additionalFields.content`, and `additionalFields.status`.",
+          "No node here sets `resource` or `operation`, which means all 246 run the node's defaults - a post, created. Categories, tags, featured images, custom fields, excerpts, slugs and authors are all left alone. Whatever your editorial workflow needs beyond a title and a body, these files do not set it, and you will be adding it yourself.",
+          "That is a real limit rather than a gap in the catalog: the WordPress node covers posts, pages and users, and the interesting parts of a WordPress site - ACF fields, custom post types, Yoast metadata - live behind plugin REST routes the node does not know about. For those you use `n8n-nodes-base.httpRequest` against the REST API directly, authenticated the same way.",
+        ],
+      },
+      {
+        h: "Every post is a draft",
+        p: [
+          "All 246 nodes set `additionalFields.status` to `draft`. Not one publishes.",
+          "That is the correct default for what these templates are - all 246 have an AI model writing the body - and it is also the first thing to check before you assume a workflow is broken. A scheduled run that reports success and produces nothing on your site did exactly what it was told: the post is in the WordPress admin under Drafts.",
+          "If you want a published post, change `status` to `publish`. The other values the WordPress REST API accepts are pending, for editorial review, and private. Think about which one you want rather than reaching for `publish` reflexively: the reason all 246 ship as drafts is that a model-written post going straight to a live URL is a bad idea the first time a prompt behaves unexpectedly, and a pending status routes it to whoever reviews.",
+          "There is no scheduling parameter set here either. WordPress supports a future publish date, but these nodes do not use it - the schedule lives in `n8n-nodes-base.scheduleTrigger`, which appears 246 times, once per workflow.",
+        ],
+      },
+      {
+        h: "Credentials, and which of the three you want",
+        p: [
+          "The node cards mark `🔑 WordPress credentials`. n8n's WordPress credential is a username and an application password - not your login password.",
+          "Application passwords are generated per user in the WordPress admin under Users, Profile, and they can be revoked individually without changing the account password. WordPress has shipped them in core since 5.6, so you do not need a plugin.",
+          "Two things break this on a first attempt, and neither is the credential. The REST API has to be reachable - some security plugins and managed hosts disable or restrict the /wp-json/ route, and the failure is a 401 or 404 that looks like an auth problem. And application passwords require HTTPS; over plain HTTP, WordPress refuses to issue or accept them.",
+          "Give the account the least role that can do the job. Author is enough to create drafts. Administrator is not required and is a poor trade for a credential sitting in an automation tool.",
+          "As with every file in this catalog, the `credentials` block is stripped, so the node shows an empty selector on import.",
+        ],
+      },
+      {
+        h: "What sits in front of the node",
+        p: [
+          "The 246 files contain 492 `@n8n/n8n-nodes-langchain.chainLlm` nodes - exactly two per workflow. That is a writer-then-editor pattern: the first chain drafts from a brief, the second is prompted to improve the draft without changing facts, and only then does the WordPress node run.",
+          "The model behind them varies across the set: 118 `@n8n/n8n-nodes-langchain.lmChatOpenAi`, 110 `@n8n/n8n-nodes-langchain.lmChatGroq`, 90 `@n8n/n8n-nodes-langchain.lmChatGoogleGemini`, plus OpenRouter and Anthropic variants. Each is a separate credential, so check which one the template you imported is wired to before setting up an API key - the node cards mark them individually, `🔑 OpenAI API key`, `🔑 Groq API key`, `🔑 Google AI API key`.",
+          "The model node uses a `model` resource locator in `mode: \"list\"` with a real value - `gpt-4o-mini` on the OpenAI ones - so unlike most locators in this catalog it is bound on import. It is also a model name that ages, and pointing it at a current model is a one-field edit.",
+          "One thing to add that none of these do: the chains produce markdown, and the WordPress node writes `additionalFields.content` as-is. WordPress will render markdown as literal text, not as formatting. If your posts come out with visible asterisks and hash marks, that is this - convert to HTML in a Code node before the WordPress node.",
+        ],
+      },
+      {
+        h: "A worked example: brief to draft, in seven nodes",
+        p: [
+          "`Produce blog drafts: WordPress` is the shortest version of the pattern.",
+          "`n8n-nodes-base.scheduleTrigger` fires on `field: \"hours\"` with `hoursInterval: 2`. A Set node builds two fields - `brief` from `{{ $json.topic || $json.chatInput || JSON.stringify($json) }}` and `tone` from `{{ $json.tone || 'professional' }}`. Both are fallback chains, which is what lets the same workflow be driven by a schedule, a chat input or a manual execution without changing anything.",
+          "The first `@n8n/n8n-nodes-langchain.chainLlm` runs with `promptType: \"define\"` and a system message instructing it to return clean markdown with a title line and no preamble. An `@n8n/n8n-nodes-langchain.lmChatOpenAi` node on `gpt-4o-mini` supplies the model over the `ai_languageModel` connection - note that is a separate connection type from `main`, which is why the model node sits below the chain rather than in the flow.",
+          "The second chain takes the output and is prompted to improve it without changing facts, returning only the improved draft. Then the WordPress node writes `title`, `additionalFields.content` and `additionalFields.status: \"draft\"`.",
+          "Three edits make it useful. Point `brief` at a real source of topics rather than the fallback chain - a Sheets row, a Notion database, a queue. Add the markdown-to-HTML step before the WordPress node. And decide the status deliberately.",
+        ],
+      },
+      {
+        h: "246 templates that are all the same shape",
+        p: [
+          "This is worth stating plainly: the 246 WordPress templates here are variations on one workflow. One schedule trigger, a brief, two LLM chains, one WordPress node creating a draft. What varies is the subject - blog posts, newsletters, social copy, captions, content calendars - the prompts, and which model and which upstream data source is wired in.",
+          "The same 246 files carry 475 `n8n-nodes-base.slack` nodes and 361 `n8n-nodes-base.googleSheets` nodes, which is where the notification and the content-source variation live.",
+          "So if you want AI-assisted draft generation into WordPress, pick whichever subject is closest and edit the prompts - the differences between the 246 are genuinely small. If you want WordPress automation that is not content generation - syncing posts to another system, reacting to a publish event, managing media or taxonomy - none of these is a starting point, and the WordPress node's own surface is narrow enough that `n8n-nodes-base.httpRequest` against the /wp-json/ REST routes is likely the better route.",
         ],
       },
     ],
