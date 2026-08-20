@@ -58,7 +58,7 @@ const whyItems: { title: string; desc: string; icon: string }[] = [
   },
   {
     title: "Instant delivery",
-    desc: "The ready-to-import JSON is downloading seconds after payment, with an email receipt and re-download link.",
+    desc: "The download starts seconds after payment - the workflow JSON plus its setup checklist - with an email receipt and re-download link.",
     icon: "M13 2 3 14h7l-1 8 10-12h-7l1-8z",
   },
   {
@@ -170,7 +170,7 @@ export default async function Home() {
   const steps: [string, string, string][] = [
     ["1", "Find the right one", `Search ${TEMPLATE_COUNT_ROUNDED} original templates by industry, tool, or use case.`],
     ["2", "Buy securely", "Pay in seconds with UPI, cards, or netbanking via Razorpay."],
-    ["3", "Download & import", "Get the ready-to-import n8n JSON instantly - add your credentials and go."],
+    ["3", "Download & set up", "Get the workflow JSON instantly, with a setup checklist naming every credential and value you need to connect."],
   ];
 
   // Structured data: the Organization gives Google a name+logo for the brand,

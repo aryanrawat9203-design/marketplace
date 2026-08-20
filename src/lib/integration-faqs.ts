@@ -139,7 +139,7 @@ export function pairFaqs(pair: IntegrationPair, items: IndexItem[]): Faq[] {
   const faqs: Faq[] = [
     {
       q: `Can n8n connect ${a} to ${b}?`,
-      a: `Yes. n8n has ${withArticle(nodeName(pair.a.name))} node and ${withArticle(nodeName(pair.b.name))} node, so the connection is built in - no community package and no custom code. We have ${fmt(pair.count)} ready-to-import templates that already wire the two together${subcats.length ? `, covering ${list(subcats)}` : ""}. Import one, add your credentials for both apps, and it runs.`,
+      a: `Yes. n8n has ${withArticle(nodeName(pair.a.name))} node and ${withArticle(nodeName(pair.b.name))} node, so the connection is built in - no community package and no custom code. We have ${fmt(pair.count)} ready-to-import templates that already wire the two together${subcats.length ? `, covering ${list(subcats)}` : ""}. Import one, connect both apps, and pick the specific spreadsheet, database or channel it should use - each template ships a generated setup checklist naming exactly which of those it leaves open.`,
     },
     {
       q: `Which n8n nodes connect ${a} and ${b}?`,

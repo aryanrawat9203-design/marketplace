@@ -208,3 +208,18 @@ export function difficultyFromCaps(c: Caps): "Beginner" | "Intermediate" | "Adva
   if (c.nodes >= 11 || int >= 3 || c.hasAI) return "Intermediate";
   return "Beginner";
 }
+
+/**
+ * Human label for a raw n8n node type - "n8n-nodes-base.googleSheets" becomes
+ * "Google Sheets". Lives here rather than in commerce.ts because the setup
+ * checklist needs the same label the product page already shows: a step
+ * telling someone to configure "Google Sheets" has to name the node the way
+ * the rest of the page names it, or it reads as being about something else.
+ */
+export function friendlyNodeType(type: string): string {
+  const short = type.replace(/^n8n-nodes-base\./, "").replace(/^@n8n\/n8n-nodes-langchain\./, "");
+  return short
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}

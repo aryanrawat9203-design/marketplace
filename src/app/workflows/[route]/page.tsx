@@ -12,7 +12,8 @@ import PriceTag from "@/components/PriceTag";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
-import { previewWorkflow, workflowGraphData } from "@/lib/commerce";
+import { previewWorkflow, workflowGraphData, workflowSetupChecklist } from "@/lib/commerce";
+import SetupChecklistSection from "@/components/SetupChecklistSection";
 import { reviewSummary } from "@/lib/reviews";
 import { learningFor } from "@/lib/learning";
 import WorkflowGraph from "@/components/WorkflowGraph";
@@ -75,6 +76,7 @@ export default async function WorkflowDetail({
   const upsell = subBundle ?? catBundle;
   const preview = previewWorkflow(w.route);
   const graph = workflowGraphData(w.route);
+  const setup = workflowSetupChecklist(w.route);
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = orderedGallery(shots);
@@ -83,19 +85,22 @@ export default async function WorkflowDetail({
   const productFaqs: [string, string][] = [
     [
       "What exactly do I get?",
-      "The complete, ready-to-import n8n workflow as a JSON file, delivered instantly after " +
+      "A ZIP holding the complete n8n workflow as a JSON file plus a generated SETUP.md, delivered instantly after " +
         (w.free ? "download" : "payment") +
-        ". Import it into your own n8n (cloud or self-hosted), add your credentials, and it runs.",
+        ". Import the JSON into your own n8n (cloud or self-hosted), then follow the checklist: your credentials, and the values this template leaves for you to choose. The full list is in the setup section above, before you buy.",
     ],
     [
       "How do I import it into n8n?",
-      "In n8n, open Workflows, click the three-dot menu, choose “Import from File”, and select the downloaded JSON. Then connect your own app credentials on the highlighted nodes.",
+      "In n8n, open Workflows, click the three-dot menu, choose “Import from File”, and select the workflow JSON from the download. n8n flags the nodes missing credentials, but it does not flag the resource pickers this template leaves unset - those show a placeholder name and look configured. The SETUP.md beside the JSON lists both.",
     ],
     [
       "Do I need anything else for it to work?",
-      "You need your own n8n instance and accounts/credentials for the apps this workflow connects to" +
+      "Your own n8n instance, and accounts/credentials for the apps this workflow connects to" +
         (w.platforms.length > 0 ? ` (${w.platforms.slice(0, 4).join(", ")}${w.platforms.length > 4 ? ", …" : ""})` : "") +
-        ". No coding is required.",
+        (setup
+          ? `. Beyond credentials, this template has ${setup.bindings.length === 0 ? "no values" : setup.bindings.length === 1 ? "one value" : `${setup.bindings.length} values`} left for you to pick, and ${setup.behaviour.length === 1 ? "one behaviour" : `${setup.behaviour.length} behaviours`} worth checking - all listed in the setup section above.`
+          : ".") +
+        " No coding is required.",
     ],
     [
       "What if it doesn't work for me?",
@@ -330,13 +335,19 @@ export default async function WorkflowDetail({
             </div>
           )}
 
+          {/* The three-step block that used to sit here said n8n "highlights
+              exactly which ones need them". It does not: an unbound resource
+              locator renders as a filled-in dropdown showing a placeholder
+              label, which is why 9,264 templates can look configured and not
+              be. The generated checklist replaces it with what this specific
+              file actually needs. */}
           <div className="mt-8">
-            <h2 className="text-lg font-semibold text-ink">From download to running in 3 steps</h2>
+            <h2 className="text-lg font-semibold text-ink">From download to running</h2>
             <ol className="mt-3 space-y-3">
               {[
-                ["Import", "In n8n, open Workflows → menu → “Import from File” and pick the downloaded JSON."],
-                ["Connect", "Add your own credentials on the app nodes - n8n highlights exactly which ones need them."],
-                ["Activate", "Run it once to test, then toggle Active. The automation is live."],
+                ["Import", "In n8n, open Workflows → menu → “Import from File” and pick the workflow JSON from the download."],
+                ["Set up", "Work through the setup checklist below - credentials first, then the values the file leaves for you to pick. The same list ships as SETUP.md beside the JSON."],
+                ["Test, then activate", "Run it once against real data with the pinned sample cleared, check it did what you expected, then toggle Active."],
               ].map(([t, d], i) => (
                 <li key={t} className="flex gap-3">
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-violet-500/15 text-sm font-semibold text-violet-300">
@@ -350,6 +361,8 @@ export default async function WorkflowDetail({
               ))}
             </ol>
           </div>
+
+          {setup && <SetupChecklistSection checklist={setup} />}
 
           {reviews.count > 0 && (
             <div className="mt-8">
@@ -466,7 +479,7 @@ export default async function WorkflowDetail({
             </div>
             <ul className="mt-5 space-y-2 text-sm text-muted">
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Instant download after payment</li>
-              <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Ready-to-import n8n JSON file</li>
+              <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Workflow JSON plus a generated SETUP.md</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Original template, yours to use &amp; adapt</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Secure, time-limited download link</li>
             </ul>
@@ -530,7 +543,7 @@ export default async function WorkflowDetail({
 
       <div className="card mt-12 rounded-xl p-4 text-xs text-faint">
         Original n8n workflow template created and owned by WorkflowCrate. After purchase you receive the
-        ready-to-import JSON file and a license to use and adapt it in your own projects.
+        workflow JSON, its generated setup checklist, and a license to use and adapt it in your own projects.
       </div>
 
       <StickyBuyBar

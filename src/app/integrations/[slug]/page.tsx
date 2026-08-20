@@ -67,7 +67,7 @@ export async function generateMetadata({
       `${pair.a.name} to ${pair.b.name}: ${fmt(pair.count)} n8n integration templates`;
     const description =
       guide?.description ??
-      `${fmt(pair.count)} ready-to-import n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Download the JSON, add your credentials and it runs - no code required.`;
+      `${fmt(pair.count)} original n8n workflow templates that connect ${pair.a.name} to ${pair.b.name} - and ${pair.b.name} back to ${pair.a.name}. Import the JSON, connect your accounts, and pick the resources each one leaves open - every template ships a setup checklist. No code required.`;
     return pageMeta({
       title,
       description,
@@ -153,9 +153,9 @@ export default async function IntegrationPage({
         {integration.name} <span className="gradient-text">n8n templates</span>
       </h1>
       <p className="mt-3 max-w-2xl text-muted">
-        {fmt(integration.count)} original workflow templates use {integration.name}. Each one is a
-        ready-to-import n8n JSON file - buy it, download it, add your {integration.name} credentials,
-        and it runs.
+        {fmt(integration.count)} original workflow templates use {integration.name}. Each one is an
+        n8n JSON file you import into your own instance, with a generated checklist of the
+        credentials and the {integration.name} resources you need to connect before it runs.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href={browseHref} className="btn-primary btn-lg">
@@ -415,8 +415,9 @@ function PairPage({ pair }: { pair: IntegrationPair }) {
       </h1>
       <p className="mt-3 max-w-2xl text-muted">
         {fmt(pair.count)} original workflow templates move data between {a.name} and {b.name} -
-        in either direction. Every one is a ready-to-import n8n JSON file: buy it, download it, add
-        your {a.name} and {b.name} credentials, and it runs. No code, no rebuild from scratch.
+        in either direction. Every one is an n8n JSON file you import into your own instance, with a
+        generated checklist of the credentials and the specific {a.name} and {b.name} resources to
+        connect before it runs. No code, no rebuild from scratch.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">

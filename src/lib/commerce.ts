@@ -6,7 +6,13 @@ import { getBundle, bundleMembersDetail, bandFor, type Bundle } from "./bundles"
 import { createZip, type ZipEntry } from "./zip";
 import { starterPackItems, STARTER_PACK_FILENAME } from "./starter-pack";
 import type { DetailItem } from "./catalog";
-import { capsFromTypes, type Caps } from "./node-facts";
+import { capsFromTypes, friendlyNodeType, type Caps } from "./node-facts";
+import {
+  buildSetupChecklist,
+  setupMarkdown,
+  type SetupChecklist,
+  type WorkflowJsonLike,
+} from "./setup-checklist";
 
 export type Kind = "workflow" | "bundle";
 
@@ -61,20 +67,66 @@ export function getPurchasable(kind: Kind, key: string): Purchasable | undefined
   return { kind: "bundle", key, name: b.name, price: b.price, currency: "INR", free: false };
 }
 
-export function workflowDownload(route: string): { filename: string; body: Buffer } | null {
+/**
+ * The setup checklist for a template, from the same file the buyer downloads.
+ *
+ * Cached per route because the product page and the download both want it and
+ * the parse is the expensive part. `getByRoute` is already memoised upstream;
+ * this memoises the JSON read on top of it.
+ */
+const checklistCache = new Map<string, SetupChecklist | null>();
+
+export function workflowSetupChecklist(route: string): SetupChecklist | null {
+  const hit = checklistCache.get(route);
+  if (hit !== undefined) return hit;
+
+  let result: SetupChecklist | null = null;
+  const w = getByRoute(route);
+  if (w?.workflowFile) {
+    const fp = path.join(PRODUCT_ROOT, w.workflowFile);
+    if (fs.existsSync(fp)) {
+      try {
+        result = buildSetupChecklist(JSON.parse(fs.readFileSync(fp, "utf-8")) as WorkflowJsonLike);
+      } catch {
+        result = null; // a template we cannot parse gets no claim made about it
+      }
+    }
+  }
+  checklistCache.set(route, result);
+  return result;
+}
+
+/** The SETUP.md that ships beside a template, or null if it cannot be built. */
+function setupFileFor(w: DetailItem): Buffer | null {
+  const checklist = workflowSetupChecklist(w.route);
+  if (!checklist) return null;
+  return Buffer.from(setupMarkdown(w.title, checklist), "utf-8");
+}
+
+/**
+ * A single template downloads as a ZIP rather than a bare JSON, because the
+ * setup checklist has to travel with it. A buyer who paid for one template is
+ * exactly the buyer most likely to import it cold, and the unbound resource
+ * locators are invisible until something silently returns nothing.
+ */
+export function workflowDownload(
+  route: string,
+): { filename: string; body: Buffer; contentType: string } | null {
   const w = getByRoute(route);
   if (!w?.workflowFile) return null;
   const fp = path.join(PRODUCT_ROOT, w.workflowFile);
   if (!fs.existsSync(fp)) return null;
-  return { filename: `${downloadSafeTitle(w)}.json`, body: readWorkflowFile(fp) };
-}
 
-function friendlyNodeType(type: string): string {
-  const short = type.replace(/^n8n-nodes-base\./, "").replace(/^@n8n\/n8n-nodes-langchain\./, "");
-  return short
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
+  const title = downloadSafeTitle(w);
+  const entries: ZipEntry[] = [{ name: `${title}.json`, data: readWorkflowFile(fp) }];
+  const setup = setupFileFor(w);
+  if (setup) entries.push({ name: "SETUP.md", data: setup });
+
+  return {
+    filename: `${title}.zip`,
+    body: createZip(entries),
+    contentType: "application/zip",
+  };
 }
 
 // Human labels for the tool sub-nodes an AI Agent can call. Anything not listed
@@ -285,7 +337,10 @@ export function starterPackDownload(): { filename: string; body: Buffer } | null
     const fp = path.join(PRODUCT_ROOT, w.workflowFile);
     if (!fs.existsSync(fp)) return;
     const n = String(i + 1).padStart(2, "0");
-    entries.push({ name: `${n}-${downloadSafeTitle(w)}.json`, data: readWorkflowFile(fp) });
+    const stem = `${n}-${downloadSafeTitle(w)}`;
+    entries.push({ name: `${stem}.json`, data: readWorkflowFile(fp) });
+    const setup = setupFileFor(w);
+    if (setup) entries.push({ name: `${stem} SETUP.md`, data: setup });
   });
   if (entries.length === 0) return null;
   return { filename: STARTER_PACK_FILENAME, body: createZip(entries) };
@@ -305,6 +360,9 @@ export function bundleDownload(slug: string): { filename: string; body: Buffer }
         ? practiceEntryName(i, members.length, w)
         : `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
     entries.push({ name, data: readWorkflowFile(fp) });
+    const setup = setupFileFor(w);
+    // Same stem as the JSON so the pair sorts together in any file browser.
+    if (setup) entries.push({ name: name.replace(/\.json$/i, "") + " SETUP.md", data: setup });
   });
   if (entries.length === 0) return null;
   return { filename: b.slug + ".zip", body: createZip(entries) };
@@ -328,6 +386,13 @@ export function cartZip(
       if (fs.existsSync(fp) && !entries.has(w.workflowFile)) {
         const name = `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
         entries.set(w.workflowFile, { name, data: readWorkflowFile(fp) });
+        const setup = setupFileFor(w);
+        if (setup) {
+          entries.set(`${w.workflowFile}#setup`, {
+            name: name.replace(/\.json$/i, "") + " SETUP.md",
+            data: setup,
+          });
+        }
       }
     } else {
       const b = getBundle(item.key);
@@ -342,6 +407,13 @@ export function cartZip(
               ? practiceEntryName(i, members.length, w)
               : `${path.dirname(w.workflowFile)}/${truthfulLeaf(w)}`;
           entries.set(w.workflowFile, { name, data: readWorkflowFile(fp) });
+          const setup = setupFileFor(w);
+          if (setup) {
+            entries.set(`${w.workflowFile}#setup`, {
+              name: name.replace(/\.json$/i, "") + " SETUP.md",
+              data: setup,
+            });
+          }
         }
       });
     }

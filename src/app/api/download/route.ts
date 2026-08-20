@@ -68,9 +68,12 @@ export async function GET(req: NextRequest) {
 
   const out = workflowDownload(key);
   if (!out) return NextResponse.json({ error: "File missing." }, { status: 404 });
+  // A single template is a ZIP now, not a bare JSON - the workflow plus its
+  // generated SETUP.md. Content type comes from the download rather than being
+  // hardcoded here so the two cannot drift.
   return new NextResponse(new Uint8Array(out.body), {
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": out.contentType,
       "Content-Disposition": `attachment; filename="${out.filename}"`,
       "Cache-Control": "no-store",
     },

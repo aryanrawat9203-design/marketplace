@@ -13,7 +13,7 @@ export const metadata: Metadata = pageMeta({
 const faqs: [string, string][] = [
   [
     "What exactly am I buying?",
-    "Original, ready-to-import n8n workflow templates that we build in-house. Each purchase delivers the workflow's JSON file (a bundle delivers a ZIP of all its templates), which you import directly into your own n8n account.",
+    "Original n8n workflow templates that we build in-house. Each purchase delivers a ZIP containing the workflow JSON and a generated SETUP.md listing what you have to connect before it will run (a bundle delivers all its templates the same way). The JSON imports directly into your own n8n account.",
   ],
   [
     "Is browsing free?",
@@ -21,7 +21,7 @@ const faqs: [string, string][] = [
   ],
   [
     "How do I use a template after buying?",
-    "In n8n, open Workflows, then the menu, then Import from File, and choose the downloaded JSON. Add your own credentials on the app nodes and you are ready to run.",
+    "In n8n, open Workflows, then the menu, then Import from File, and choose the workflow JSON from the download. Then work through the SETUP.md that ships beside it: credentials first, then the values the file deliberately leaves for you to pick - your spreadsheet, your database, your channel. Most templates have a few of those, and n8n shows them as dropdowns with a placeholder name already in them, so they are easy to walk past. The same checklist is on every product page before you buy.",
   ],
   [
     "Single template or bundle - which should I pick?",

@@ -11,7 +11,7 @@ export type FaqEntry = { q: string; a: string };
 export const FAQ_ENTRIES: FaqEntry[] = [
   {
     q: "What am I buying?",
-    a: "Original, ready-to-import n8n workflow templates built in-house. A single purchase gives the workflow's JSON file; a bundle gives a ZIP of all its templates.",
+    a: "Original n8n workflow templates built in-house. A purchase gives a ZIP with the workflow JSON and a generated SETUP.md listing what you must connect before it runs - credentials, and the specific spreadsheet, database or channel the template leaves for you to pick. A bundle gives the same pair for every template in it.",
   },
   {
     q: "Is browsing free?",

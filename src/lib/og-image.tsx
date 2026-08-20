@@ -48,7 +48,7 @@ export function OgImageContent() {
         </div>
       </div>
       <div style={{ display: "flex", marginTop: 30, fontSize: 32, color: "#b6b6c8" }}>
-        Ready-to-use n8n workflows, built to sell
+        Original n8n workflows, documented end to end
       </div>
       <div style={{ display: "flex", marginTop: 42, fontSize: 24, color: "#77778c" }}>
         10,000+ original templates · instant download

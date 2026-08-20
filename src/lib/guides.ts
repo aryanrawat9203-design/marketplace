@@ -324,9 +324,9 @@ export const guides: Guide[] = [
     description:
       "A step-by-step guide to importing a downloaded n8n workflow JSON file into your own n8n instance.",
     intro: [
-      "Every WorkflowCrate template is delivered as a single n8n workflow JSON file (a bundle is a ZIP of several). Importing one takes under a minute.",
+      "Every WorkflowCrate template is delivered as a ZIP holding the n8n workflow JSON and a generated SETUP.md for that template (a bundle holds several pairs). Importing the JSON takes under a minute; the setup it then needs is what the SETUP.md is for.",
       "In your n8n instance, open Workflows, then use the menu in the top right and choose Import from File. Select the JSON file you downloaded and n8n will load the full workflow, including all nodes and their connections.",
-      "Before running it, open each node that talks to an external service (for example HubSpot, Google Sheets, or Slack) and attach your own credentials - templates never ship with live credentials baked in. Once every node is connected, activate the workflow and it is ready to run.",
+      "Before running it, open each node that talks to an external service (for example HubSpot, Google Sheets, or Slack) and attach your own credentials - templates never ship with live credentials baked in. Credentials are not the whole job, though: most templates also leave the specific spreadsheet, database or folder for you to choose, and n8n renders those as a dropdown with a placeholder name already showing, so a node can look configured when nothing is selected. The SETUP.md in the download lists every one of them for that template, by node and parameter. Work through it, clear the pinned sample data on the trigger so your test run uses real data, then activate.",
     ],
     closing:
       "If a template does not import cleanly, contact us within 7 days of purchase and we will fix it or refund you - see our Refund Policy.",
