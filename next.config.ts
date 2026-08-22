@@ -137,6 +137,25 @@ const nextConfig: NextConfig = {
         destination: to,
         permanent: true,
       })),
+      // "Order Updates" held one template beside siblings of 54-60, so it was a
+      // filter chip leading to a page of one. Its template moved to "Order Ops"
+      // and the subcategory no longer exists.
+      //
+      // Subcategories are not routes - they are only ever a query string on
+      // /workflows, a space robots.txt disallows and every variant canonicalises
+      // to /workflows, so nothing indexed points here. This is for bookmarks and
+      // saved filters, which would otherwise land on an empty result set.
+      // route-aliases.json cannot express it: that map is keyed on template
+      // slugs and is read by getByRoute for /workflows/<slug>.
+      {
+        source: "/workflows",
+        has: [{ type: "query" as const, key: "subcategory", value: "Order Updates" }],
+        // %2520, not %20: Next decodes the destination once before writing the
+        // Location header, so a single-encoded space is emitted raw and the
+        // header is malformed. Double-encoding lands a correct %20 on the wire.
+        destination: "/workflows?category=E-commerce%2520Automation&subcategory=Order%2520Ops",
+        permanent: true,
+      },
     ];
   },
 };
