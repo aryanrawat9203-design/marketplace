@@ -150,10 +150,13 @@ const nextConfig: NextConfig = {
       {
         source: "/workflows",
         has: [{ type: "query" as const, key: "subcategory", value: "Order Updates" }],
-        // %2520, not %20: Next decodes the destination once before writing the
-        // Location header, so a single-encoded space is emitted raw and the
-        // header is malformed. Double-encoding lands a correct %20 on the wire.
-        destination: "/workflows?category=E-commerce%2520Automation&subcategory=Order%2520Ops",
+        // Percent-encoded once. The dev server decodes the destination before
+        // writing the Location header and so emits a raw space; production
+        // writes it verbatim. Encoding for production is what matters, and a
+        // raw space in a dev-only header is cosmetic - an earlier attempt at
+        // %2520 made dev correct and shipped a literal "%20" into the filter
+        // value in production, which matched nothing.
+        destination: "/workflows?category=E-commerce%20Automation&subcategory=Order%20Ops",
         permanent: true,
       },
     ];
