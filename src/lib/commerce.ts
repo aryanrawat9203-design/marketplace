@@ -11,6 +11,7 @@ import { capsFromTypes, friendlyNodeType, type Caps } from "./node-facts";
 import {
   buildSetupChecklist,
   setupMarkdown,
+  requiredLibFiles,
   type SetupChecklist,
   type WorkflowJsonLike,
 } from "./setup-checklist";
@@ -111,6 +112,44 @@ export function workflowSetupChecklist(route: string): SetupChecklist | null {
   return result;
 }
 
+/**
+ * The `lib:` sub-workflows a template needs, resolved from its own node graph.
+ *
+ * 1,710 templates call a sub-workflow by name through an Execute Workflow or
+ * Workflow Tool node. Those workflows now exist, and a buyer cannot use the
+ * template without them, so they travel in the same ZIP. The dependency list
+ * comes from reading the parent's nodes - there is no mapping file to fall out
+ * of date when a template changes which lib it calls.
+ */
+const libFilesCache = new Map<string, string[]>();
+
+function libFilesFor(w: DetailItem): string[] {
+  const hit = libFilesCache.get(w.route);
+  if (hit) return hit;
+  let files: string[] = [];
+  const fp = path.join(PRODUCT_ROOT, w.workflowFile);
+  if (fs.existsSync(fp)) {
+    try {
+      files = requiredLibFiles(JSON.parse(fs.readFileSync(fp, "utf-8")) as WorkflowJsonLike);
+    } catch {
+      files = [];
+    }
+  }
+  libFilesCache.set(w.route, files);
+  return files;
+}
+
+/** ZIP entries for a template's libs, under a `lib/` folder in the archive. */
+function libEntries(w: DetailItem, prefix = ""): ZipEntry[] {
+  const out: ZipEntry[] = [];
+  for (const rel of libFilesFor(w)) {
+    const fp = path.join(PRODUCT_ROOT, rel);
+    if (!fs.existsSync(fp)) continue;
+    out.push({ name: `${prefix}${rel}`, data: readWorkflowFile(fp) });
+  }
+  return out;
+}
+
 /** The SETUP.md that ships beside a template, or null if it cannot be built. */
 function setupFileFor(w: DetailItem): Buffer | null {
   const checklist = workflowSetupChecklist(w.route);
@@ -136,6 +175,7 @@ export function workflowDownload(
   const entries: ZipEntry[] = [{ name: `${title}.json`, data: readWorkflowFile(fp) }];
   const setup = setupFileFor(w);
   if (setup) entries.push({ name: "SETUP.md", data: setup });
+  entries.push(...libEntries(w));
 
   return {
     filename: `${title}.zip`,
@@ -356,6 +396,7 @@ export function starterPackDownload(): { filename: string; body: Buffer } | null
     entries.push({ name: `${stem}.json`, data: readWorkflowFile(fp) });
     const setup = setupFileFor(w);
     if (setup) entries.push({ name: `${stem} SETUP.md`, data: setup });
+    entries.push(...libEntries(w));
   });
   if (entries.length === 0) return null;
   return { filename: STARTER_PACK_FILENAME, body: createZip(entries) };
@@ -378,6 +419,7 @@ export function bundleDownload(slug: string): { filename: string; body: Buffer }
     const setup = setupFileFor(w);
     // Same stem as the JSON so the pair sorts together in any file browser.
     if (setup) entries.push({ name: name.replace(/\.json$/i, "") + " SETUP.md", data: setup });
+    entries.push(...libEntries(w));
   });
   if (entries.length === 0) return null;
   return { filename: b.slug + ".zip", body: createZip(entries) };
@@ -408,6 +450,7 @@ export function cartZip(
             data: setup,
           });
         }
+        for (const e of libEntries(w)) entries.set(e.name, e);
       }
     } else {
       const b = getBundle(item.key);
@@ -429,6 +472,7 @@ export function cartZip(
               data: setup,
             });
           }
+          for (const e of libEntries(w)) entries.set(e.name, e);
         }
       });
     }

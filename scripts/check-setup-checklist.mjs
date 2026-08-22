@@ -22,14 +22,12 @@
  * Usage: node scripts/check-setup-checklist.mjs [--sample N] [--all] [--verbose]
  * Exit code 1 on any failure.
  */
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
-import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { loadTsModule } from "./lib/load-ts.mjs";
 
-const ROOT = process.cwd();
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const argv = process.argv.slice(2);
 const VERBOSE = argv.includes("--verbose");
 const ALL = argv.includes("--all");
@@ -40,32 +38,11 @@ const SAMPLE = (() => {
 
 // --- load the real generator ------------------------------------------------
 // Compiled rather than reimplemented: a copy of the rule would drift and this
-// script would then verify the copy instead of what ships.
-const outDir = mkdtempSync(join(tmpdir(), "setup-check-"));
-try {
-  execFileSync(
-    process.execPath,
-    [
-      join(ROOT, "node_modules/typescript/bin/tsc"),
-      join(ROOT, "src/lib/setup-checklist.ts"),
-      "--outDir", outDir,
-      "--module", "commonjs",
-      "--target", "es2022",
-      "--moduleResolution", "node",
-      "--skipLibCheck",
-    ],
-    { stdio: "pipe" },
-  );
-} catch (e) {
-  console.error("could not compile setup-checklist.ts:\n" + (e.stdout?.toString() ?? e.message));
-  process.exit(1);
-}
-// CommonJS output, loaded through createRequire: tsc emits bare relative
-// specifiers ("./node-facts") which Node's ESM resolver rejects without an
-// extension, and rewriting the emit would be a second place for this to break.
-const { buildSetupChecklist } = createRequire(pathToFileURL(join(outDir, "_.cjs")).href)(
-  join(outDir, "setup-checklist.js"),
-);
+// script would then verify the copy instead of what ships. The shared loader
+// compiles through the project's tsconfig, so the "@/" alias and JSON imports
+// behave as they do in the app.
+const { exports: rule, dispose } = loadTsModule(ROOT, "src/lib/setup-checklist.ts");
+const { buildSetupChecklist } = rule;
 
 const items = JSON.parse(readFileSync(join(ROOT, "src/data/catalog.json"), "utf8"));
 const STICKY = "n8n-nodes-base.stickyNote";
@@ -366,7 +343,7 @@ for (const w of sample) {
   }
 }
 
-rmSync(outDir, { recursive: true, force: true });
+dispose();
 
 // --- report -----------------------------------------------------------------
 if (failures.length) {

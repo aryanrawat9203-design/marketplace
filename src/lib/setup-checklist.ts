@@ -30,6 +30,39 @@
  * to tell someone what they are buying into, and no more.
  */
 import { SERVICE_NODES, friendlyNodeType } from "./node-facts";
+// Relative, not the "@/" alias: this module is compiled and run outside Next by
+// the data-checking scripts, and the emitted CommonJS keeps an alias verbatim.
+import libsData from "../data/libs.json";
+
+/** The `lib:` sub-workflows now shipped alongside the templates that call them. */
+const SHIPPED_LIBS: ReadonlyMap<string, string> = new Map(
+  (libsData as { items: Array<{ name: string; file: string }> }).items.map((l) => [l.name, l.file]),
+);
+
+/** The product-file path a shipped lib is packaged at, for the checklist text. */
+export function libFileFor(placeholder: string): string {
+  return SHIPPED_LIBS.get(placeholder.trim()) ?? "";
+}
+
+/** True when a referenced sub-workflow is one we now include in the download. */
+export function isShippedLib(placeholder: string): boolean {
+  return SHIPPED_LIBS.has(placeholder.trim());
+}
+
+/** Every `lib:` sub-workflow this workflow calls, as product-file paths. */
+export function requiredLibFiles(wf: WorkflowJsonLike): string[] {
+  const out = new Set<string>();
+  for (const n of wf.nodes ?? []) {
+    if (!n.type || n.type === STICKY || !SUBWORKFLOW_TYPES.test(n.type)) continue;
+    const rows: Unbound[] = [];
+    collectUnbound(n.parameters, "", n.name ?? "", n.type, rows);
+    for (const r of rows) {
+      const file = SHIPPED_LIBS.get(r.placeholder.trim());
+      if (file) out.add(file);
+    }
+  }
+  return [...out].sort();
+}
 
 export type SetupStepKind = "credential" | "binding" | "behaviour";
 
@@ -238,8 +271,24 @@ function isForeignLocator(type: string, param: string): boolean {
   return !canon.has(leafOf(param));
 }
 
-function isMissingSubWorkflow(r: Unbound): boolean {
+function isLibReference(r: Unbound): boolean {
   return SUBWORKFLOW_TYPES.test(r.type) && LIB_PLACEHOLDER.test(r.placeholder);
+}
+
+/**
+ * A lib reference we do NOT ship. Every one of the 45 names in the catalog is
+ * shipped now, so this is empty in practice - it stays because the predicate,
+ * not the current inventory, is what decides whether a buyer is being told to
+ * build something. A new template referencing a lib nobody wrote would light
+ * this up again rather than quietly promising a file that is not in the ZIP.
+ */
+function isMissingSubWorkflow(r: Unbound): boolean {
+  return isLibReference(r) && !isShippedLib(r.placeholder);
+}
+
+/** A lib reference that ships with the download and only needs selecting. */
+function isShippedSubWorkflow(r: Unbound): boolean {
+  return isLibReference(r) && isShippedLib(r.placeholder);
 }
 
 function bindingSteps(wf: WorkflowJsonLike): {
@@ -254,9 +303,12 @@ function bindingSteps(wf: WorkflowJsonLike): {
   }
 
   const missing = rows.filter(isMissingSubWorkflow);
-  const foreign = rows.filter((r) => !isMissingSubWorkflow(r) && isForeignLocator(r.type, r.param));
+  const shippedLibs = rows.filter(isShippedSubWorkflow);
+  const foreign = rows.filter(
+    (r) => !isLibReference(r) && isForeignLocator(r.type, r.param),
+  );
   const ordinary = rows.filter(
-    (r) => !isMissingSubWorkflow(r) && !isForeignLocator(r.type, r.param),
+    (r) => !isLibReference(r) && !isForeignLocator(r.type, r.param),
   );
 
   const steps: SetupStep[] = [];
@@ -288,6 +340,25 @@ function bindingSteps(wf: WorkflowJsonLike): {
         kind: "binding",
         title: `Build the sub-workflow "${placeholder}" yourself`,
         detail: `${nodes.length === 1 ? nodes[0] : nodes.join(", ")} calls a separate n8n workflow under this name, and it is not part of this download - no template in the catalog provides it. The dropdown will be empty until you create a workflow to fill the role and select it. Read the node's sticky note for what it is expected to take in and return.`,
+        nodes,
+        param: group[0].param,
+      });
+    }
+  }
+
+  // Shipped libs: the file is in the download, so this is a selection, not a
+  // build. Named precisely - which file to import, and which selector on which
+  // node to then point at it - because a workflow id is local to the buyer's
+  // instance and no amount of packaging can pre-bind it for them.
+  if (shippedLibs.length > 0) {
+    const byName = groupBy(shippedLibs, (r) => r.placeholder);
+    for (const [placeholder, group] of byName) {
+      const nodes = [...new Set(group.map((g) => g.node))].sort();
+      const file = libFileFor(placeholder);
+      steps.push({
+        kind: "binding",
+        title: `Import "${placeholder}" and select it on ${nodes.length === 1 ? nodes[0] : `${nodes.length} nodes`}`,
+        detail: `This template calls a separate workflow named ${placeholder}, and it is included in your download as ${file}. Import that file into n8n first (Workflows -> Import from File), then open ${nodes.length === 1 ? nodes[0] : nodes.join(", ")} and pick it in the ${leafOf(group[0].param)} selector. The selector is empty until you do: a workflow id only exists inside your own instance, so it cannot be set for you.`,
         nodes,
         param: group[0].param,
       });
