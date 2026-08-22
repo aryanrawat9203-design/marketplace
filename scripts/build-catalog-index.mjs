@@ -37,6 +37,10 @@ const COUNT = path.join(DATA, "catalog-count.json");
 const check = process.argv.includes("--check");
 
 const catalog = JSON.parse(fs.readFileSync(CATALOG, "utf8"));
+const WITHDRAWN = path.join(DATA, "withdrawn.json");
+const withdrawnCount = fs.existsSync(WITHDRAWN)
+  ? JSON.parse(fs.readFileSync(WITHDRAWN, "utf8")).items.length
+  : 0;
 
 // Field set and order are load-bearing: they match the IndexItem type in
 // src/lib/catalog.ts and keep the on-disk diff readable.
@@ -71,7 +75,15 @@ const index = catalog.map((w) => ({
 // of 10,489 for weeks. A number nobody has to remember to update cannot drift.
 const outputs = [
   { file: INDEX, name: "catalog-index.json", body: JSON.stringify(index) },
-  { file: COUNT, name: "catalog-count.json", body: JSON.stringify({ total: catalog.length }) },
+  {
+    file: COUNT,
+    name: "catalog-count.json",
+    // Withdrawn templates are excluded: TEMPLATE_COUNT is quoted in headlines
+    // and meta descriptions as how many templates are on sale, and 496 of them
+    // are not. src/data/withdrawn.json is generated first - see
+    // scripts/build-withdrawn.mjs.
+    body: JSON.stringify({ total: catalog.length - withdrawnCount }),
+  },
 ];
 
 const stale = outputs.filter(

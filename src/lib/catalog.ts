@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { Screenshots } from "./screenshots";
 import { selectFreeTier, applyFreeTier } from "./free-tier";
+import { withdrawnIds } from "./withdrawn";
 import { applyPriceModel } from "./price-model";
 
 export type IndexItem = {
@@ -94,6 +95,8 @@ function readJson<T>(file: string): T {
 const g = globalThis as unknown as {
   __index?: IndexItem[];
   __catalog?: DetailItem[];
+  /** Includes withdrawn templates; see getCatalogWithWithdrawn. */
+  __catalogAll?: DetailItem[];
   __taxo?: Taxonomy;
   __byRoute?: Map<string, DetailItem>;
   __aliases?: Record<string, string>;
@@ -112,10 +115,28 @@ function priceItems<T extends IndexItem | DetailItem>(items: T[], ids: Set<strin
   return applyFreeTier(applyPriceModel(items), ids);
 }
 
+/**
+ * The sellable catalog: everything except the withdrawn templates.
+ *
+ * Filtering here rather than at each call site is deliberate. Listings, search,
+ * filters, collections, bundle membership, bundle pricing, the free tier and
+ * the sitemap all derive from this one function, so excluding withdrawn
+ * templates once makes every one of them correct - including any surface added
+ * later that nobody remembers to update. The two places that legitimately need
+ * a withdrawn record (the product page, and the download authoriser honouring a
+ * past order) reach for it explicitly through getByRoute.
+ *
+ * The free tier is selected *after* the filter, so a withdrawn template can
+ * never be handed out as a free sample. It is not a sample; it is a product
+ * being repaired.
+ */
 export function getIndex(): IndexItem[] {
   let index = g.__index;
   if (!index) {
-    const items = readJson<IndexItem[]>("catalog-index.json");
+    const withdrawn = withdrawnIds();
+    const items = readJson<IndexItem[]>("catalog-index.json").filter(
+      (w) => !withdrawn.has(w.id),
+    );
     g.__freeIds = selectFreeTier(items);
     index = priceItems(items, g.__freeIds);
     g.__index = index;
@@ -133,13 +154,34 @@ function freeIds(): Set<string> {
   return g.__freeIds!;
 }
 
+/** The sellable detail records - same exclusion as getIndex. */
 export function getCatalog(): DetailItem[] {
   let catalog = g.__catalog;
   if (!catalog) {
-    catalog = priceItems(readJson<DetailItem[]>("catalog.json"), freeIds());
+    const withdrawn = withdrawnIds();
+    catalog = priceItems(
+      readJson<DetailItem[]>("catalog.json").filter((w) => !withdrawn.has(w.id)),
+      freeIds(),
+    );
     g.__catalog = catalog;
   }
   return catalog;
+}
+
+/**
+ * Every detail record, withdrawn ones included.
+ *
+ * Only two callers should want this: the product page, which serves a withdrawn
+ * template's URL with a notice instead of letting an indexed page 404, and the
+ * download authoriser, which must still resolve a template someone already
+ * bought. Anything else wanting it is almost certainly a listing, and listings
+ * use getCatalog.
+ */
+export function getCatalogWithWithdrawn(): DetailItem[] {
+  if (!g.__catalogAll) {
+    g.__catalogAll = priceItems(readJson<DetailItem[]>("catalog.json"), freeIds());
+  }
+  return g.__catalogAll;
 }
 /** Cheapest first, so the tier filter reads as a ladder rather than a ranking. */
 const TIER_ORDER = ["Free", "Starter", "Core", "Professional", "Premium", "Enterprise"];
@@ -147,18 +189,58 @@ const TIER_ORDER = ["Free", "Starter", "Core", "Professional", "Premium", "Enter
 export function getTaxonomy(): Taxonomy {
   if (!g.__taxo) {
     const taxo = readJson<Taxonomy>("taxonomy.json");
-    // Tier is derived from the price model now, so the counts stored on disk
-    // describe a tier set that no longer exists. Recount from the live index -
-    // otherwise the /workflows tier filter offers bands nothing is in, and
-    // hides the one band that most of the catalog sits in.
-    const counts = new Map<string, number>();
-    for (const w of getIndex()) {
-      if (w.tier) counts.set(w.tier, (counts.get(w.tier) ?? 0) + 1);
-    }
-    taxo.tiers = TIER_ORDER.filter((name) => counts.has(name)).map((name) => ({
+    // Every count here is recomputed from the live index rather than trusted
+    // from disk.
+    //
+    // Tier had to be, because tier is derived from the price model and the
+    // stored set described bands that no longer exist. Withdrawal made the rest
+    // wrong the same way: the file counts all 10,489 records, and 496 of them
+    // are off sale, so a category chip offering "1,265 templates" led to a
+    // filtered list of 1,114. `total` was the worst of them - it is printed on
+    // the homepage and the 404 page as how many templates there are.
+    //
+    // Recounting is cheap (one pass over an already-loaded array) and it means
+    // taxonomy.json holds names, ordering and gradients, while the numbers come
+    // from whatever is actually on sale.
+    const index = getIndex();
+    const tally = (pick: (w: IndexItem) => string | null | undefined) => {
+      const m = new Map<string, number>();
+      for (const w of index) {
+        const v = pick(w);
+        if (v) m.set(v, (m.get(v) ?? 0) + 1);
+      }
+      return m;
+    };
+    /** Keeps the stored order and names; drops anything now empty. */
+    const recount = (list: Taxo[], m: Map<string, number>): Taxo[] =>
+      list.filter((t) => m.has(t.name)).map((t) => ({ name: t.name, count: m.get(t.name)! }));
+
+    const tierCounts = tally((w) => w.tier);
+    taxo.tiers = TIER_ORDER.filter((name) => tierCounts.has(name)).map((name) => ({
       name,
-      count: counts.get(name)!,
+      count: tierCounts.get(name)!,
     }));
+
+    const catCounts = tally((w) => w.category);
+    const subCounts = tally((w) => w.subcategory);
+    taxo.categories = recount(taxo.categories, catCounts);
+    taxo.subcategories = recount(taxo.subcategories, subCounts);
+    taxo.industries = recount(taxo.industries, tally((w) => w.industry));
+    taxo.difficulties = recount(taxo.difficulties, tally((w) => w.difficulty));
+
+    const platformCounts = new Map<string, number>();
+    for (const w of index) {
+      for (const p of w.platforms ?? []) {
+        platformCounts.set(p, (platformCounts.get(p) ?? 0) + 1);
+      }
+    }
+    taxo.platformsTop = recount(taxo.platformsTop, platformCounts);
+
+    for (const [cat, subs] of Object.entries(taxo.subcategoriesByCategory ?? {})) {
+      taxo.subcategoriesByCategory[cat] = recount(subs, subCounts);
+    }
+
+    taxo.total = index.length;
     g.__taxo = taxo;
   }
   return g.__taxo;
@@ -180,8 +262,18 @@ export function canonicalRoute(route: string): string {
   return routeAliases()[route] ?? route;
 }
 
+/**
+ * Resolves a route to its record, withdrawn templates included.
+ *
+ * Withdrawn ones stay resolvable on purpose: their pages must render, and a
+ * past order's download must still authorise. What withdrawal blocks is a new
+ * sale, and that is enforced in getPurchasable rather than by making the record
+ * disappear - a 404 here would revoke an entitlement someone paid for.
+ */
 export function getByRoute(route: string): DetailItem | undefined {
-  if (!g.__byRoute) g.__byRoute = new Map(getCatalog().map((w) => [w.route, w]));
+  if (!g.__byRoute) {
+    g.__byRoute = new Map(getCatalogWithWithdrawn().map((w) => [w.route, w]));
+  }
   return g.__byRoute.get(route) ?? g.__byRoute.get(canonicalRoute(route));
 }
 

@@ -11,8 +11,8 @@ import { workflowSitemapIds } from "@/lib/sitemaps";
  * integration pages link to. All of them render fine (200 with a real empty
  * state) and all of them declare `/workflows` as their canonical, so not one
  * can ever be indexed on its own - they are pure crawl cost against a catalog
- * that already has 10,489 template URLs and ~150 integration pages waiting to
- * be crawled.
+ * that already has a template URL for every listed template, plus ~150
+ * integration pages, waiting to be crawled.
  *
  * Why a prefix of exactly `/workflows?`: robots.txt matches against path plus
  * query, and `?` carries no special meaning there, so this catches

@@ -18,7 +18,13 @@ const root = path.join(here, "..");
 const DATA = path.join(root, "src", "data");
 
 const catalog = JSON.parse(fs.readFileSync(path.join(DATA, "catalog.json"), "utf8"));
-const total = catalog.length;
+// Withdrawn templates are off sale, so they are not part of any count the site
+// quotes. See src/data/withdrawn.json and scripts/build-withdrawn.mjs.
+const withdrawnFile = path.join(DATA, "withdrawn.json");
+const withdrawn = fs.existsSync(withdrawnFile)
+  ? JSON.parse(fs.readFileSync(withdrawnFile, "utf8")).items.length
+  : 0;
+const total = catalog.length - withdrawn;
 
 const failures = [];
 
@@ -26,7 +32,7 @@ const failures = [];
 const counted = JSON.parse(fs.readFileSync(path.join(DATA, "catalog-count.json"), "utf8")).total;
 if (counted !== total) {
   failures.push(
-    `src/data/catalog-count.json says ${counted}, catalog.json has ${total} — run: node scripts/build-catalog-index.mjs`,
+    `src/data/catalog-count.json says ${counted}, catalog.json has ${catalog.length} minus ${withdrawn} withdrawn = ${total} — run: node scripts/build-withdrawn.mjs && node scripts/build-catalog-index.mjs`,
   );
 }
 

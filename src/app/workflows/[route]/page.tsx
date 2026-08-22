@@ -24,6 +24,8 @@ import { RecentlyViewedTracker, RecentlyViewedStrip } from "@/components/Recentl
 import JsonLd from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/PageHeader";
 import { breadcrumbJsonLd, pageMeta, productOffer } from "@/lib/seo";
+import { isWithdrawnId, withdrawnNodes } from "@/lib/withdrawn";
+import { TEMPLATE_COUNT_LABEL } from "@/lib/site";
 
 export async function generateMetadata({
   params,
@@ -45,6 +47,10 @@ export async function generateMetadata({
     path: `/workflows/${w.route}`,
     image,
     type: "article",
+    // A withdrawn template keeps its URL so an indexed link does not rot, but
+    // there is no reason to ask Google to rank a page for something we will not
+    // sell. Same predicate that removes it from the sitemap.
+    noindex: isWithdrawnId(w.id),
   });
 }
 
@@ -81,6 +87,12 @@ export default async function WorkflowDetail({
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = orderedGallery(shots);
   const learning = learningFor(w, preview?.caps ?? null);
+  // Withdrawn: the page still renders so an indexed URL does not rot and a
+  // buyer who followed a link gets an explanation, but nothing on it sells.
+  const withdrawn = isWithdrawnId(w.id);
+  const withdrawnNodeList = withdrawnNodes(w.id)
+    .map((n) => `"${n}"`)
+    .join(", ");
 
   const productFaqs: [string, string][] = [
     [
@@ -138,7 +150,9 @@ export default async function WorkflowDetail({
     category: w.category ?? undefined,
     sku: w.id,
     brand: { "@type": "Brand", name: "WorkflowCrate" },
-    offers: productOffer({ price: w.price, path: `/workflows/${w.route}` }),
+    // No offer on a withdrawn template: an Offer in the markup is a statement
+    // that it can be bought, and /api/checkout will refuse it.
+    ...(withdrawn ? {} : { offers: productOffer({ price: w.price, path: `/workflows/${w.route}` }) }),
     ...(gallery.length > 0 ? { image: gallery.map((g) => g.src) } : {}),
     // Only real, moderated buyer reviews ever reach this markup.
     ...(reviews.count > 0
@@ -447,6 +461,23 @@ export default async function WorkflowDetail({
         <aside className="space-y-6">
           <TrackView item={w.route} kind="workflow" price={w.price} />
           <div className="card-raised p-5">
+            {withdrawn ? (
+              <div id="withdrawn-notice">
+                <h2 className="text-base font-semibold text-ink">Not for sale</h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  This template has a known defect: {withdrawnNodeList} carries parameters
+                  belonging to a different n8n node type, so it cannot be configured and would not
+                  run. We have taken it off sale rather than sell it with a warning attached. It
+                  will be repaired and listed again.
+                </p>
+                <p className="mt-3 text-sm text-muted">
+                  <Link href="/workflows" className="text-violet-400 hover:text-violet-300">
+                    Browse the {TEMPLATE_COUNT_LABEL} templates that are on sale
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <>
             <PriceTag price={w.price} mrp={w.mrp} off={w.off} free={w.free} size="lg" />
             <div className="mt-4">
               <BuyButton
@@ -483,7 +514,7 @@ export default async function WorkflowDetail({
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Original template, yours to use &amp; adapt</li>
               <li className="flex gap-2"><span className="text-emerald-400">&#10003;</span> Secure, time-limited download link</li>
             </ul>
-            {!w.free && (
+            {!w.free && !withdrawn && (
               <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-body">
                 <span className="font-semibold text-emerald-300">7-day guarantee.</span>{" "}If it won&apos;t
                 import or isn&apos;t as described, we fix it or refund you.{" "}
@@ -492,9 +523,11 @@ export default async function WorkflowDetail({
                 </Link>
               </div>
             )}
+              </>
+            )}
           </div>
 
-          {upsell && (
+          {upsell && !withdrawn && (
             <Link href={`/bundles/${upsell.slug}`} className="card-hover block rounded-2xl border border-violet-500/30 bg-violet-500/[0.06] p-5 hover:border-violet-500/60">
               <div className="text-xs font-semibold uppercase tracking-wide text-violet-300">Save with a bundle</div>
               <div className="mt-1 text-sm text-body">
@@ -546,11 +579,13 @@ export default async function WorkflowDetail({
         workflow JSON, its generated setup checklist, and a license to use and adapt it in your own projects.
       </div>
 
-      <StickyBuyBar
-        item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
-        mrp={w.mrp}
-        requireLogin={requireLoginToBuy()}
-      />
+      {!withdrawn && (
+        <StickyBuyBar
+          item={{ kind: "workflow", key: w.route, name: w.title, price: w.price, free: w.free }}
+          mrp={w.mrp}
+          requireLogin={requireLoginToBuy()}
+        />
+      )}
     </div>
   );
 }

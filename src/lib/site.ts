@@ -26,9 +26,9 @@ export const TEMPLATE_COUNT_LABEL = TEMPLATE_COUNT.toLocaleString("en-US");
 
 /**
  * The same number, rounded down, for copy where the exact figure earns
- * nothing. "Search 10,489 templates..." in a placeholder reads as precision
- * theatre and goes stale the moment one template is retired; "10,000+" is
- * true for as long as it matters.
+ * nothing. An exact count in a placeholder reads as precision theatre and goes
+ * stale the moment one template is retired - which duly happened when 496 were
+ * withdrawn. "9,000+" is true for as long as it matters.
  */
 export const TEMPLATE_COUNT_ROUNDED = `${(Math.floor(TEMPLATE_COUNT / 1000) * 1000).toLocaleString("en-US")}+`;
 

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { getByRoute } from "./catalog";
+import { isWithdrawnId } from "./withdrawn";
 import { getBundle, bundleMembersDetail, bandFor, type Bundle } from "./bundles";
 import { createZip, type ZipEntry } from "./zip";
 import { starterPackItems, STARTER_PACK_FILENAME } from "./starter-pack";
@@ -56,10 +57,24 @@ function truthfulLeaf(w: DetailItem): string {
   return `${prefix}${downloadSafeTitle(w)}${ext}`;
 }
 
+/**
+ * What a key can be charged for, or undefined if it cannot be sold.
+ *
+ * This is the single gate every purchase path goes through - /api/checkout
+ * computes its amount from here, the cart validates against it, and the free
+ * download route uses it to decide whether payment is required. Refusing a
+ * withdrawn template here therefore closes all of them at once, including a
+ * stale client that still has the route in its cart.
+ *
+ * getByRoute deliberately still resolves withdrawn templates (their pages
+ * render, and past orders must still download), so the check is explicit
+ * rather than falling out of a missing lookup.
+ */
 export function getPurchasable(kind: Kind, key: string): Purchasable | undefined {
   if (kind === "workflow") {
     const w = getByRoute(key);
     if (!w) return undefined;
+    if (isWithdrawnId(w.id)) return undefined;
     return { kind, key, name: w.title, price: w.price ?? 0, currency: "INR", free: !!w.free };
   }
   const b = getBundle(key);

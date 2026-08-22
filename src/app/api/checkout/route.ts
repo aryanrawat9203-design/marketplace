@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPurchasable, signDownload, type Kind } from "@/lib/commerce";
+import { isWithdrawnRoute } from "@/lib/withdrawn";
+import { canonicalRoute } from "@/lib/catalog";
 import { createCartRecord, type CartItem } from "@/lib/cart-store";
 import { getUserFromRequest } from "@/lib/auth-server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -48,12 +50,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
+  const body = await req.json().catch(() => ({}) as CheckoutBody);
+
+  // Withdrawn templates are refused before anything else, including the login
+  // gate. getPurchasable already refuses them, so this is not the only defence
+  // - it is here so the answer does not depend on being signed in, and so a
+  // stale client (a cart saved before withdrawal, a bookmarked buy link) is
+  // told what actually happened instead of "auth_required" or
+  // "invalid_product". The state is public: the product page says the same.
+  if (body.kind === "workflow" && body.key && isWithdrawnRoute(canonicalRoute(body.key))) {
+    return NextResponse.json(
+      { error: "withdrawn", detail: "This template has a known defect and is not for sale." },
+      { status: 410 },
+    );
+  }
+  if (Array.isArray(body.items)) {
+    const blocked = body.items.find(
+      (i: { kind?: string; key?: string }) =>
+        i?.kind === "workflow" && typeof i.key === "string" && isWithdrawnRoute(canonicalRoute(i.key)),
+    );
+    if (blocked) {
+      return NextResponse.json(
+        { error: "withdrawn", detail: "A template in your cart has a known defect and is not for sale.", key: blocked.key },
+        { status: 410 },
+      );
+    }
+  }
+
   const user = await getUserFromRequest(req);
   if (requireLoginToBuy() && !user) {
     return NextResponse.json({ error: "auth_required" }, { status: 401 });
   }
-
-  const body = await req.json().catch(() => ({}) as CheckoutBody);
 
   // Full-access accounts never touch Razorpay: mint a download token
   // straight away, same mechanism a paid purchase ends up with, just
