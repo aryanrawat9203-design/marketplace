@@ -112,6 +112,8 @@ export type WorkflowJsonLike = {
     type?: string;
     parameters?: unknown;
   }>;
+  /** Needed to tell a switch's delegating arm from its acting arm. */
+  connections?: Record<string, Record<string, Array<Array<{ node?: string }> | null> | undefined>>;
   pinData?: Record<string, unknown>;
 };
 
@@ -418,6 +420,128 @@ function collectScalars(value: unknown, param: string, node: string, type: strin
 const IDEMPOTENT_NAME = /\b(upsert|sync|update)\b/i;
 const CREATE_OPS = new Set(["create", "insert", "append", "post", "send"]);
 
+// ------------------------------------------------- switch-arm asymmetry
+
+/**
+ * What an integration node visibly does, for naming a switch arm's action.
+ *
+ * Keyed on node type because that is what the file states. The phrasing is the
+ * action performed, not the service's name - "posts a Slack message" rather
+ * than "Slack" - because the point of the step is to contrast one arm doing
+ * something with another arm doing nothing.
+ */
+const ARM_ACTIONS: Record<string, string> = {
+  "n8n-nodes-base.slack": "posts a Slack message",
+  "n8n-nodes-base.discord": "posts a Discord message",
+  "n8n-nodes-base.telegram": "sends a Telegram message",
+  "n8n-nodes-base.twilio": "sends an SMS through Twilio",
+  "n8n-nodes-base.gmail": "sends a Gmail message",
+  "n8n-nodes-base.microsoftOutlook": "sends an Outlook email",
+  "n8n-nodes-base.microsoftTeams": "posts a Microsoft Teams message",
+  "n8n-nodes-base.whatsApp": "sends a WhatsApp message",
+};
+
+/** The destination a messaging node is pointed at, when the file states one. */
+function armTarget(parameters: unknown): string | null {
+  const found: string[] = [];
+  const walk = (v: unknown) => {
+    if (!v || typeof v !== "object") return;
+    const o = v as Record<string, unknown>;
+    if (o.__rl === true) {
+      // A literal destination only; an expression is not something to quote.
+      if (typeof o.value === "string" && o.value !== "" && !o.value.startsWith("=")) {
+        found.push(o.value);
+      }
+      return;
+    }
+    for (const x of Object.values(o)) if (x && typeof x === "object") walk(x);
+  };
+  walk(parameters);
+  return found[0] ?? null;
+}
+
+/** Sentence-initial capital for a phrase that may start with "the". */
+function cap(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** `Delegate 'standard' to Sub-workflow` -> standard */
+function armLabel(nodeName: string): string | null {
+  return nodeName.match(/'([^']+)'/)?.[1] ?? null;
+}
+
+/**
+ * A switch whose arms are not equivalent: one hands off to an included
+ * sub-workflow that only normalises and tags, while a sibling arm fires a real
+ * integration node.
+ *
+ * Nothing in the page copy is false - the pages say the workflow "routes each
+ * kind of record down its own branch", and it does. It is an expectation gap: a
+ * buyer who sees the 'vip' arm post to Slack will assume the 'standard' arm
+ * does something comparable, and it does not until they write it. Saying so
+ * costs one line, and it is read off this template's own graph, so it appears
+ * only where the asymmetry is real.
+ */
+function switchAsymmetrySteps(wf: WorkflowJsonLike): SetupStep[] {
+  const nodes = (wf.nodes ?? []).filter((n) => n.type && n.type !== STICKY);
+  const byName = new Map(nodes.map((n) => [n.name ?? "", n]));
+  const steps: SetupStep[] = [];
+
+  for (const sw of nodes) {
+    if (sw.type !== "n8n-nodes-base.switch") continue;
+    const arms = wf.connections?.[sw.name ?? ""]?.main ?? [];
+
+    const delegating: Array<{ node: string; label: string | null; lib: string }> = [];
+    const acting: Array<{
+      node: string;
+      label: string | null;
+      action: string;
+      target: string | null;
+    }> = [];
+
+    for (const arm of arms) {
+      for (const conn of arm ?? []) {
+        const target = byName.get(conn?.node ?? "");
+        if (!target?.type) continue;
+
+        if (SUBWORKFLOW_TYPES.test(target.type)) {
+          const rows: Unbound[] = [];
+          collectUnbound(target.parameters, "", target.name ?? "", target.type, rows);
+          const lib = rows.find((r) => LIB_PLACEHOLDER.test(r.placeholder))?.placeholder;
+          if (lib) {
+            delegating.push({ node: target.name ?? "", label: armLabel(target.name ?? ""), lib });
+          }
+          continue;
+        }
+        const action = ARM_ACTIONS[target.type];
+        if (action) {
+          acting.push({
+            node: target.name ?? "",
+            label: armLabel(target.name ?? ""),
+            action,
+            target: armTarget(target.parameters),
+          });
+        }
+      }
+    }
+
+    if (delegating.length === 0 || acting.length === 0) continue;
+
+    const d = delegating[0];
+    const a = acting[0];
+    const dArm = d.label ? `the '${d.label}' arm` : "one arm";
+    const aArm = a.label ? `the '${a.label}' arm` : "another arm";
+    const where = a.target ? ` to ${a.target}` : "";
+    steps.push({
+      kind: "behaviour",
+      title: `The routed arms are not equivalent - ${dArm} takes no action of its own`,
+      detail: `${sw.name} splits the run. ${cap(aArm)} ends at ${a.node}, which ${a.action}${where}. ${cap(dArm)} goes to ${d.node}, which calls the included sub-workflow ${d.lib} - that sub-workflow normalises the item and tags it with the route, but performs no action of its own, so the branch completes and nothing is sent, filed or updated for it. Add the handling you want inside ${d.lib} before relying on that arm.`,
+      nodes: [sw.name ?? "", d.node, a.node].filter(Boolean).sort(),
+    });
+  }
+  return steps;
+}
+
 const EXAMPLE_HOST = /https?:\/\/[a-z0-9.-]*\bexample\.com\b/i;
 /** `{{ $json.phone || 'ONCALL_NUMBER' }}` - resolves to the literal, not a value. */
 const PLACEHOLDER_FALLBACK = /\|\|\s*'(YOUR_[A-Z0-9_]+|ONCALL_NUMBER|[A-Z][A-Z0-9_]{4,})'/;
@@ -528,6 +652,25 @@ function behaviourSteps(wf: WorkflowJsonLike): SetupStep[] {
       param: "operation",
     });
   }
+
+  // The Google Calendar locator now ships bound to `primary`, which is the
+  // authenticated account's own calendar - not the shared one several of these
+  // nodes were named for. It runs on import, which is the point, but where the
+  // events land is a real decision the buyer should make knowingly.
+  const calendars = scalars.filter(
+    (s) => s.type === "n8n-nodes-base.googleCalendar" && s.param === "calendar.value" && s.value === "primary",
+  );
+  push(
+    "Calendar events go to your own primary calendar",
+    'The Google Calendar nodes are set to "primary", which Google resolves to the default calendar of whichever account you connect. That is why this template runs as imported rather than failing on an unset dropdown. If these events belong on a shared or team calendar, change the Calendar field on the nodes below from "primary" to that calendar.',
+    calendars,
+    "calendar",
+  );
+
+  // A switch that routes one arm to a real integration and another to an
+  // included sub-workflow that only normalises - read off this graph, so it
+  // appears only where that asymmetry actually exists.
+  steps.push(...switchAsymmetrySteps(wf));
 
   // Every template ships pinned sample data on its trigger. It is what lets
   // the workflow run before anything is wired up, and it is also why a first

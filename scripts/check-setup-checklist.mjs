@@ -170,8 +170,52 @@ function expectedTraps(wf) {
   if (Object.keys(wf.pinData ?? {}).length > 0) {
     t.add("Clear the pinned sample data before going live");
   }
+
+  // The Google Calendar locator now ships bound to "primary". That is a
+  // behavioural fact about where events land, so it earns a step.
+  for (const n of realNodes(wf)) {
+    if (n.type !== "n8n-nodes-base.googleCalendar") continue;
+    if (locators(n).some((l) => l.value === "primary")) {
+      t.add("Calendar events go to your own primary calendar");
+    }
+  }
+
+  // A switch with both a delegating arm (to a `lib:`) and an arm that fires a
+  // real messaging node. Re-derived here off the raw graph rather than asked of
+  // the generator, so the two have to agree independently. The title carries
+  // the arm label, so it is matched by prefix at the call site.
+  const byName = new Map(realNodes(wf).map((n) => [n.name, n]));
+  for (const sw of realNodes(wf)) {
+    if (sw.type !== "n8n-nodes-base.switch") continue;
+    let delegates = false, acts = false;
+    for (const arm of wf.connections?.[sw.name]?.main ?? []) {
+      for (const c of arm ?? []) {
+        const target = byName.get(c?.node);
+        if (!target?.type) continue;
+        if (SUBWORKFLOW.test(target.type)) {
+          if (locators(target).some((l) => /^lib:/i.test(l.name ?? ""))) delegates = true;
+        } else if (ACTING_TYPES.has(target.type)) acts = true;
+      }
+    }
+    if (delegates && acts) t.add(ASYMMETRY_PREFIX);
+  }
   return t;
 }
+
+/** Messaging nodes whose presence on a sibling arm makes the arms unequal. */
+const ACTING_TYPES = new Set([
+  "n8n-nodes-base.slack",
+  "n8n-nodes-base.discord",
+  "n8n-nodes-base.telegram",
+  "n8n-nodes-base.twilio",
+  "n8n-nodes-base.gmail",
+  "n8n-nodes-base.microsoftOutlook",
+  "n8n-nodes-base.microsoftTeams",
+  "n8n-nodes-base.whatsApp",
+]);
+
+/** The asymmetry title varies by arm name, so it is compared by prefix. */
+const ASYMMETRY_PREFIX = "The routed arms are not equivalent";
 
 // --- checks -----------------------------------------------------------------
 const sample = pickSample();
@@ -288,7 +332,10 @@ for (const w of sample) {
   // 4. COMPLETENESS - every known trap produces its step.
   const expected = expectedTraps(wf);
   stats.trapsExpected += expected.size;
-  const titles = new Set(c.behaviour.map((s) => s.title));
+  // The asymmetry step's title ends with the arm's own name, so both directions
+  // compare it by prefix; every other title is exact.
+  const norm = (t) => (t.startsWith(ASYMMETRY_PREFIX) ? ASYMMETRY_PREFIX : t);
+  const titles = new Set(c.behaviour.map((s) => norm(s.title)));
   for (const e of expected) {
     if (!titles.has(e)) fail(w, `trap present in the file but missing from the checklist: "${e}"`);
   }
