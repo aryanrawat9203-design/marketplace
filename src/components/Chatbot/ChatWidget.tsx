@@ -150,6 +150,7 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const saved = loadTogglePosition();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time SSR-safe hydrate from localStorage on mount
     if (saved) setTogglePos(saved);
   }, []);
 
@@ -386,7 +387,8 @@ export default function ChatWidget() {
       draggedRef.current = false;
       return;
     }
-    open ? setOpen(false) : openWidget();
+    if (open) setOpen(false);
+    else openWidget();
   }
 
   const showLowBalanceBanner =
@@ -423,6 +425,7 @@ export default function ChatWidget() {
         role="dialog"
         aria-label="WorkflowCrate assistant"
         aria-hidden={!open}
+        inert={!open}
         className={`fixed bottom-24 right-5 z-[90] flex h-[min(600px,calc(100vh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-hairline bg-surface-2 shadow-2xl shadow-black/50 transition-all duration-200 sm:bottom-28 sm:right-6 ${
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"
         }`}

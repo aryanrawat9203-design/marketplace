@@ -37,6 +37,8 @@ export function signAdminSession(): string {
 
 export function verifyAdminSession(token: string | undefined | null): boolean {
   if (!token) return false;
+  // Fail closed if no dedicated admin/download secret is configured in production.
+  if (process.env.NODE_ENV === "production" && !process.env.ADMIN_SESSION_SECRET && !process.env.DOWNLOAD_SECRET) return false;
   try {
     const lastDot = token.lastIndexOf(".");
     if (lastDot < 0) return false;

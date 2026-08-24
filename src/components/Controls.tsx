@@ -234,7 +234,7 @@ function Select({
         params.delete("page");
         router.push(`/workflows?${params.toString()}`);
       }}
-      className="h-10 rounded-lg border border-white/10 bg-surface-2 px-3 text-sm text-body outline-none transition-colors hover:border-white/20 focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
+      className="h-10 w-full min-w-0 max-w-full rounded-lg border border-white/10 bg-surface-2 px-3 text-sm text-body outline-none transition-colors hover:border-white/20 focus-visible:border-violet-500/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500 sm:w-auto"
     >
       <option value="">{all}</option>
       {options.map((o) => (
