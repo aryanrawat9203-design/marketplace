@@ -161,6 +161,17 @@ if (sellableIds.size !== indexRaw.length - withdrawnIds.size) {
 // completed order does, verify it the way /api/download does, and build the
 // ZIP. Checking the file merely exists would not catch getPurchasable's refusal
 // leaking into the download path, which is the actual risk.
+// Product files now come from Supabase Storage, so building a past-order ZIP is
+// a network round-trip. Without credentials every download would come back
+// empty and this would report a payment-path failure that is not real.
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "check-withdrawn: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required\n" +
+      "to assemble past-order ZIPs (product files live in Storage).\n" +
+      "Run via: node --env-file-if-exists=.env.local scripts/check-withdrawn.mjs",
+  );
+  process.exit(1);
+}
 const { exports: commerce, dispose: d5 } = loadTsModule(ROOT, "src/lib/commerce.ts");
 let pastOrderOk = 0;
 const SAMPLE = 25;
@@ -176,7 +187,7 @@ for (const w of withdrawnFile.items.slice(0, SAMPLE)) {
     fail(`withdrawn ${w.id}: past-order token does not verify`);
     continue;
   }
-  const out = commerce.workflowDownload(ref.key);
+  const out = await commerce.workflowDownload(ref.key);
   if (!out || !out.body?.length) {
     fail(`withdrawn ${w.id}: past order resolves but produces no file`);
     continue;

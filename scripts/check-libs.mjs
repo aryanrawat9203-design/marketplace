@@ -237,12 +237,24 @@ for (const [name, j] of libByName) {
 }
 
 // --- 5. the download carries the libs ---------------------------------------
+// Product files now come from Supabase Storage, so this assertion is a real
+// end-to-end check of the download path rather than a local disk read. It needs
+// the service-role credentials; without them every ZIP would come back empty
+// and the failures would be misleading.
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "check-libs: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to\n" +
+      "assemble download ZIPs (product files live in Storage).\n" +
+      "Run via: node --env-file-if-exists=.env.local scripts/check-libs.mjs",
+  );
+  process.exit(1);
+}
 const { exports: commerce, dispose: d2 } = loadTsModule(ROOT, "src/lib/commerce.ts");
 const sample = ALL ? parentsNeedingLibs : parentsNeedingLibs.filter((_, i) => i % 40 === 0);
 let zipsChecked = 0;
 let zipsOk = 0;
 for (const w of sample) {
-  const out = commerce.workflowDownload(w.route);
+  const out = await commerce.workflowDownload(w.route);
   if (!out) {
     // withdrawn templates still download; a missing one is a real failure
     fail(`${w.id}: no download produced`);

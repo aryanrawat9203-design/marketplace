@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { starterPackDownload } from "@/lib/commerce";
+import { starterPackDownload, ProductFetchError } from "@/lib/commerce";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -11,7 +11,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  const out = starterPackDownload();
+  let out;
+  try {
+    out = await starterPackDownload();
+  } catch (e) {
+    // Same rule as /api/download: a pack that is short a template because one
+    // fetch failed must not be served as though it were whole.
+    if (e instanceof ProductFetchError) {
+      console.error("[starter-pack] " + e.message);
+      return NextResponse.json(
+        { error: "Could not build the starter pack just now. Please try again." },
+        { status: 503, headers: { "Retry-After": "10", "Cache-Control": "no-store" } },
+      );
+    }
+    throw e;
+  }
   if (!out) return NextResponse.json({ error: "Starter pack unavailable." }, { status: 404 });
 
   return new NextResponse(new Uint8Array(out.body), {

@@ -12,7 +12,7 @@ import PriceTag from "@/components/PriceTag";
 import TrustStrip from "@/components/TrustStrip";
 import { inr } from "@/lib/pricing";
 import { requireLoginToBuy } from "@/lib/require-login";
-import { previewWorkflow, workflowGraphData, workflowSetupChecklist } from "@/lib/commerce";
+import { renderPayload } from "@/lib/render-payloads";
 import SetupChecklistSection from "@/components/SetupChecklistSection";
 import { reviewSummary } from "@/lib/reviews";
 import { learningFor } from "@/lib/learning";
@@ -35,7 +35,7 @@ export async function generateMetadata({
   const { route } = await params;
   const w = getByRoute(canonicalRoute(route));
   if (!w) return { title: "Template not found" };
-  const preview = previewWorkflow(w.route);
+  const { preview } = renderPayload(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const image =
     shots?.cardThumb ??
@@ -80,9 +80,10 @@ export default async function WorkflowDetail({
   const subBundle = w.category && w.subcategory ? bundleForSubcategory(w.category, w.subcategory) : undefined;
   const catBundle = w.category ? bundleForCategory(w.category) : undefined;
   const upsell = subBundle ?? catBundle;
-  const preview = previewWorkflow(w.route);
-  const graph = workflowGraphData(w.route);
-  const setup = workflowSetupChecklist(w.route);
+  // Precomputed at build time (scripts/build-render-payloads.mjs) rather than
+  // derived from the product file here: reading the file on render is what
+  // traced the whole 352 MB corpus into this function.
+  const { preview, graph, setup } = renderPayload(w.route);
   const reviews = await reviewSummary(w.route);
   const shots = await getScreenshotsForRoute(w.route);
   const gallery = orderedGallery(shots);

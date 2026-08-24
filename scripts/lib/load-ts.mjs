@@ -11,9 +11,8 @@
  * emit is CommonJS purely because tsc writes extensionless relative specifiers
  * that Node's ESM resolver rejects.
  */
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { join, basename, relative } from "node:path";
-import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
@@ -24,7 +23,14 @@ import { createRequire } from "node:module";
  * @returns {{ exports: any, dispose: () => void }}
  */
 export function loadTsModule(root, rel) {
-  const outDir = mkdtempSync(join(tmpdir(), "wc-ts-"));
+  // Emitted inside the repo's node_modules/.cache rather than the OS temp dir:
+  // some of these modules now require real packages (commerce.ts pulls in
+  // @supabase/supabase-js since product files moved to Storage), and a temp
+  // directory outside the tree has no node_modules to resolve them from.
+  // Node walks up from here and finds <root>/node_modules.
+  const cacheRoot = join(root, "node_modules/.cache");
+  mkdirSync(cacheRoot, { recursive: true });
+  const outDir = mkdtempSync(join(cacheRoot, "wc-ts-"));
   // The tsconfig lives in the repo so relative "extends", "paths" and the entry
   // path all resolve against the real tree; only the emit goes to the temp dir.
   const cfgPath = join(root, `tsconfig.scripts-${basename(outDir)}.json`);

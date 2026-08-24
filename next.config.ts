@@ -82,12 +82,22 @@ const nextConfig: NextConfig = {
     // optimizer in dev renders the raw (CSP-allowed) URL; prod is unchanged.
     unoptimized: isDev,
   },
-  // Bundle catalog data + product files into the serverless functions that read
-  // them from disk at runtime.
+  // Bundle catalog data into the serverless functions that read it from disk at
+  // runtime.
+  //
+  // Product files are NOT listed here any more: they live in a private Supabase
+  // Storage bucket and are fetched by `/api/download` and `/api/starter-pack`
+  // over the network. Tracing them was costing 352 MB in each of twelve
+  // functions.
+  //
+  // `render-payloads/**` is the build-time-derived data the product page needs
+  // (node preview, graph, setup checklist) so that page never has to open a
+  // product file. It is deliberately outside `src/data/` - that glob is traced
+  // into ~20 functions, and only this one route reads the payloads.
   outputFileTracingIncludes: {
     "/": ["./src/data/**"],
     "/workflows": ["./src/data/**"],
-    "/workflows/[route]": ["./src/data/**"],
+    "/workflows/[route]": ["./src/data/**", "./render-payloads/**"],
     "/bundles": ["./src/data/**"],
     "/bundles/[slug]": ["./src/data/**"],
     // Sitemaps read the catalog at request time. The dynamic workflow sitemap
@@ -98,8 +108,8 @@ const nextConfig: NextConfig = {
     "/integrations/sitemap.xml": ["./src/data/**"],
     "/workflows/sitemap.xml": ["./src/data/**"],
     "/workflows/sitemap/[__metadata_id__]": ["./src/data/**"],
-    "/api/download": ["./src/data/**", "./product-files/**"],
-    "/api/starter-pack": ["./src/data/**", "./product-files/**"],
+    "/api/download": ["./src/data/**"],
+    "/api/starter-pack": ["./src/data/**"],
     "/api/leads": ["./src/data/**"],
     "/free": ["./src/data/**"],
     "/api/checkout": ["./src/data/**"],

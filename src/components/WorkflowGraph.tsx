@@ -1,5 +1,5 @@
-import type { WorkflowGraphData, GraphNode } from "@/lib/commerce";
-import { GRAPH_NODE_W as NW, GRAPH_NODE_H as NH } from "@/lib/commerce";
+import type { WorkflowGraphData, GraphNode } from "@/lib/workflow-derive";
+import { GRAPH_NODE_W as NW, GRAPH_NODE_H as NH } from "@/lib/workflow-derive";
 
 const KIND_ACCENT: Record<GraphNode["kind"], string> = {
   trigger: "#34d399",
@@ -18,7 +18,7 @@ export default function WorkflowGraph({ graph }: { graph: WorkflowGraphData }) {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-hairline bg-surface-1">
+    <div tabIndex={0} role="region" aria-label="Workflow node diagram (scrollable)" className="overflow-x-auto rounded-2xl border border-hairline bg-surface-1 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500">
       <svg
         viewBox={`0 0 ${graph.width} ${graph.height}`}
         width={graph.width}
