@@ -24,12 +24,26 @@ function crc32(buf: Buffer): number {
 
 export type ZipEntry = { name: string; data: Buffer };
 
-export function createZip(entries: ZipEntry[]): Buffer {
-  const parts: Buffer[] = [];
-  const central: Buffer[] = [];
-  let offset = 0;
+/**
+ * Builds a ZIP one entry at a time.
+ *
+ * The full-library tier archives ~10k templates. Collecting every uncompressed
+ * entry first and only then zipping meant holding the whole corpus in memory
+ * (~1.9 GB RSS) before a single byte was compressed. Adding entries as they
+ * arrive lets the caller release each source buffer immediately, so peak memory
+ * is the compressed output rather than the compressed output plus all of the
+ * input.
+ *
+ * `createZip` is implemented on top of this, so the two cannot produce
+ * different bytes.
+ */
+export class ZipBuilder {
+  private parts: Buffer[] = [];
+  private central: Buffer[] = [];
+  private offset = 0;
+  private count = 0;
 
-  for (const e of entries) {
+  add(e: ZipEntry): void {
     const nameBuf = Buffer.from(e.name.replace(/\\/g, "/"), "utf8");
     const crc = crc32(e.data);
     const compressed = zlib.deflateRawSync(e.data);
@@ -46,7 +60,7 @@ export function createZip(entries: ZipEntry[]): Buffer {
     local.writeUInt32LE(e.data.length, 22);
     local.writeUInt16LE(nameBuf.length, 26);
     local.writeUInt16LE(0, 28);
-    parts.push(local, nameBuf, compressed);
+    this.parts.push(local, nameBuf, compressed);
 
     const cd = Buffer.alloc(46);
     cd.writeUInt32LE(0x02014b50, 0);
@@ -65,22 +79,36 @@ export function createZip(entries: ZipEntry[]): Buffer {
     cd.writeUInt16LE(0, 34);
     cd.writeUInt16LE(0, 36);
     cd.writeUInt32LE(0, 38);
-    cd.writeUInt32LE(offset, 42);
-    central.push(cd, nameBuf);
+    cd.writeUInt32LE(this.offset, 42);
+    this.central.push(cd, nameBuf);
 
-    offset += local.length + nameBuf.length + compressed.length;
+    this.offset += local.length + nameBuf.length + compressed.length;
+    this.count++;
   }
 
-  const cdBuf = Buffer.concat(central);
-  const eocd = Buffer.alloc(22);
-  eocd.writeUInt32LE(0x06054b50, 0);
-  eocd.writeUInt16LE(0, 4);
-  eocd.writeUInt16LE(0, 6);
-  eocd.writeUInt16LE(entries.length, 8);
-  eocd.writeUInt16LE(entries.length, 10);
-  eocd.writeUInt32LE(cdBuf.length, 12);
-  eocd.writeUInt32LE(offset, 16);
-  eocd.writeUInt16LE(0, 20);
+  /** Number of entries added so far. */
+  get size(): number {
+    return this.count;
+  }
 
-  return Buffer.concat([...parts, cdBuf, eocd]);
+  finish(): Buffer {
+    const cdBuf = Buffer.concat(this.central);
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(0, 4);
+    eocd.writeUInt16LE(0, 6);
+    eocd.writeUInt16LE(this.count, 8);
+    eocd.writeUInt16LE(this.count, 10);
+    eocd.writeUInt32LE(cdBuf.length, 12);
+    eocd.writeUInt32LE(this.offset, 16);
+    eocd.writeUInt16LE(0, 20);
+
+    return Buffer.concat([...this.parts, cdBuf, eocd]);
+  }
+}
+
+export function createZip(entries: ZipEntry[]): Buffer {
+  const b = new ZipBuilder();
+  for (const e of entries) b.add(e);
+  return b.finish();
 }
